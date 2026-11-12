@@ -270,6 +270,7 @@ function loadState() {
   } catch (e) { return null; }
 }
 let S = loadState() || seed();
+save(); // keep the stored copy in step with any upgrade that just ran
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 const byId = id => S.songs.find(s => s.id === id);
 const itemById = id => S.items.find(i => i.id === id);

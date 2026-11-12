@@ -59,10 +59,13 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 /* player */
 .stage{position:sticky;top:0;z-index:5;background:var(--bg);padding-block:10px 6px}
 .screen{position:relative;width:100%;height:clamp(200px,56.25vw,330px);border-radius:16px;overflow:hidden;background:#000;box-shadow:var(--shadow)}
-#yt{position:absolute;inset:0;width:100%;height:100%;border:0}
-.screen .idle{position:absolute;inset:0;display:grid;place-items:center;color:#cfc7e2;font:600 15px/1.4 var(--body);text-align:center;padding:16px;pointer-events:none}
-#tapHint{position:absolute;left:8px;right:8px;top:8px;background:#ffb000;color:#1d1406;font:700 15px/1.3 var(--body);padding:10px 12px;border-radius:10px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#blocked{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:18px;background:#120e1f;color:#f2eef9;font:600 15px/1.4 var(--body);text-align:center}
+.ytbox{position:absolute;inset:0;z-index:1}
+.ytbox.front{z-index:2}
+.ytbox>*{position:absolute;inset:0;width:100%;height:100%;border:0}
+.stage.small .screen{width:356px;max-width:100%;height:200px;margin-inline:auto}
+.screen .idle{position:absolute;inset:0;z-index:3;display:grid;place-items:center;color:#cfc7e2;font:600 15px/1.4 var(--body);text-align:center;padding:16px;pointer-events:none}
+#tapHint{position:absolute;z-index:4;left:8px;right:8px;top:8px;background:#ffb000;color:#1d1406;font:700 15px/1.3 var(--body);padding:10px 12px;border-radius:10px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#blocked{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:18px;background:#120e1f;color:#f2eef9;font:600 15px/1.4 var(--body);text-align:center}
 #blocked b{font:800 21px/1.15 var(--display)}
 #blocked span{max-width:40ch;color:#cfc7e2}
 #blocked a{color:#ffc14d;font:800 18px/1.2 var(--body);word-break:break-all}
@@ -174,7 +177,8 @@ textarea{margin:10px 0 8px;resize:vertical}
   <div class="wrap">
     <div class="screen">
       <div class="idle" id="idle">The video shows here once a song starts.</div>
-      <div id="yt"></div>
+      <div class="ytbox front" id="boxA"><div id="ytA"></div></div>
+      <div class="ytbox" id="boxB"><div id="ytB"></div></div>
       <div id="tapHint" hidden></div>
       <div id="blocked" hidden></div>
     </div>
@@ -194,12 +198,12 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp
 const fmt = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
 const T = (item, times) => times.map(t => ({ item, t, src: 'auto' }));
 
-const SEED_V = 3;
+const SEED_V = 4;
 const TG = pairs => pairs.map(([item, t]) => ({ item, t, src: 'auto' }));
 function seed() {
   return {
     v: 1, seedV: SEED_V,
-    settings: { minLead: 3, maxLead: 8, autoNext: true, lag: 0.3 },
+    settings: { minLead: 7, maxLead: 10, autoNext: true, lag: 0.3, preload: true, small: false },
     played: [], lastSong: null,
     items: [
       { id: 'paani',  name: 'Paani',  dev: 'पानी', words: 'paani, pani, panima', on: true },
@@ -260,6 +264,10 @@ function upgrade(d) {
     if (!mine) d.items.push(it);
     else if (it.id === 'paisa' && !/daam/.test(mine.words || '')) mine.words = (mine.words ? mine.words + ', ' : '') + 'daam';
   });
+  const st = d.settings = Object.assign({ minLead: 7, maxLead: 10, autoNext: true, lag: 0.3 }, d.settings || {});
+  if ((d.seedV || 1) < 4 && st.minLead === 3 && st.maxLead === 8) { st.minLead = 7; st.maxLead = 10; } // the old default run-up
+  if (st.preload === undefined) st.preload = true;
+  if (st.small === undefined) st.small = false;
   d.seedV = SEED_V;
   return d;
 }
@@ -304,22 +312,37 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3800);
 }
 
-/* ---------- YouTube player ---------- */
-let player = null, ready = false, queued = null;
-window.onYouTubeIframeAPIReady = () => {
-  player = new YT.Player('yt', {
+/* ---------- YouTube players ----------
+   Two players share the video box. The one in front plays; the one behind loads the next drop muted
+   and waits, paused, at its drop point, so Next swaps over with no loading. iPhones, iPads and Safari
+   only give sound to a video that was tapped, so there it sticks to one player. */
+const P = { A: null, B: null };
+let player = null, spare = null, ready = false, spareOk = false, queued = null;
+let pre = null, preTimer = null, swapFailed = false;
+const ua = navigator.userAgent || '';
+const appleTouch = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const canPreload = !appleTouch && !/^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(ua);
+const preloadOK = () => canPreload && !!S.settings.preload && !swapFailed;
+function makePlayer(slot) {
+  return new YT.Player('yt' + slot, {
     width: '100%', height: '100%',
     playerVars: { playsinline: 1, rel: 0, origin: location.origin },
     events: {
       onReady() {
-        ready = true;
-        const b = $('#blocked'); if (b.dataset.kind === 'net') { b.hidden = true; b.dataset.kind = ''; }
-        if (queued) { const f = queued; queued = null; f(); }
+        if (slot === 'A') {
+          ready = true;
+          const b = $('#blocked'); if (b.dataset.kind === 'net') { b.hidden = true; b.dataset.kind = ''; }
+          if (queued) { const f = queued; queued = null; f(); }
+        } else { spareOk = true; schedulePreload(500); }
       },
-      onStateChange: onState,
-      onError: onErr
+      onStateChange(e) { if (e.target === player) onState(e); else onSpareState(e); },
+      onError(e) { if (e.target === player) onErr(e); else onSpareErr(e); }
     }
   });
+}
+window.onYouTubeIframeAPIReady = () => {
+  player = P.A = makePlayer('A');
+  if (preloadOK()) spare = P.B = makePlayer('B');
 };
 (function loadApi() {
   const s = document.createElement('script');
@@ -341,7 +364,7 @@ function playSong(song, start, m) {
   const go = () => {
     $('#idle').hidden = true;
     player.loadVideoById({ videoId: curVid(song), startSeconds: Math.max(0, start) });
-    watchPlayback(Math.max(0, start));
+    watchPlayback(Math.max(0, start), false);
   };
   if (ready) go();
   else if (!$('#blocked').hidden) toast('YouTube can’t load on this page. Use the web link in the video box.');
@@ -349,7 +372,7 @@ function playSong(song, start, m) {
 }
 /* Phones (iPhone especially) won't start sound until the video itself is tapped once.
    Watch for real, unmuted playback; if it hasn't started after 2s, say so on the video. */
-function watchPlayback(start) {
+function watchPlayback(start, fromSwap) {
   clearInterval(watch);
   const hint = $('#tapHint'), t0 = Date.now();
   let seeked = false;
@@ -365,10 +388,15 @@ function watchPlayback(start) {
       return;
     }
     if (st === 1 && !seeked) { seeked = true; if (now() < start - 1.5) { try { player.seekTo(start, true); } catch (e) {} } }
-    if (st === 1 && !muted) { skipRun = 0; hint.hidden = true; clearInterval(watch); watch = null; return; }
+    if (st === 1 && !muted) {
+      skipRun = 0; hint.hidden = true; clearInterval(watch); watch = null;
+      if (mode === 'game') schedulePreload(3000); // let this one buffer first, then get the next one ready
+      return;
+    }
     const waited = Date.now() - t0;
     // Buffering (3) is normal for a few seconds, so only call it stuck after 7s.
     if ($('#blocked').hidden && ((waited > 2000 && st !== 3) || waited > 7000)) {
+      if (fromSwap && st !== 3) { swapFailed = true; discardPre(); } // this browser won't give sound to the player behind, so stop using it
       hint.textContent = st === 1 ? 'Tap the video to turn the sound on.' : 'Tap ▶ on the video to start. Phones need one tap the first time.';
       hint.hidden = false;
     } else if (st === 3) hint.hidden = true;
@@ -409,6 +437,25 @@ function onErr(e) {
   if (code === 152 || code === 153) { showBlocked('ref'); return; }
   toast('YouTube couldn’t play that video (error ' + code + ').');
 }
+/* The player behind: once it starts (muted), hold it at the drop point until Next. */
+function onSpareState(e) {
+  if (e.data !== 1) return;
+  try { spare.pauseVideo(); } catch (x) {}
+  let vid = null; try { vid = (spare.getVideoData() || {}).video_id; } catch (x) {}
+  if (pre && !pre.ready && vid === pre.vid) { pre.ready = true; renderNow(); }
+}
+/* A blocked upload found while getting ready: switch the song to its next upload quietly and plan again. */
+function onSpareErr(e) {
+  const code = e.data, song = pre && byId(pre.songId);
+  pre = null;
+  if (code === 152 || code === 153) { showBlocked('ref'); return; }
+  if ((code === 100 || code === 101 || code === 150) && song) {
+    if ((song.vi || 0) < song.videos.length - 1) { song.vi = (song.vi || 0) + 1; if (song.tags.length) { song.offset = 0; song.sync = 'check'; } }
+    else song.broken = true;
+    save();
+  }
+  schedulePreload(1500);
+}
 
 let lock = null;
 async function keepAwake(on) {
@@ -423,40 +470,84 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const onItems = () => new Set(S.items.filter(i => i.on).map(i => i.id));
 const eligible = () => { const on = onItems(); return S.songs.filter(s => !s.broken && s.tags.some(t => on.has(t.item))); };
 
+const MARGIN = 1.2; // quiet kept after the previous table word, so its tail isn't heard at the drop
+/* The run-up is random within the Drop-in range (7–10s by default). Words with an earlier table word
+   closer than that are skipped while the song has roomier ones; in a packed song the drop starts just
+   after the earlier word instead. A long run-up also hides lyric timings that are a second or two off. */
 function pickFromSong(song) {
-  const on = onItems(), minL = S.settings.minLead, maxL = S.settings.maxLead;
+  const on = onItems(), minL = S.settings.minLead, maxL = S.settings.maxLead, off = song.offset || 0;
   const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
   if (!tags.length) return null;
-  // gap = quiet time before this word since the previous table word in the song
-  const all = tags.map((t, i) => ({ tag: t, gap: i ? t.t - tags[i - 1].t : t.t }));
-  let cands = all.filter(c => c.gap >= minL + 0.4);
+  // room = how far back the drop can start before this word without passing an earlier table word
+  const all = tags.map((t, i) => ({ tag: t, room: i ? t.t - tags[i - 1].t - MARGIN : t.t + off }));
+  const good = all.filter(c => c.room >= minL);
+  let cands = good.length >= 2 ? good : all.filter(c => c.room >= Math.min(minL, 3));
   if (!cands.length) cands = all;
   const its = [...new Set(cands.map(c => c.tag.item))];
   const it = its[Math.floor(Math.random() * its.length)];
   const pool = cands.filter(c => c.tag.item === it);
   const c = pool[Math.floor(Math.random() * pool.length)];
-  const room = c.gap - 0.4;
-  const lead = room >= minL ? minL + Math.random() * Math.max(0, Math.min(maxL, room) - minL) : Math.max(1, room);
-  const at = c.tag.t + (song.offset || 0);
-  return { songId: song.id, tag: c.tag, start: Math.max(0, at - lead) };
+  const lead = c.room >= minL ? minL + Math.random() * (Math.min(maxL, c.room) - minL) : Math.max(1, c.room);
+  const at = c.tag.t + off;
+  return { songId: song.id, tag: c.tag, lead, start: Math.max(0, at - lead) };
+}
+/* Choose the next song and drop without changing anything, so it can be planned ahead. */
+function planRound(avoid) {
+  const el = eligible();
+  if (!el.length) return null;
+  let pool = el.filter(s => !S.played.includes(s.id) && s.id !== avoid), wrap = false;
+  if (!pool.length) { wrap = true; pool = el.filter(s => s.id !== S.lastSong && s.id !== avoid); if (!pool.length) pool = el; }
+  const song = pool[Math.floor(Math.random() * pool.length)];
+  return { song, drop: pickFromSong(song), wrap };
 }
 function nextRound() {
   clearTimeout(nextTimer); nextTimer = null;
-  const el = eligible();
-  if (!el.length) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
-  let pool = el.filter(s => !S.played.includes(s.id));
-  if (!pool.length) {
-    S.played = [];
-    pool = el.filter(s => s.id !== S.lastSong);
-    if (!pool.length) pool = el;
-    toast('Every matching song has played. Starting the list again.');
-  }
-  const song = pool[Math.floor(Math.random() * pool.length)];
-  current = pickFromSong(song); revealed = false;
-  S.played.push(song.id); S.lastSong = song.id; save();
+  const plan = takePreloaded() || planRound();
+  if (!plan) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
+  if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); }
+  current = plan.drop; revealed = false;
+  S.played.push(plan.song.id); S.lastSong = plan.song.id; save();
   if (tab !== 'play') { tab = 'play'; songId = null; }
-  playSong(song, current.start, 'game');
+  if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
   render();
+}
+
+/* ---------- getting the next drop ready behind the current one ---------- */
+function schedulePreload(ms, fresh) {
+  clearTimeout(preTimer);
+  preTimer = setTimeout(() => { preTimer = null; preloadNext(fresh); }, ms);
+}
+function discardPre() { if (!pre) return; pre = null; try { spare.stopVideo(); } catch (e) {} }
+function preGood(p) {
+  const song = p && byId(p.songId);
+  return !!song && !song.broken && curVid(song) === p.vid && onItems().has(p.tag.item) && song.tags.includes(p.tag) &&
+    (!current || p.songId !== current.songId) && (p.ready || Date.now() - p.t0 < 10000);
+}
+function preloadNext(fresh) {
+  if (!preloadOK() || mode !== 'game' || !current || !ready) return;
+  if (!spare) { if (window.YT && YT.Player) spare = P.B = makePlayer('B'); return; } // its onReady comes back here
+  if (!spareOk || (!fresh && preGood(pre))) return;
+  discardPre();
+  const plan = planRound(current.songId);
+  if (!plan || !plan.drop) return;
+  pre = { songId: plan.song.id, vid: curVid(plan.song), tag: plan.drop.tag, lead: plan.drop.lead, start: plan.drop.start, ready: false, t0: Date.now() };
+  try { spare.mute(); spare.loadVideoById({ videoId: pre.vid, startSeconds: pre.start }); } catch (e) { pre = null; }
+}
+function takePreloaded() {
+  const p = pre;
+  if (!preloadOK() || !preGood(p)) { discardPre(); return null; }
+  const song = byId(p.songId), at = p.tag.t + (song.offset || 0);
+  return { song, drop: { songId: song.id, tag: p.tag, lead: p.lead, start: Math.max(0, at - p.lead) }, wrap: S.played.includes(song.id), swap: true };
+}
+function swapIn(drop) {
+  mode = 'game';
+  const next = spare; spare = player; player = next; pre = null;
+  try { spare.pauseVideo(); spare.mute(); } catch (e) {}
+  $('#boxA').classList.toggle('front', player === P.A);
+  $('#boxB').classList.toggle('front', player === P.B);
+  $('#idle').hidden = true;
+  try { player.seekTo(drop.start, true); player.unMute(); player.playVideo(); } catch (e) {}
+  watchPlayback(drop.start, true);
 }
 
 /* ---------- tagging ---------- */
@@ -488,12 +579,12 @@ function syncTap() {
 /* ---------- rendering ---------- */
 function nowHTML() {
   if (!current) return '<div class="kicker">Ready</div><div class="title">Put the items out and press Start</div>' +
-    '<div class="meta">It drops into a random song a few seconds before one of the words, then lets it play.</div>';
+    '<div class="meta">It drops into a random song ' + S.settings.minLead + '–' + S.settings.maxLead + ' seconds before one of the words, then lets it play.</div>';
   const s = byId(current.songId);
   if (!s) return '<div class="kicker">Ready</div><div class="title">Press Next song</div>';
   const at = current.tag.t + (s.offset || 0);
   return '<div class="kicker">Now playing</div><div class="title">' + esc(s.title) + '</div>' +
-    '<div class="meta">' + esc(s.artist || '') + ' · dropped in at ' + fmt(current.start) + '</div>' +
+    '<div class="meta">' + esc(s.artist || '') + ' · dropped in at ' + fmt(current.start) + (pre && pre.ready && preGood(pre) ? ' · next song ready' : '') + '</div>' +
     (nextTimer ? '<div class="row"><span>Next song in a moment…</span><button class="btn small" data-act="stay">Stay here</button></div>' : '') +
     '<div class="row">' + (revealed
       ? '<span class="reveal">Word: <b>' + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
@@ -513,12 +604,18 @@ function renderPlay() {
     '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
       : '<span>No tagged song matches these items yet. Tag one in Songs.</span>') +
     (S.played.length ? '<button class="btn ghost small" data-act="reset">Start the list over</button>' : '') + '</p></section>' +
-    '<section class="card"><h2>Drop-in timing</h2><p class="hint">How far before the word the song starts. Each drop picks a random point in this range, so nobody can count it in.</p>' +
+    '<section class="card"><h2>Drop-in timing</h2><p class="hint">How far before the word the song starts. Each drop picks a random point in this range, so nobody can count it in. If another table word comes sooner, it picks a word with more room or starts just after that one.</p>' +
     '<div class="leadrow"><div class="stepper"><button class="mini" data-act="lead" data-arg="min-" aria-label="Shorter minimum">−</button><output>' + S.settings.minLead + '</output>' +
     '<button class="mini" data-act="lead" data-arg="min+" aria-label="Longer minimum">+</button></div><span>to</span>' +
     '<div class="stepper"><button class="mini" data-act="lead" data-arg="max-" aria-label="Shorter maximum">−</button><output>' + S.settings.maxLead + '</output>' +
     '<button class="mini" data-act="lead" data-arg="max+" aria-label="Longer maximum">+</button></div><span>seconds</span></div>' +
-    '<label class="switch"><input type="checkbox" id="autoNext"' + (S.settings.autoNext ? ' checked' : '') + '> Roll into the next song when one ends</label></section>';
+    '<label class="switch"><input type="checkbox" id="autoNext"' + (S.settings.autoNext ? ' checked' : '') + '> Roll into the next song when one ends</label></section>' +
+    '<section class="card"><h2>Video</h2>' +
+    '<label class="switch"><input type="checkbox" id="preload"' + (S.settings.preload && canPreload ? ' checked' : '') + (canPreload ? '' : ' disabled') + '> Get the next song ready while this one plays</label>' +
+    '<p class="hint">' + (canPreload ? 'Next starts straight away instead of loading. Uses a little more data.'
+      : 'Not on iPhone, iPad or Safari: they only play sound in a video you’ve tapped, so the next song can’t wait behind this one.') + '</p>' +
+    '<label class="switch"><input type="checkbox" id="small"' + (S.settings.small ? ' checked' : '') + '> Small video</label>' +
+    '<p class="hint">YouTube sends a lower-quality picture to a small player, so songs start sooner on laptops and tablets. Phones already get about this size.</p></section>';
 }
 function statusOf(s) {
   if (s.broken) return ['bad', 'Video blocked'];
@@ -645,14 +742,14 @@ document.addEventListener('click', async e => {
     case 'reveal': revealed = true; renderNow(); break;
     case 'replay': if (current && byId(current.songId)) { revealed = false; playSong(byId(current.songId), current.start, 'game'); renderNow(); } break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
-    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; save(); render(); } break; }
+    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; save(); render(); schedulePreload(1200, true); } break; }
     case 'lead': {
       const st = S.settings;
       if (arg === 'min-') st.minLead = Math.max(1, st.minLead - 1);
       if (arg === 'min+') st.minLead = Math.min(st.maxLead, st.minLead + 1);
       if (arg === 'max-') st.maxLead = Math.max(st.minLead, st.maxLead - 1);
-      if (arg === 'max+') st.maxLead = Math.min(20, st.maxLead + 1);
-      save(); render(); break;
+      if (arg === 'max+') st.maxLead = Math.min(30, st.maxLead + 1);
+      save(); render(); schedulePreload(1200, true); break;
     }
     case 'reset': S.played = []; save(); render(); toast('Every song is back in the list.'); break;
     case 'open': songId = arg; syncing = null; render(); window.scrollTo(0, 0); break;
@@ -711,6 +808,8 @@ document.addEventListener('click', async e => {
 
 document.addEventListener('change', e => {
   if (e.target.id === 'autoNext') { S.settings.autoNext = e.target.checked; save(); }
+  if (e.target.id === 'preload') { S.settings.preload = e.target.checked; save(); if (e.target.checked) schedulePreload(300); else discardPre(); renderNow(); }
+  if (e.target.id === 'small') { S.settings.small = e.target.checked; save(); applySmall(); }
   const w = e.target.dataset && e.target.dataset.words;
   if (w) { const it = itemById(w); if (it) { it.words = e.target.value.trim(); save(); toast('Saved.'); } }
 });
@@ -750,6 +849,8 @@ document.addEventListener('submit', async e => {
   }
 });
 
+function applySmall() { document.querySelector('.stage').classList.toggle('small', !!S.settings.small); }
+applySmall();
 render();
 })();
 </script>

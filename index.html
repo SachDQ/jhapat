@@ -254,12 +254,12 @@ function seed() {
 function upgrade(d) {
   if ((d.seedV || 1) >= SEED_V) return d;
   const fresh = seed();
-  fresh.songs.forEach(s => {
+  if (d.source !== 'db') fresh.songs.forEach(s => { // songs from the studio are never mixed with the built-in ones
     const mine = d.songs.find(x => x.id === s.id);
     if (!mine) d.songs.push(s);
     else if (!mine.offset && !mine.tags.some(t => t.src !== 'auto')) Object.assign(mine, { videos: s.videos, vi: 0, offset: 0, sync: s.sync, tags: s.tags, broken: false });
   });
-  fresh.items.forEach(it => {
+  if (d.source !== 'db') fresh.items.forEach(it => {
     const mine = d.items.find(x => x.id === it.id);
     if (!mine) d.items.push(it);
     else if (it.id === 'paisa' && !/daam/.test(mine.words || '')) mine.words = (mine.words ? mine.words + ', ' : '') + 'daam';
@@ -425,7 +425,7 @@ function onErr(e) {
   if ((code === 100 || code === 101 || code === 150) && song) {
     if ((song.vi || 0) < song.videos.length - 1) {
       song.vi = (song.vi || 0) + 1;
-      if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
+      atVideo(song);
       save();
       toast('That upload won’t play outside YouTube, so it switched to another upload of ' + song.title + '.');
       if (mode === 'game') { const p = pickFromSong(song); if (p) { current = p; playSong(song, p.start, 'game'); } else nextRound(); }
@@ -453,7 +453,7 @@ function onSpareErr(e) {
   pre = null;
   if (code === 152 || code === 153) { showBlocked('ref'); return; }
   if ((code === 100 || code === 101 || code === 150) && song) {
-    if ((song.vi || 0) < song.videos.length - 1) { song.vi = (song.vi || 0) + 1; if (song.tags.length) { song.offset = 0; song.sync = 'check'; } }
+    if ((song.vi || 0) < song.videos.length - 1) { song.vi = (song.vi || 0) + 1; atVideo(song); }
     else song.broken = true;
     save();
   }
@@ -604,7 +604,7 @@ function renderPlay() {
     '<section class="card"><h2>On the table</h2><p class="hint">Turn on the items you’ve put out. It only drops in before words that are on the table. The number is how many songs have that word tagged.</p>' +
     '<div class="chips">' + S.items.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span>' + esc(it.name) +
       '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + songsWith(it.id) + '</span></button>').join('') + '</div>' +
-    '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
+    '<p class="pool">' + (el.length ? '<span>' + (S.source === 'db' && S.playlist ? esc(S.playlist.name) + ': ' : '') + '<b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
       : '<span>No tagged song matches these items yet. Tag one in Songs.</span>') +
     (S.played.length ? '<button class="btn ghost small" data-act="reset">Start the list over</button>' : '') + '</p></section>' +
     '<section class="card"><h2>Drop-in timing</h2><p class="hint">How far before the word the song starts. Each drop picks a random point in this range, so nobody can count it in. If another table word comes sooner, it picks a word with more room or starts just after that one.</p>' +
@@ -618,7 +618,8 @@ function renderPlay() {
     '<p class="hint">' + (canPreload ? 'Next starts straight away instead of loading. Uses a little more data.'
       : 'Not on iPhone, iPad or Safari: they only play sound in a video you’ve tapped, so the next song can’t wait behind this one.') + '</p>' +
     '<label class="switch"><input type="checkbox" id="small"' + (S.settings.small ? ' checked' : '') + '> Small video</label>' +
-    '<p class="hint">YouTube sends a lower-quality picture to a small player, so songs start sooner on laptops and tablets. Phones already get about this size.</p></section>';
+    '<p class="hint">YouTube sends a lower-quality picture to a small player, so songs start sooner on laptops and tablets. Phones already get about this size.</p></section>' +
+    (S.source === 'db' ? '<p class="hint foot">Songs and their tags come from the <a href="studio/">Jhapat studio</a>.</p>' : '');
 }
 function statusOf(s) {
   if (s.broken) return ['bad', 'Video blocked'];
@@ -707,6 +708,9 @@ function renderItems() {
     '<button class="btn primary" type="submit">Add item</button></form></section>';
 }
 function render() {
+  const fromDb = S.source === 'db'; // songs and tags come from the studio, so the tagging tabs step aside
+  if (fromDb && tab !== 'play') { tab = 'play'; songId = null; }
+  document.querySelector('.tabs').hidden = fromDb;
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
   $('#view').innerHTML = tab === 'play' ? renderPlay() : tab === 'items' ? renderItems() : (songId ? renderSong() : renderSongs());
   tick();
@@ -853,8 +857,45 @@ document.addEventListener('submit', async e => {
 });
 
 function applySmall() { document.querySelector('.stage').classList.toggle('small', !!S.settings.small); }
+
+/* ---------- songs from the studio's database ----------
+   The official playlist loads on every visit and is kept on the phone, so a party without signal still has it.
+   If the database has never answered on this phone, the songs built into this page are used instead. */
+const DB = { rest: 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', key: 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T', playlist: 'party-mix' };
+const ON_BY_DEFAULT = ['paani', 'phool', 'chiya', 'paisa', 'chithi'];
+function atVideo(song) { // a song moved to its next upload: use that upload's own offset
+  if (song.offsets) { song.offset = song.offsets[song.vi || 0] || 0; song.sync = (song.synced || [])[song.vi || 0] ? 'ok' : 'check'; }
+  else if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
+}
+function applyBundle(b) {
+  const wasOn = new Map(S.items.map(i => [i.id, i.on]));
+  S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', words: '', note: i.note || '', on: wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id) }));
+  S.songs = b.songs.filter(s => s.videos && s.videos.length).map(s => ({
+    id: s.id, title: s.title, artist: s.artist || '', vi: 0,
+    videos: s.videos.map(v => v.yt), offsets: s.videos.map(v => Number(v.offset) || 0), synced: s.videos.map(v => !!v.synced),
+    offset: Number(s.videos[0].offset) || 0, sync: s.videos[0].synced ? 'ok' : 'check',
+    tags: (s.tags || []).map(([item, t]) => ({ item, t: Number(t), src: 'db' })).sort((x, y) => x.t - y.t) }));
+  S.source = 'db'; S.playlist = { id: b.id, name: b.name }; S.dbAt = Date.now();
+  S.played = S.played.filter(id => S.songs.some(s => s.id === id));
+  save(); render(); schedulePreload(1200, true);
+}
+async function loadDb() {
+  if (typeof fetch !== 'function') return;
+  try {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = setTimeout(() => ctl && ctl.abort(), 8000);
+    const r = await fetch(DB.rest + 'rpc/playlist_bundle', { method: 'POST', signal: ctl ? ctl.signal : undefined,
+      headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ pid: DB.playlist }) });
+    clearTimeout(timer);
+    if (!r.ok) return;
+    const b = await r.json();
+    if (b && Array.isArray(b.songs) && b.songs.length && Array.isArray(b.items)) applyBundle(b);
+  } catch (e) { /* offline or blocked: keep what this phone already has */ }
+}
+
 applySmall();
 render();
+loadDb();
 })();
 </script>
 </body>

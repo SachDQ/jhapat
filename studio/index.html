@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jhapat Studio</title>
+<meta name="robots" content="noindex">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;700&display=swap">
+<style>
+/* Layout: desk tool. Left column holds the video, uploads and the selected-word tools (sticky); right column is the lyric list.
+   Stacks to one column on phones with the video pinned on top. Same palette and type as the party player. */
+:root{
+  --bg:#f3f1f8; --surface:#ffffff; --raise:#ebe7f3; --ink:#221a35; --muted:#625a78; --line:#dcd6e7;
+  --gold:#8f5b00; --gold-fill:#ffb000; --gold-ink:#1d1406; --gold-soft:#fff1cc;
+  --red:#c8193f; --red-soft:#f7d7df; --ok:#14774a; --ok-soft:#dcf3e6; --warn:#8a4e00; --warn-soft:#fbecd2;
+  --shadow:0 1px 2px rgba(34,26,53,.08), 0 6px 18px rgba(34,26,53,.07);
+  --display:"Baloo 2", ui-rounded, system-ui, sans-serif;
+  --body:"Mukta", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#120e1f; --surface:#1c172d; --raise:#272040; --ink:#f2eef9; --muted:#aaa1c0; --line:#352c4e;
+    --gold:#ffc14d; --gold-fill:#ffb000; --gold-ink:#1d1406; --gold-soft:#3a2c0c;
+    --red:#ff5c7c; --red-soft:#47202d; --ok:#4ade80; --ok-soft:#173a29; --warn:#fbbf24; --warn-soft:#3d2c0b;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:var(--gold)}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:28px;font-weight:800} h2{font-size:21px;font-weight:800} h3{font-size:17px;font-weight:800}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+code,.mono{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:calc(12px + env(safe-area-inset-top,0px)) 10px}
+.brand{display:flex;align-items:baseline;gap:8px;text-decoration:none;color:var(--ink)}
+.brand .word{font:800 26px/1 var(--display)}
+.brand .dev{font:600 17px/1 var(--display);color:var(--gold)}
+.brand .tag{font:700 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-left:4px}
+nav.tabs{display:flex;background:var(--raise);border-radius:999px;padding:3px;gap:2px}
+nav.tabs button{border:0;background:transparent;color:var(--muted);font:700 14.5px/1 var(--body);padding:9px 13px;border-radius:999px;cursor:pointer}
+nav.tabs button[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.dhaka{height:7px;background:
+  linear-gradient(135deg,var(--red) 25%,transparent 25%) -7px 0/14px 14px,
+  linear-gradient(225deg,var(--red) 25%,transparent 25%) -7px 0/14px 14px,
+  linear-gradient(315deg,var(--ink) 25%,transparent 25%) 0 0/14px 14px,
+  linear-gradient(45deg,var(--ink) 25%,transparent 25%) 0 0/14px 14px,
+  var(--gold-fill)}
+
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;line-height:1.1}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--gold-fill);border-color:var(--gold-fill);color:var(--gold-ink)}
+.btn.danger{color:var(--red)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.small{padding:5px 9px;font-size:13.5px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.w:focus-visible,.chip:focus-visible{outline:3px solid var(--gold-fill);outline-offset:2px}
+input[type=text],input[type=email],input[type=search],input[type=url],textarea,select{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px;min-width:0}
+.pill{display:inline-block;font:700 11.5px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:999px;white-space:nowrap}
+.pill.draft{background:var(--raise);color:var(--muted)}
+.pill.tagged{background:var(--warn-soft);color:var(--warn)}
+.pill.checked{background:var(--ok-soft);color:var(--ok)}
+.pill.flag{background:var(--red-soft);color:var(--red)}
+
+/* song list */
+.songs{display:grid;gap:6px}
+.songrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;width:100%}
+.songrow:hover{border-color:var(--muted)}
+.songrow b{font-size:16.5px}
+.songrow .meta{font-size:13.5px;color:var(--muted)}
+.flags{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+
+/* editor layout */
+.layout{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:20px;align-items:start;padding-top:12px}
+.layout.solo{grid-template-columns:minmax(0,1fr)}
+aside.side{position:sticky;top:8px;display:grid;gap:12px;max-height:calc(100vh - 16px);overflow:auto;padding-bottom:8px}
+@media (max-width:860px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.side{position:static;max-height:none;overflow:visible}
+  .stagewrap{position:sticky;top:0;z-index:4;background:var(--bg);padding-block:6px}
+}
+.screen{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;border-radius:12px;overflow:hidden;background:#000}
+.screen>div,.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.screen .idle{display:grid;place-items:center;color:#cfc7e2;font:600 14px/1.4 var(--body);text-align:center;padding:12px;background:#000;z-index:2}
+.transport{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.clock{font:600 14px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);margin-left:auto}
+.clock b{color:var(--ink)}
+
+.vids{display:grid;gap:8px}
+.vid{border:1px solid var(--line);border-radius:10px;padding:9px 10px;display:grid;gap:6px}
+.vid.on{border-color:var(--gold-fill);box-shadow:inset 0 0 0 1px var(--gold-fill)}
+.vid .line1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+.selbar{background:var(--gold-soft);border:1px solid var(--gold-fill);border-radius:14px;padding:12px;display:grid;gap:8px}
+.selbar .big{font:800 19px/1.1 var(--display)}
+.tapbtn{font:800 18px/1 var(--display);padding:14px 16px}
+
+/* lyrics */
+.legend{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font:700 13.5px/1 var(--body);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip .n{background:var(--raise);border-radius:999px;padding:2px 6px;font-size:12px}
+.lines{display:grid;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px}
+.ln{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:10px;align-items:start;padding:8px;border-radius:9px}
+.ln.dim{color:var(--muted)}
+.ln.sel{background:var(--raise)}
+.ln.now{box-shadow:inset 3px 0 0 var(--gold-fill)}
+.ln .tm{font:600 13.5px/1.6 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+.ln .tx{font-size:17.5px;line-height:1.6;min-width:0;overflow-wrap:anywhere}
+.ln .side{display:flex;gap:5px;align-items:center}
+.rep{font:700 12px/1 var(--body);padding:4px 7px;border-radius:999px;background:var(--red-soft);color:var(--red);white-space:nowrap}
+.w{border:0;background:var(--gold-soft);color:var(--ink);border-radius:6px;padding:0 4px;cursor:pointer;font:inherit;line-height:inherit;box-shadow:inset 0 -2px 0 var(--gold-fill)}
+.w.tagged{background:var(--gold-fill);color:var(--gold-ink);font-weight:700;box-shadow:none}
+.w.tagged.picked{outline:3px solid var(--red);outline-offset:1px}
+.tchips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.tchip{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:2px 8px;font:600 12.5px/1.4 var(--mono);cursor:pointer;color:var(--ink)}
+.tchip.tap{border-color:var(--ok);color:var(--ok)}
+.tchip.picked{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
+.gap{height:10px;border-top:1px dashed var(--line);margin:6px 8px}
+
+.results{display:grid;gap:6px}
+.res{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.res .meta{font-size:13.5px;color:var(--muted)}
+.tapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.tapgrid .btn{padding:16px 10px;font:800 17px/1 var(--display)}
+table.grid{border-collapse:collapse;width:100%}
+table.grid td,table.grid th{padding:8px;border-top:1px solid var(--line);vertical-align:top;text-align:left}
+table.grid th{font:700 12px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:0}
+.scrollx{overflow-x:auto}
+#toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
+  background:var(--ink);color:var(--bg);padding:11px 15px;border-radius:12px;font-weight:600;max-width:min(560px,calc(100vw - 32px));transition:opacity .2s,transform .2s;z-index:20}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.gate{max-width:440px;margin:40px auto;display:grid;gap:14px}
+.kbd{font:600 12px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 5px;background:var(--surface)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="top wrap">
+  <a class="brand" href="./"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span></a>
+  <nav class="tabs" id="nav" hidden>
+    <button data-act="go" data-arg="">Songs</button>
+    <button data-act="go" data-arg="items">Items</button>
+    <button data-act="go" data-arg="playlists">Playlists</button>
+  </nav>
+  <div class="who" id="who"></div>
+</header>
+<div class="dhaka" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="layout solo" id="layout">
+    <aside class="side" id="side" hidden>
+      <div class="stagewrap">
+        <div class="screen"><div class="idle" id="idle">Load an upload to play it here.</div><div id="yt"></div></div>
+        <div class="transport">
+          <button class="btn small" data-act="pp" id="ppBtn">Play</button>
+          <button class="btn small" data-act="skip" data-arg="-5" aria-label="Back 5 seconds">−5 s</button>
+          <button class="btn small" data-act="skip" data-arg="5" aria-label="Forward 5 seconds">+5 s</button>
+          <button class="btn small" data-act="rate" id="rateBtn">1×</button>
+          <span class="clock" id="clock">0:00.0</span>
+        </div>
+      </div>
+      <div id="sidePanel" class="grid"></div>
+    </aside>
+    <main id="view"></main>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(() => {
+'use strict';
+/* ---------- setup ---------- */
+const SB_URL = 'https://hckzkaprxywohazohmcu.supabase.co';
+const SB_KEY = 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T'; // public key: the database's own rules decide what it may do
+const LAG = 0.25;          // seconds between hearing a word and the tap landing
+const sb = window.__fakeSb || window.supabase.createClient(SB_URL, SB_KEY);
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
+const fmt2 = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(2); };
+const r2 = x => Math.round(x * 100) / 100;
+const slug = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'song';
+const norm = s => String(s || '').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+let toastTimer = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 4200); }
+function fail(what, error) { console.warn(what, error); toast(what + ': ' + ((error && error.message) || 'something went wrong') + '.'); }
+
+/* ---------- state ---------- */
+let user = null, editor = null;                 // editor: null = not checked yet
+let items = [], songs = [], playlists = [];
+let route = { view: 'songs', id: null };
+let filter = '';
+let cur = null;                                 // the open song: { s, videos, tags, lines, groups, lit, byLine, typical }
+let vi = -1;                                    // index in cur.videos of the upload in the player
+let pick = null;                                // { line, w, item } the word being worked on
+let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, list: null };
+let confirmDel = false, sent = null;
+
+/* ---------- sign-in ---------- */
+let checking = null;
+async function refreshUser(session) {
+  const u = session ? session.user : null;
+  if ((u && u.id) === (user && user.id) && (editor !== null || checking === (u && u.id))) return;
+  user = u; editor = null; checking = u && u.id;
+  if (user) {
+    render();
+    const { data, error } = await sb.rpc('is_editor');
+    editor = !error && data === true;
+    if (editor) await loadAll();
+  }
+  checking = null;
+  go();
+}
+sb.auth.onAuthStateChange((_ev, session) => { refreshUser(session); });
+sb.auth.getSession().then(({ data }) => refreshUser(data && data.session));
+
+function gateHTML() {
+  if (!user) return '<div class="gate card"><h1>Studio sign-in</h1><p class="muted">Add songs, time their lyrics and tag the item words. Only accounts on the editor list can change anything.</p>' +
+    (sent ? '<p><b>Link sent to ' + esc(sent) + '.</b> Open it on this device and this page signs you in. It can take a minute to arrive.</p>' : '') +
+    '<form id="signin" class="row"><label class="grow"><span class="small muted">Email</span><input type="email" id="email" autocomplete="email" required></label>' +
+    '<button class="btn primary" type="submit">Email me a sign-in link</button></form></div>';
+  return '<div class="gate card"><h1>Not an editor yet</h1><p>You’re signed in as <b>' + esc(user.email) + '</b>, but this account can’t change songs yet.</p>' +
+    '<p class="muted small">Account ID for the editor list: <code>' + esc(user.id) + '</code></p><div class="row"><button class="btn" data-act="signout">Sign out</button></div></div>';
+}
+
+/* ---------- loading ---------- */
+async function loadAll() {
+  const [a, b, c] = await Promise.all([
+    sb.from('items').select('*').order('sort'),
+    sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,lines,videos(id,yt,offset_s,synced,embeddable,rank),tags(count)').order('title'),
+    sb.from('playlists').select('id,name,description,sort,is_public,owner,playlist_songs(song_id,position)').order('sort'),
+  ]);
+  if (a.error || b.error || c.error) return fail('Couldn’t load the studio', a.error || b.error || c.error);
+  items = a.data; playlists = c.data;
+  songs = b.data.map(s => ({ ...s, hasLines: Array.isArray(s.lines) && s.lines.length > 0, lines: undefined,
+    tagCount: (s.tags && s.tags[0] && s.tags[0].count) || 0, needsSync: (s.videos || []).length > 0 && !(s.videos || []).some(v => v.synced && v.embeddable) }));
+}
+async function openSong(id) {
+  const { data, error } = await sb.from('songs').select('*,videos(*),tags(*)').eq('id', id).single();
+  if (error) return fail('Couldn’t open that song', error);
+  cur = { s: data, videos: (data.videos || []).sort((x, y) => x.rank - y.rank || x.id - y.id), tags: (data.tags || []).sort((x, y) => x.t - y.t) };
+  delete cur.s.videos; delete cur.s.tags;
+  prepLines(); pick = null; armed = null; confirmDel = false; tapAlong = [];
+  lrc = { q: [data.title, data.artist].filter(Boolean).join(' '), busy: false, list: null };
+  const first = cur.videos.findIndex(v => v.embeddable);
+  if (first > -1) loadVideo(first, false); else { vi = -1; }
+}
+
+/* ---------- lyrics: lines, repeats, item words ---------- */
+function prepLines() {
+  const L = cur.lines = Array.isArray(cur.s.lines) ? cur.s.lines : [];
+  const gaps = L.slice(1).map((l, i) => l.t - L[i].t).filter(g => g > 0 && g <= 12).sort((a, b) => a - b);
+  cur.typical = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 4.5;
+  cur.groups = new Map(); cur.lit = [];
+  L.forEach((l, i) => {
+    const k = norm(l.x);
+    if (k) { if (!cur.groups.has(k)) cur.groups.set(k, []); cur.groups.get(k).push(i); }
+    cur.lit.push(litWords(l.x));
+  });
+  assign();
+}
+function tokens(text) { // words with their character start
+  const out = []; const re = /\S+/g; let m;
+  while ((m = re.exec(text))) out.push({ w: out.length, s: m.index, x: m[0] });
+  return out;
+}
+function itemFor(word) {
+  const n = norm(word); if (!n) return null;
+  for (const it of items) for (const v of (it.words || [])) { const nv = norm(v); if (nv && n.startsWith(nv)) return it.id; }
+  return null;
+}
+function litWords(text) { return tokens(text || '').map(t => ({ ...t, item: itemFor(t.x) })).filter(t => t.item); }
+const groupOf = i => { const k = norm(cur.lines[i].x); return (k && cur.groups.get(k)) || [i]; };
+function estimate(i, w) {
+  const L = cur.lines[i], tok = tokens(L.x)[w];
+  const next = cur.lines[i + 1] ? cur.lines[i + 1].t : L.t + cur.typical;
+  const dur = Math.max(0.5, Math.min(next - L.t, cur.typical));
+  return r2(L.t + (tok ? tok.s / Math.max(1, L.x.length) : 0) * dur);
+}
+function lineAt(t) { // last line starting at or before t
+  const L = cur.lines; let lo = 0, hi = L.length - 1, ans = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (L[m].t <= t + 0.05) { ans = m; lo = m + 1; } else hi = m - 1; }
+  while (ans > -1 && !L[ans].x) ans--; // an instrumental gap belongs to the line before it
+  return ans;
+}
+const lineOf = tg => (tg.line != null && cur.lines[tg.line] && Math.abs(cur.lines[tg.line].t - tg.t) < 25) ? tg.line : lineAt(tg.t);
+/* Work out which tag sits on which highlighted word, line by line. */
+function assign() {
+  cur.byLine = new Map(); cur.loose = [];
+  if (!cur.lines.length) return;
+  const per = new Map();
+  for (const tg of cur.tags) { const i = lineOf(tg); if (i < 0) { cur.loose.push(tg); continue; } if (!per.has(i)) per.set(i, []); per.get(i).push(tg); }
+  for (const [i, tgs] of per) {
+    const lit = cur.lit[i], used = new Set(), out = [];
+    for (const tg of tgs) if (tg.word != null && tg.line === i && lit.some(l => l.w === tg.word && l.item === tg.item_id)) { used.add(tg.word); out.push({ tag: tg, w: tg.word }); }
+    for (const tg of tgs) {
+      if (out.some(o => o.tag === tg)) continue;
+      let best = null, bd = 1e9;
+      for (const l of lit) if (l.item === tg.item_id && !used.has(l.w)) { const d = Math.abs(estimate(i, l.w) - tg.t); if (d < bd) { bd = d; best = l.w; } }
+      if (best != null) used.add(best);
+      out.push({ tag: tg, w: best });
+    }
+    cur.byLine.set(i, out);
+  }
+}
+const tagOn = (i, w) => ((cur.byLine.get(i) || []).find(o => o.w === w) || {}).tag || null;
+/* the word's tag on this line, or failing that on any repeat of it (repeats are shown once) */
+const tagIn = (i, w) => { for (const j of [i].concat(groupOf(i))) { const tg = tagOn(j, w); if (tg) return tg; } return null; };
+
+/* ---------- tags: add, time, remove (always for every repeat of the line) ---------- */
+async function setStatusTagged() {
+  if (cur.s.status === 'draft' && cur.tags.length) { await updateSong({ status: 'tagged' }); }
+}
+async function toggleWord(i, w, item) {
+  const existing = tagIn(i, w);
+  const group = groupOf(i);
+  if (existing) { // remove this word's tag from every repeat
+    const ids = group.map(j => tagOn(j, w)).filter(Boolean).map(t => t.id);
+    const { error } = await sb.from('tags').delete().in('id', ids);
+    if (error) return fail('Couldn’t remove the tag', error);
+    cur.tags = cur.tags.filter(t => !ids.includes(t.id));
+    if (pick && pick.line === i && pick.w === w) pick = null;
+    assign(); renderSong(); toast('Removed ' + itemName(item) + (ids.length > 1 ? ' from ' + ids.length + ' repeats.' : '.'));
+    return;
+  }
+  // a timing already tapped on this word in another repeat carries over
+  const anchor = group.map(j => ({ j, tg: tagOn(j, w) })).find(o => o.tg && o.tg.source !== 'estimate');
+  const rows = group.filter(j => !tagOn(j, w) && tokens(cur.lines[j].x)[w]).map(j => ({
+    song_id: cur.s.id, item_id: item, line: j, word: w, source: anchor ? 'tap' : 'estimate', checked: !!anchor,
+    t: r2(anchor ? cur.lines[j].t + (anchor.tg.t - cur.lines[anchor.j].t) : estimate(j, w)) }));
+  const { data, error } = await sb.from('tags').insert(rows).select();
+  if (error) return fail('Couldn’t save the tag', error);
+  cur.tags = cur.tags.concat(data).sort((a, b) => a.t - b.t);
+  pick = { line: i, w, item };
+  assign(); await setStatusTagged(); renderSong();
+  toast('Tagged ' + itemName(item) + (rows.length > 1 ? ' in all ' + rows.length + ' repeats' : '') + '. Press Hear, then Tap as it’s sung.');
+}
+/* Put the picked word at lyric time t, measured in line `base`, and the same distance into every repeat. */
+async function retime(t, source, base) {
+  if (!pick) return;
+  const w = pick.w, item = pick.item, delta = t - cur.lines[base].t;
+  const group = groupOf(pick.line).filter(j => tokens(cur.lines[j].x)[w]);
+  const targets = group.map(j => ({ j, tg: tagOn(j, w) }));
+  const time = j => r2(Math.max(0, cur.lines[j].t + delta));
+  const res = await Promise.all(targets.filter(o => o.tg).map(({ j, tg }) => sb.from('tags').update({ t: time(j), source, checked: true, line: j, word: w }).eq('id', tg.id)));
+  const bad = res.find(r => r.error); if (bad) return fail('Couldn’t save the timing', bad.error);
+  targets.filter(o => o.tg).forEach(({ j, tg }) => Object.assign(tg, { t: time(j), source, checked: true, line: j, word: w }));
+  const missing = targets.filter(o => !o.tg).map(({ j }) => ({ song_id: cur.s.id, item_id: item, t: time(j), line: j, word: w, source, checked: true }));
+  if (missing.length) { const { data, error } = await sb.from('tags').insert(missing).select(); if (error) return fail('Couldn’t save the timing', error); cur.tags = cur.tags.concat(data); }
+  cur.tags.sort((a, b) => a.t - b.t); assign(); renderSong();
+}
+function tapNow() {
+  if (!pick) { toast('Pick a highlighted word first.'); return; }
+  if (!videoOn()) { toast('Load an upload first.'); return; }
+  const t = now() - LAG - offset(), g = groupOf(pick.line), at = lineAt(t);
+  retime(t, 'tap', g.includes(at) ? at : pick.line); // whichever repeat was playing
+  toast('Timed at ' + fmt2(t) + (g.length > 1 ? ' and copied to the repeats.' : '.'));
+}
+function nudge(d) {
+  if (!pick) return;
+  const tg = tagIn(pick.line, pick.w); if (!tg) return;
+  const j = lineOf(tg);
+  retime(tg.t + d, 'nudge', groupOf(pick.line).includes(j) ? j : pick.line);
+}
+function hear(i) {
+  if (!videoOn()) { toast('Load an upload first.'); return; }
+  yt.seekTo(Math.max(0, cur.lines[i].t + offset() - 3), true); yt.playVideo();
+}
+
+/* ---------- tap-along for songs without timed lyrics ---------- */
+async function tapItem(item) {
+  if (!videoOn()) { toast('Load an upload and press Play first.'); return; }
+  const row = { song_id: cur.s.id, item_id: item, t: r2(Math.max(0, now() - LAG - offset())), source: 'tap', checked: true };
+  const { data, error } = await sb.from('tags').insert(row).select().single();
+  if (error) return fail('Couldn’t save the tap', error);
+  cur.tags.push(data); cur.tags.sort((a, b) => a.t - b.t); tapAlong.push(data.id);
+  await setStatusTagged(); renderSong(); toast(itemName(item) + ' at ' + fmt2(data.t));
+}
+async function delTag(id) {
+  const { error } = await sb.from('tags').delete().eq('id', id);
+  if (error) return fail('Couldn’t delete the tag', error);
+  cur.tags = cur.tags.filter(t => t.id !== id); tapAlong = tapAlong.filter(x => x !== id); assign(); renderSong();
+}
+
+/* ---------- song + upload updates ---------- */
+async function updateSong(patch) {
+  const { error } = await sb.from('songs').update(patch).eq('id', cur.s.id);
+  if (error) { fail('Couldn’t save the song', error); return false; }
+  Object.assign(cur.s, patch);
+  const row = songs.find(s => s.id === cur.s.id); if (row) Object.assign(row, patch.lines ? { hasLines: patch.lines.length > 0 } : patch);
+  return true;
+}
+async function updateVideo(v, patch) {
+  const { error } = await sb.from('videos').update(patch).eq('id', v.id);
+  if (error) { fail('Couldn’t save the upload', error); return false; }
+  Object.assign(v, patch); return true;
+}
+function parseYT(input) {
+  const s = String(input || '').trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+/* ---------- LRCLIB ---------- */
+function parseLrc(txt) {
+  const out = [];
+  for (const raw of String(txt || '').split(/\r?\n/)) {
+    const m = raw.match(/^((?:\s*\[\d+:\d+(?:[.:]\d+)?\])+)(.*)$/); if (!m) continue;
+    const text = m[2].trim();
+    for (const ts of m[1].match(/\[(\d+):(\d+(?:[.:]\d+)?)\]/g)) { const [, mm, ss] = ts.match(/\[(\d+):(\d+(?:[.:]\d+)?)\]/); out.push({ t: r2(+mm * 60 + parseFloat(ss.replace(':', '.'))), x: text }); }
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+async function lrcSearch(q) {
+  lrc = { q, busy: true, list: null }; renderSong();
+  try {
+    const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
+    const list = await r.json(), seen = new Set();
+    lrc.list = (Array.isArray(list) ? list : []).filter(x => { const k = (x.syncedLyrics || x.plainLyrics || '').slice(0, 200) + '|' + Math.round(x.duration || 0); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics)).slice(0, 12);
+  } catch (e) { lrc.list = []; toast('LRCLIB didn’t answer. Try again in a moment.'); }
+  lrc.busy = false; renderSong();
+}
+async function useLyrics(id) {
+  const x = (lrc.list || []).find(r => r.id === id); if (!x) return;
+  const lines = parseLrc(x.syncedLyrics);
+  const ok = await updateSong({ lrclib_id: x.id, duration: x.duration || null, lines: lines.length ? lines : null, plain_lyrics: x.plainLyrics || null });
+  if (!ok) return;
+  prepLines(); lrc.list = null; renderSong();
+  toast(lines.length ? 'Lyrics added. Item words are highlighted.' : 'These lyrics have no timings, so use tap-along below.');
+  const v = cur.videos[vi]; if (v) checkLength(v);
+}
+
+/* ---------- YouTube ---------- */
+let yt = null, ytOk = false, ytQueue = [], rate = 1;
+window.onYouTubeIframeAPIReady = () => {
+  yt = new YT.Player('yt', { width: '100%', height: '100%', playerVars: { playsinline: 1, rel: 0, origin: location.origin },
+    events: { onReady() { ytOk = true; ytQueue.splice(0).forEach(f => f()); }, onError: onYtErr,
+      onStateChange(e) { tick(); const v = cur && cur.videos[vi]; if (e.data === 1 && v && !v._len) checkLength(v); } } });
+};
+function loadYtApi() { if (window.YT || document.getElementById('ytapi')) return; const s = document.createElement('script'); s.id = 'ytapi'; s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s); }
+const withYt = f => { loadYtApi(); if (ytOk) f(); else ytQueue.push(f); };
+const now = () => { try { return ytOk ? yt.getCurrentTime() || 0 : 0; } catch (e) { return 0; } };
+const offset = () => (cur && cur.videos[vi] ? Number(cur.videos[vi].offset_s) || 0 : 0);
+function videoOn() { try { return ytOk && vi > -1 && (yt.getVideoData() || {}).video_id === cur.videos[vi].yt; } catch (e) { return false; } }
+function loadVideo(k, play) {
+  vi = k; const v = cur.videos[k]; $('#idle').hidden = true;
+  withYt(() => { if (play) yt.loadVideoById({ videoId: v.yt }); else yt.cueVideoById({ videoId: v.yt }); setTimeout(() => checkLength(v), 2500); });
+}
+/* Compare the upload's length with the lyrics' recording. Equal within 2s means the timings line up as they are. */
+async function checkLength(v, tries = 0) {
+  if (!ytOk || !cur || cur.videos[vi] !== v) return;
+  let d = 0; try { d = yt.getDuration() || 0; } catch (e) {}
+  if (!d) { if (tries < 8) setTimeout(() => checkLength(v, tries + 1), 2000); return; } // a cued video may not know its length until it plays
+  v._len = true;
+  const patch = {}; if (!v.duration) patch.duration = Math.round(d);
+  if (cur.s.duration && !v.synced && Math.abs(d - cur.s.duration) <= 2 && !Number(v.offset_s)) { patch.synced = true; toast('This upload is the same length as the lyrics, so the timings line up.'); }
+  if (Object.keys(patch).length) { await updateVideo(v, patch); renderSide(); }
+}
+function onYtErr(e) {
+  const v = cur && cur.videos[vi];
+  if ([100, 101, 150].includes(e.data) && v) { updateVideo(v, { embeddable: false }).then(renderSide); toast('That upload won’t play outside YouTube. Add a different one.'); }
+  else if (e.data === 152 || e.data === 153) toast('YouTube refused to play here. Open the studio from sachdq.github.io/jhapat/studio.');
+  else toast('YouTube couldn’t play that (error ' + e.data + ').');
+}
+function tick() {
+  const c = $('#clock'); if (!c) return;
+  const t = now(); c.innerHTML = '<b>' + fmt(t) + '</b>' + (offset() ? ' · lyric ' + fmt(t - offset()) : '');
+  let st = -1; try { st = ytOk ? yt.getPlayerState() : -1; } catch (e) {}
+  $('#ppBtn').textContent = st === 1 || st === 3 ? 'Pause' : 'Play';
+  if (cur && cur.lines && cur.lines.length && st === 1) { // follow along: mark the line being sung
+    const i = lineAt(t - offset()); const el = document.querySelector('.ln.now'); const want = document.getElementById('ln' + i);
+    if (el !== want) { if (el) el.classList.remove('now'); if (want) want.classList.add('now'); }
+  }
+}
+setInterval(tick, 200);
+
+/* ---------- rendering ---------- */
+const itemName = id => (items.find(i => i.id === id) || { name: id }).name;
+function go() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add'].includes(h) ? h : 'songs', id: null };
+  render();
+}
+window.addEventListener('hashchange', go);
+async function render() {
+  const nav = $('#nav'), who = $('#who');
+  who.innerHTML = user ? esc(user.email) + ' <button class="btn small ghost" data-act="signout">Sign out</button>' : '';
+  nav.hidden = !editor;
+  document.querySelectorAll('#nav button').forEach(b => b.setAttribute('aria-current', (b.dataset.arg || 'songs') === (route.view === 'song' || route.view === 'add' ? 'songs' : route.view) ? 'page' : 'false'));
+  const solo = route.view !== 'song' || !editor;
+  $('#layout').classList.toggle('solo', solo); $('#side').hidden = solo;
+  if (!editor) { $('#view').innerHTML = user && editor === null ? '<p class="muted">Checking your account…</p>' : gateHTML(); return; }
+  if (route.view === 'song') {
+    if (!cur || cur.s.id !== route.id) { $('#view').innerHTML = '<p class="muted">Opening…</p>'; await openSong(route.id); if (!cur || cur.s.id !== route.id) return; }
+    renderSong(); return;
+  }
+  if (cur) { try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; }
+  $('#view').innerHTML = route.view === 'items' ? itemsHTML() : route.view === 'playlists' ? playlistsHTML() : route.view === 'add' ? addHTML() : songsHTML();
+}
+
+function songsHTML() {
+  const f = norm(filter);
+  const list = songs.filter(s => !f || norm(s.title + ' ' + (s.artist || '')).includes(f));
+  return '<div class="row" style="padding-block:14px"><h1 class="grow">Songs</h1><a class="btn primary" href="#add">Add a song</a></div>' +
+    '<input type="search" id="filter" placeholder="Filter by title or artist" value="' + esc(filter) + '" style="margin-bottom:10px">' +
+    '<div class="songs">' + list.map(s => '<button class="songrow" data-act="open" data-arg="' + esc(s.id) + '"><span><b>' + esc(s.title) + '</b><br><span class="meta">' + esc(s.artist || '') +
+      ' · ' + s.tagCount + ' tag' + (s.tagCount === 1 ? '' : 's') + '</span></span><span class="flags">' +
+      (!s.hasLines ? '<span class="pill flag">No lyrics</span>' : '') + (s.needsSync ? '<span class="pill flag">Check sync</span>' : '') +
+      '<span class="pill ' + s.status + '">' + s.status + '</span></span></button>').join('') + '</div>' +
+    (list.length ? '' : '<p class="muted">No songs match.</p>');
+}
+
+function addHTML() {
+  return '<div class="card" style="margin-top:14px"><h1>Add a song</h1><p class="muted">Search LRCLIB for the song’s timed lyrics. If it isn’t there, add it by name and tap along instead.</p>' +
+    '<form id="addSearch" class="row"><input class="grow" type="search" id="addQ" placeholder="Title and artist, e.g. Kaha Hola Ghar Karma" value="' + esc(lrc.q) + '" required><button class="btn primary">Search</button></form>' +
+    (lrc.busy ? '<p class="muted">Searching…</p>' : '') +
+    (lrc.list ? (lrc.list.length ? '<div class="results">' + lrc.list.map(x => '<div class="res"><span><b>' + esc(x.trackName) + '</b> · ' + esc(x.artistName) +
+      '<br><span class="meta">' + esc(x.albumName || '') + ' · ' + fmt(x.duration || 0) + ' · ' + (x.syncedLyrics ? 'timed lyrics' : x.plainLyrics ? 'plain lyrics only' : 'no lyrics') + '</span></span>' +
+      '<button class="btn small primary" data-act="create" data-arg="' + x.id + '">Add this</button></div>').join('') + '</div>' : '<p class="muted">Nothing on LRCLIB for that. Try fewer words, or add it by name.</p>') : '') +
+    '<details><summary class="small">Add without lyrics</summary><form id="addManual" class="row" style="margin-top:8px"><input class="grow" type="text" id="mTitle" placeholder="Title" required><input class="grow" type="text" id="mArtist" placeholder="Artist"><button class="btn">Add</button></form></details></div>';
+}
+
+function sideHTML() {
+  const s = cur.s, v = cur.videos[vi];
+  const vids = cur.videos.map((x, k) => {
+    const diff = x.duration && s.duration ? Math.round(x.duration - s.duration) : null;
+    return '<div class="vid' + (k === vi ? ' on' : '') + '"><div class="line1"><button class="btn small' + (k === vi ? ' primary' : '') + '" data-act="load" data-arg="' + k + '">' + (k === vi ? 'Loaded' : 'Load') + '</button>' +
+      '<code>' + esc(x.yt) + '</code><span class="small muted">' + esc(x.kind) + (x.duration ? ' · ' + fmt(x.duration).replace(/\.\d$/, '') : '') + '</span>' +
+      (x.embeddable ? '' : '<span class="pill flag">Blocked</span>') + (x.synced ? '<span class="pill checked">Synced</span>' : '<span class="pill tagged">Not synced</span>') + '</div>' +
+      '<div class="line1 small"><span class="muted">' + (diff == null ? 'Length not checked yet' : diff === 0 ? 'Same length as the lyrics' : (diff > 0 ? diff + ' s longer' : -diff + ' s shorter') + ' than the lyrics') + '</span>' +
+      '<span class="grow"></span><span class="mono">' + (Number(x.offset_s) >= 0 ? '+' : '') + Number(x.offset_s).toFixed(2) + ' s</span>' +
+      '<button class="btn small" data-act="off" data-arg="' + k + ':-0.25" aria-label="Earlier">−</button><button class="btn small" data-act="off" data-arg="' + k + ':0.25" aria-label="Later">+</button></div>' +
+      '<div class="line1">' + (cur.lines.length ? '<button class="btn small" data-act="sync" data-arg="' + k + '">' + (armed && armed.k === k ? 'Tap when the line starts' : 'Sync') + '</button>' : '') +
+      (k ? '<button class="btn small ghost" data-act="first" data-arg="' + k + '">Play this one first</button>' : '') +
+      '<button class="btn small ghost danger" data-act="rmvid" data-arg="' + k + '">Remove</button></div></div>';
+  }).join('');
+  const syncHint = armed ? '<div class="selbar"><span class="big">Sync: tap when this line starts</span><span class="small">“' + esc(cur.lines[armed.i].x) + '” (' + fmt(cur.lines[armed.i].t) + ' in the lyrics)</span>' +
+    '<div class="row"><button class="btn primary tapbtn" data-act="synctap">Line starts now <span class="kbd">T</span></button><button class="btn" data-act="syncstop">Cancel</button></div></div>' : '';
+  const ptag = pick && tagIn(pick.line, pick.w);
+  const sel = pick && ptag ? '<div class="selbar"><span class="big">' + esc(itemName(pick.item)) + ' at ' + fmt2(ptag.t) + '</span><span class="small">' + (ptag.source === 'estimate' ? 'Estimated from the line timing' : 'Timed by ' + (ptag.source === 'tap' ? 'tap' : 'hand')) +
+    (groupOf(pick.line).length > 1 ? ' · copies to all ' + groupOf(pick.line).length + ' repeats' : '') + '</span>' +
+    '<div class="row"><button class="btn" data-act="hear" data-arg="' + pick.line + '">Hear <span class="kbd">H</span></button><button class="btn primary tapbtn" data-act="tapnow">Tap as it’s sung <span class="kbd">T</span></button></div>' +
+    '<div class="row"><button class="btn small" data-act="nudge" data-arg="-0.1">−0.1 s <span class="kbd">←</span></button><button class="btn small" data-act="nudge" data-arg="0.1">+0.1 s <span class="kbd">→</span></button><span class="grow"></span>' +
+    '<button class="btn small ghost danger" data-act="untag">Remove tag</button><button class="btn small ghost" data-act="unpick">Done</button></div></div>' : '';
+  const counts = {}; cur.tags.forEach(t => { counts[t.item_id] = (counts[t.item_id] || 0) + 1; });
+  return syncHint + sel +
+    '<div class="card"><div class="row"><h3 class="grow">Uploads</h3></div><div class="vids">' + (vids || '<p class="muted small">No upload yet. Paste a YouTube link below.</p>') + '</div>' +
+    '<form id="addVid" class="row"><input class="grow" type="url" id="vidLink" placeholder="YouTube link" required><button class="btn small">Add upload</button></form>' +
+    '<a class="small" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(s.title + ' ' + (s.artist || '')) + '">Search YouTube for it</a></div>' +
+    '<div class="card"><h3>Tags</h3><p class="small">' + (cur.tags.length ? Object.keys(counts).map(k => esc(itemName(k)) + ' ' + counts[k]).join(' · ') : 'None yet.') + '</p>' +
+    '<div class="row"><button class="btn small" data-act="trydrop"' + (cur.tags.length && v ? '' : ' disabled') + '>Try a drop</button>' +
+    (s.status === 'checked' ? '<button class="btn small" data-act="status" data-arg="tagged">Mark as not checked</button>' : '<button class="btn small primary" data-act="status" data-arg="checked"' + (cur.tags.length ? '' : ' disabled') + '>Mark checked</button>') + '</div></div>' +
+    '<div class="card"><h3>Playlists</h3>' + (playlists.length ? playlists.map(p => '<label class="row small"><input type="checkbox" data-pl="' + esc(p.id) + '"' +
+      ((p.playlist_songs || []).some(x => x.song_id === s.id) ? ' checked' : '') + '> ' + esc(p.name) + '</label>').join('') : '<p class="small muted">No playlists yet.</p>') + '</div>';
+}
+function renderSide() { if (cur) $('#sidePanel').innerHTML = sideHTML(); }
+
+function songHTML() {
+  const s = cur.s;
+  let h = '<div class="row" style="padding-block:6px 10px"><a class="btn small ghost" href="#">← Songs</a><span class="grow"></span>' +
+    (confirmDel ? '<span class="small">Delete this song and its ' + cur.tags.length + ' tags?</span><button class="btn small danger" data-act="delsong">Delete</button><button class="btn small" data-act="nodel">Keep</button>'
+      : '<button class="btn small ghost danger" data-act="askdel">Delete song</button>') + '</div>' +
+    '<div class="card"><div class="row"><div class="grow"><h1>' + esc(s.title) + '</h1><p class="muted">' + esc(s.artist || '') + (s.duration ? ' · lyrics timed to a ' + fmt(s.duration).replace(/\.\d$/, '') + ' recording' : '') + '</p></div><span class="pill ' + s.status + '">' + s.status + '</span></div>' +
+    (s.notes ? '<p class="small muted">' + esc(s.notes) + '</p>' : '') + '</div>';
+  if (!cur.lines.length) {
+    h += '<div class="card"><h2>Timed lyrics</h2><p class="muted">Find this song on LRCLIB so the item words light up with their times.</p>' +
+      '<form id="lrcForm" class="row"><input class="grow" type="search" id="lrcQ" value="' + esc(lrc.q) + '"><button class="btn primary">Search LRCLIB</button></form>' +
+      (lrc.busy ? '<p class="muted">Searching…</p>' : '') +
+      (lrc.list ? (lrc.list.length ? '<div class="results">' + lrc.list.map(x => '<div class="res"><span><b>' + esc(x.trackName) + '</b> · ' + esc(x.artistName) + '<br><span class="meta">' + fmt(x.duration || 0).replace(/\.\d$/, '') +
+        (s.duration && x.duration ? (Math.abs(x.duration - s.duration) <= 2 ? ' · same length as before' : '') : '') + ' · ' + (x.syncedLyrics ? 'timed' : 'plain only') + '</span></span>' +
+        '<button class="btn small primary" data-act="uselrc" data-arg="' + x.id + '">Use these</button></div>').join('') + '</div>' : '<p class="muted">Nothing found. Try fewer words, or tap along below.</p>') : '') + '</div>';
+    h += tapAlongHTML();
+    return h;
+  }
+  // legend + lines
+  const counts = {}; cur.lit.forEach((l, i) => l.forEach(x => { if (!showAll && groupOf(i)[0] !== i) return; counts[x.item] = (counts[x.item] || 0) + 1; }));
+  h += '<div class="card"><div class="row"><h2 class="grow">Lyrics</h2><label class="row small"><input type="checkbox" id="showAll"' + (showAll ? ' checked' : '') + '> Show repeats too</label></div>' +
+    '<p class="small muted">Highlighted words match an item. Click one to tag it in every repeat of the line, then <b>Hear</b> and <b>Tap</b> to time it. <span class="kbd">↑</span> <span class="kbd">↓</span> move between lit lines.</p>' +
+    '<div class="legend">' + items.filter(it => counts[it.id]).map(it => '<span class="chip">' + esc(it.name) + ' <span lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + counts[it.id] + '</span></span>').join('') + '</div>';
+  h += '<div class="lines">';
+  cur.lines.forEach((l, i) => {
+    const grp = groupOf(i), first = grp[0] === i;
+    if (!showAll && !first) return;
+    if (!l.x) { if (showAll) h += '<div class="gap" title="Instrumental"></div>'; return; }
+    const lit = cur.lit[i], toks = tokens(l.x), tags = cur.byLine.get(i) || [];
+    let html = '', p = 0;
+    for (const tk of toks) {
+      html += esc(l.x.slice(p, tk.s)); p = tk.s + tk.x.length;
+      const m = lit.find(x => x.w === tk.w);
+      if (!m) { html += esc(tk.x); continue; }
+      const tg = showAll ? tagOn(i, tk.w) : tagIn(i, tk.w), picked = pick && grp.includes(pick.line) && pick.w === tk.w;
+      html += '<button class="w' + (tg ? ' tagged' : '') + (picked ? ' picked' : '') + '" data-act="word" data-arg="' + i + ':' + tk.w + ':' + esc(m.item) + '" title="' + esc(itemName(m.item)) + (tg ? ' at ' + fmt2(tg.t) : ' — click to tag') + '">' + esc(tk.x) + '</button>';
+    }
+    html += esc(l.x.slice(p));
+    const chips = tags.filter(o => o.w == null).map(o => '<button class="tchip' + (o.tag.source !== 'estimate' ? ' tap' : '') + '" data-act="deltag" data-arg="' + o.tag.id + '" title="Not on a highlighted word. Click to delete.">' + esc(itemName(o.tag.item_id)) + ' ' + fmt2(o.tag.t) + ' ✕</button>').join('');
+    const reps = grp.length > 1 ? '<span class="rep" title="Repeats at ' + grp.map(j => fmt(cur.lines[j].t)).join(', ') + '">×' + grp.length + '</span>' : '';
+    h += '<div class="ln' + (lit.length ? '' : ' dim') + (pick && grp.includes(pick.line) ? ' sel' : '') + '" id="ln' + i + '"><button class="tm" data-act="hear" data-arg="' + i + '" title="Hear from 3 s before">' + fmt(l.t) + '</button>' +
+      '<div class="tx">' + html + (chips ? '<div class="tchips">' + chips + '</div>' : '') + '</div><div class="side">' + reps + '</div></div>';
+  });
+  h += '</div>' + (cur.loose.length ? '<p class="small muted">Tags before the first line: ' + cur.loose.map(t => esc(itemName(t.item_id)) + ' ' + fmt2(t.t)).join(', ') + '</p>' : '') + '</div>';
+  return h;
+}
+function tapAlongHTML() {
+  const recent = cur.tags.slice(-8).reverse();
+  return '<div class="card"><h2>Tap along</h2><p class="muted">No timed lyrics? Load an upload, press Play, and tap an item each time its word is sung. Your reaction delay (' + LAG + ' s) is taken off.</p>' +
+    '<div class="tapgrid">' + items.map(it => '<button class="btn" data-act="tapitem" data-arg="' + esc(it.id) + '">' + esc(it.name) + ' <span lang="ne" class="small">' + esc(it.dev || '') + '</span></button>').join('') + '</div>' +
+    (recent.length ? '<div class="tchips">' + recent.map(t => '<button class="tchip tap" data-act="deltag" data-arg="' + t.id + '" title="Delete">' + esc(itemName(t.item_id)) + ' ' + fmt2(t.t) + ' ✕</button>').join('') + '</div>' : '') + '</div>';
+}
+function renderSong() {
+  if (!cur) return;
+  const keep = window.scrollY;
+  $('#view').innerHTML = songHTML(); renderSide();
+  window.scrollTo(0, keep);
+}
+
+function itemsHTML() {
+  return '<div class="row" style="padding-block:14px"><h1 class="grow">Items</h1></div><p class="muted" style="margin-bottom:10px">Spellings are matched at the start of each lyric word, so पानी also catches पानीमा. Separate them with commas.</p>' +
+    '<div class="card scrollx"><table class="grid"><thead><tr><th>Name</th><th>Devanagari</th><th>Spellings that count</th><th>Note</th><th></th></tr></thead><tbody>' +
+    items.map(it => '<tr data-item="' + esc(it.id) + '"><td><input type="text" data-f="name" value="' + esc(it.name) + '"></td><td><input type="text" data-f="dev" value="' + esc(it.dev || '') + '" lang="ne"></td>' +
+      '<td style="min-width:260px"><input type="text" data-f="words" value="' + esc((it.words || []).join(', ')) + '"></td><td><input type="text" data-f="note" value="' + esc(it.note || '') + '"></td>' +
+      '<td><button class="btn small" data-act="saveitem" data-arg="' + esc(it.id) + '">Save</button></td></tr>').join('') + '</tbody></table></div>' +
+    '<form id="newItem" class="card row" style="margin-top:12px"><input class="grow" type="text" id="niName" placeholder="New item, e.g. Rumal" required><input class="grow" type="text" id="niDev" placeholder="Devanagari" lang="ne"><input class="grow" type="text" id="niWords" placeholder="Spellings, comma separated"><button class="btn primary">Add item</button></form>';
+}
+function playlistsHTML() {
+  const byId = id => songs.find(s => s.id === id);
+  return '<div class="row" style="padding-block:14px"><h1 class="grow">Playlists</h1></div>' +
+    playlists.map(p => { const ps = (p.playlist_songs || []).slice().sort((a, b) => a.position - b.position);
+      return '<div class="card" style="margin-bottom:12px" data-plid="' + esc(p.id) + '"><div class="row"><input class="grow" type="text" data-pf="name" value="' + esc(p.name) + '"><button class="btn small" data-act="saveplay" data-arg="' + esc(p.id) + '">Save</button></div>' +
+        '<input type="text" data-pf="description" value="' + esc(p.description || '') + '" placeholder="Description">' +
+        '<p class="small muted">' + ps.length + ' songs. Add or remove songs from each song’s page.</p>' +
+        '<div class="songs">' + ps.map((x, k) => { const s = byId(x.song_id) || { title: x.song_id, status: 'draft' };
+          return '<div class="row small"><span class="mono muted">' + (k + 1) + '</span><span class="grow">' + esc(s.title) + ' <span class="pill ' + s.status + '">' + s.status + '</span></span>' +
+            '<button class="btn small ghost" data-act="mv" data-arg="' + esc(p.id) + ':' + k + ':-1"' + (k ? '' : ' disabled') + ' aria-label="Move up">↑</button>' +
+            '<button class="btn small ghost" data-act="mv" data-arg="' + esc(p.id) + ':' + k + ':1"' + (k < ps.length - 1 ? '' : ' disabled') + ' aria-label="Move down">↓</button></div>'; }).join('') + '</div></div>'; }).join('') +
+    '<form id="newPlay" class="card row"><input class="grow" type="text" id="npName" placeholder="New playlist name" required><button class="btn primary">Create playlist</button></form>';
+}
+
+/* ---------- actions ---------- */
+function stepLit(dir) {
+  const order = []; cur.lines.forEach((l, i) => { if (cur.lit[i].length && (showAll || groupOf(i)[0] === i)) order.push(i); });
+  if (!order.length) return;
+  const at = pick ? order.indexOf(pick.line) : -1;
+  const i = order[Math.max(0, Math.min(order.length - 1, at + dir))] ?? order[0];
+  const lw = cur.lit[i][0];
+  pick = { line: i, w: lw.w, item: lw.item }; renderSong();
+  const el = document.getElementById('ln' + i); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const act = b.dataset.act, arg = b.dataset.arg;
+  switch (act) {
+    case 'go': location.hash = arg ? '#' + arg : '#'; break;
+    case 'open': location.hash = '#song:' + encodeURIComponent(arg); break;
+    case 'signout': await sb.auth.signOut(); user = null; editor = null; sent = null; location.hash = '#'; render(); break;
+    case 'create': await createFromLrc(Number(arg)); break;
+    case 'uselrc': await useLyrics(Number(arg)); break;
+    case 'word': {
+      const [i, w, item] = arg.split(':'); const L = Number(i), W = Number(w);
+      if (pick && groupOf(L).includes(pick.line) && pick.w === W && tagIn(L, W) && !e.altKey) { pick = null; renderSong(); break; } // second click deselects
+      if (tagIn(L, W) && !e.altKey) { pick = { line: L, w: W, item }; renderSong(); break; }
+      await toggleWord(L, W, item); break;
+    }
+    case 'unpick': pick = null; renderSong(); break;
+    case 'untag': if (pick) await toggleWord(pick.line, pick.w, pick.item); break;
+    case 'hear': hear(Number(arg)); break;
+    case 'tapnow': tapNow(); break;
+    case 'nudge': nudge(Number(arg)); break;
+    case 'deltag': await delTag(Number(arg)); break;
+    case 'tapitem': await tapItem(arg); break;
+    case 'load': loadVideo(Number(arg), true); renderSide(); break;
+    case 'pp': if (ytOk) { const st = yt.getPlayerState(); if (st === 1 || st === 3) yt.pauseVideo(); else yt.playVideo(); } break;
+    case 'skip': if (ytOk) yt.seekTo(Math.max(0, now() + Number(arg)), true); break;
+    case 'rate': rate = rate === 1 ? 0.75 : rate === 0.75 ? 0.5 : 1; if (ytOk) yt.setPlaybackRate(rate); b.textContent = rate + '×'; break;
+    case 'off': { const [k, d] = arg.split(':'); const v = cur.videos[Number(k)]; await updateVideo(v, { offset_s: r2(Number(v.offset_s) + Number(d)), synced: true }); renderSide(); break; }
+    case 'sync': {
+      const k = Number(arg); if (vi !== k) loadVideo(k, true);
+      const i = pick ? pick.line : cur.lines.findIndex(l => l.x);
+      armed = { k, i }; renderSide();
+      withYt(() => { const go2 = () => { yt.seekTo(Math.max(0, cur.lines[i].t + offset() - 6), true); yt.playVideo(); }; if (videoOn()) go2(); else setTimeout(go2, 1500); });
+      break;
+    }
+    case 'synctap': await syncTap(); break;
+    case 'syncstop': armed = null; renderSide(); break;
+    case 'first': { const k = Number(arg); const v = cur.videos[k]; const others = cur.videos.filter(x => x !== v);
+      const res = await Promise.all([v].concat(others).map((x, r) => sb.from('videos').update({ rank: r }).eq('id', x.id)));
+      if (res.some(r => r.error)) return fail('Couldn’t reorder', res.find(r => r.error).error);
+      const loaded = cur.videos[vi]; cur.videos = [v].concat(others); cur.videos.forEach((x, r) => { x.rank = r; }); vi = loaded ? cur.videos.indexOf(loaded) : -1;
+      renderSide(); toast('The party player tries this upload first.'); break; }
+    case 'rmvid': { const k = Number(arg), v = cur.videos[k]; const { error } = await sb.from('videos').delete().eq('id', v.id); if (error) return fail('Couldn’t remove it', error);
+      cur.videos.splice(k, 1); if (vi === k) { vi = -1; try { yt.stopVideo(); } catch (x) {} $('#idle').hidden = false; } else if (vi > k) vi--; renderSide(); break; }
+    case 'trydrop': tryDrop(); break;
+    case 'status': await updateSong({ status: arg }); renderSong(); toast(arg === 'checked' ? 'Marked checked. It’s ready for parties.' : 'Marked as not checked.'); break;
+    case 'askdel': confirmDel = true; renderSong(); break;
+    case 'nodel': confirmDel = false; renderSong(); break;
+    case 'delsong': { const { error } = await sb.from('songs').delete().eq('id', cur.s.id); if (error) return fail('Couldn’t delete it', error);
+      songs = songs.filter(s => s.id !== cur.s.id); cur = null; vi = -1; location.hash = '#'; toast('Deleted.'); break; }
+    case 'saveitem': await saveItem(arg); break;
+    case 'saveplay': await savePlaylist(arg); break;
+    case 'mv': await movePl(arg); break;
+  }
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.id === 'showAll') { showAll = t.checked; renderSong(); }
+  if (t.dataset && t.dataset.pl) {
+    const pid = t.dataset.pl, p = playlists.find(x => x.id === pid); if (!p || !cur) return;
+    if (t.checked) {
+      const pos = (p.playlist_songs || []).length;
+      const { error } = await sb.from('playlist_songs').insert({ playlist_id: pid, song_id: cur.s.id, position: pos });
+      if (error) { t.checked = false; return fail('Couldn’t add it', error); }
+      (p.playlist_songs = p.playlist_songs || []).push({ song_id: cur.s.id, position: pos }); toast('Added to ' + p.name + '.');
+    } else {
+      const { error } = await sb.from('playlist_songs').delete().eq('playlist_id', pid).eq('song_id', cur.s.id);
+      if (error) { t.checked = true; return fail('Couldn’t remove it', error); }
+      p.playlist_songs = (p.playlist_songs || []).filter(x => x.song_id !== cur.s.id); toast('Removed from ' + p.name + '.');
+    }
+  }
+});
+document.addEventListener('input', e => { if (e.target.id === 'filter') { filter = e.target.value; const pos = e.target.selectionStart; $('#view').innerHTML = songsHTML(); const f = $('#filter'); f.focus(); f.setSelectionRange(pos, pos); } });
+document.addEventListener('submit', async e => {
+  e.preventDefault(); const f = e.target;
+  if (f.id === 'signin') {
+    const email = $('#email').value.trim(); if (!email) return;
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) return fail('Couldn’t send the link', error);
+    sent = email; render();
+  }
+  if (f.id === 'addSearch') { lrc.q = $('#addQ').value.trim(); lrc.busy = true; lrc.list = null; render(); await lrcSearchOnly(lrc.q); render(); }
+  if (f.id === 'lrcForm') { await lrcSearch($('#lrcQ').value.trim()); }
+  if (f.id === 'addManual') { await createSong({ title: $('#mTitle').value.trim(), artist: $('#mArtist').value.trim() || null }); }
+  if (f.id === 'addVid') {
+    const id = parseYT($('#vidLink').value); if (!id) return toast('That doesn’t look like a YouTube link.');
+    const { data, error } = await sb.from('videos').insert({ song_id: cur.s.id, yt: id, rank: cur.videos.length, kind: cur.videos.length ? 'other' : 'official' }).select().single();
+    if (error) return fail('Couldn’t add the upload', error);
+    cur.videos.push(data); loadVideo(cur.videos.length - 1, true); renderSide(); toast('Upload added. Checking its length…');
+  }
+  if (f.id === 'newItem') {
+    const name = $('#niName').value.trim(); let id = slug(name); while (items.some(i => i.id === id)) id += '-2';
+    const words = $('#niWords').value.split(',').map(x => x.trim()).filter(Boolean);
+    const { data, error } = await sb.from('items').insert({ id, name, dev: $('#niDev').value.trim() || null, words: words.length ? words : [name.toLowerCase()], sort: items.length }).select().single();
+    if (error) return fail('Couldn’t add the item', error);
+    items.push(data); render(); toast(name + ' added.');
+  }
+  if (f.id === 'newPlay') {
+    const name = $('#npName').value.trim(); let id = slug(name); while (playlists.some(p => p.id === id)) id += '-2';
+    const { data, error } = await sb.from('playlists').insert({ id, name, sort: playlists.length }).select().single();
+    if (error) return fail('Couldn’t create it', error);
+    data.playlist_songs = []; playlists.push(data); render(); toast('Created ' + name + '. Add songs from their pages.');
+  }
+});
+async function lrcSearchOnly(q) {
+  try {
+    const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q)); const list = await r.json(), seen = new Set();
+    lrc.list = (Array.isArray(list) ? list : []).filter(x => { const k = (x.syncedLyrics || x.plainLyrics || '').slice(0, 200) + '|' + Math.round(x.duration || 0); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics)).slice(0, 12);
+  } catch (e) { lrc.list = []; toast('LRCLIB didn’t answer. Try again in a moment.'); }
+  lrc.busy = false;
+}
+async function createSong(row) {
+  let id = slug(row.title); while (songs.some(s => s.id === id)) id += '-2';
+  const { data, error } = await sb.from('songs').insert({ id, status: 'draft', ...row }).select('id,title,artist,status,lrclib_id,duration,notes').single();
+  if (error) return fail('Couldn’t add the song', error);
+  songs.push({ ...data, hasLines: !!(row.lines && row.lines.length), tagCount: 0, needsSync: false, videos: [] }); songs.sort((a, b) => a.title.localeCompare(b.title));
+  lrc = { q: '', busy: false, list: null }; location.hash = '#song:' + encodeURIComponent(id);
+  toast('Added. Now paste a YouTube link for it.');
+}
+async function createFromLrc(id) {
+  const x = (lrc.list || []).find(r => r.id === id); if (!x) return;
+  const lines = parseLrc(x.syncedLyrics);
+  await createSong({ title: x.trackName, artist: x.artistName || null, lrclib_id: x.id, duration: x.duration || null, lines: lines.length ? lines : null, plain_lyrics: x.plainLyrics || null });
+}
+async function syncTap() {
+  if (!armed || !videoOn()) return;
+  const v = cur.videos[armed.k], line = cur.lines[armed.i];
+  const off = r2(now() - LAG - line.t);
+  if (await updateVideo(v, { offset_s: off, synced: true })) { toast('Synced: this upload runs ' + Math.abs(off).toFixed(2) + ' s ' + (off >= 0 ? 'behind' : 'ahead of') + ' the lyrics.'); }
+  armed = null; renderSide();
+}
+function tryDrop() {
+  const v = cur.videos[vi]; if (!v || !cur.tags.length) return;
+  const tg = cur.tags[Math.floor(Math.random() * cur.tags.length)];
+  const prev = cur.tags.filter(t => t.t < tg.t - 0.01).pop();
+  const room = prev ? tg.t - prev.t - 1.2 : tg.t + offset();
+  const lead = room >= 7 ? 7 + Math.random() * (Math.min(10, room) - 7) : Math.max(1, room);
+  const at = tg.t + offset() - lead;
+  withYt(() => { yt.seekTo(Math.max(0, at), true); yt.playVideo(); });
+  toast('Dropped in ' + lead.toFixed(1) + ' s before ' + itemName(tg.item_id) + ' (' + fmt2(tg.t + offset()) + ').');
+}
+async function saveItem(id) {
+  const tr = document.querySelector('tr[data-item="' + CSS.escape(id) + '"]'); if (!tr) return;
+  const val = f => tr.querySelector('[data-f="' + f + '"]').value.trim();
+  const patch = { name: val('name'), dev: val('dev') || null, words: val('words').split(',').map(x => x.trim()).filter(Boolean), note: val('note') || null };
+  const { error } = await sb.from('items').update(patch).eq('id', id);
+  if (error) return fail('Couldn’t save', error);
+  Object.assign(items.find(i => i.id === id), patch); toast('Saved ' + patch.name + '.');
+}
+async function savePlaylist(id) {
+  const card = document.querySelector('[data-plid="' + CSS.escape(id) + '"]'); if (!card) return;
+  const patch = { name: card.querySelector('[data-pf="name"]').value.trim(), description: card.querySelector('[data-pf="description"]').value.trim() || null };
+  const { error } = await sb.from('playlists').update(patch).eq('id', id);
+  if (error) return fail('Couldn’t save', error);
+  Object.assign(playlists.find(p => p.id === id), patch); toast('Saved.');
+}
+async function movePl(arg) {
+  const [pid, k, d] = arg.split(':'); const p = playlists.find(x => x.id === pid); if (!p) return;
+  const ps = (p.playlist_songs || []).slice().sort((a, b) => a.position - b.position), i = Number(k), j = i + Number(d);
+  if (!ps[j]) return; [ps[i], ps[j]] = [ps[j], ps[i]];
+  const res = await Promise.all(ps.map((x, n) => sb.from('playlist_songs').update({ position: n }).eq('playlist_id', pid).eq('song_id', x.song_id)));
+  if (res.some(r => r.error)) return fail('Couldn’t reorder', res.find(r => r.error).error);
+  ps.forEach((x, n) => { x.position = n; }); p.playlist_songs = ps; render();
+}
+document.addEventListener('keydown', e => {
+  if (!cur || e.metaKey || e.ctrlKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k = e.key;
+  if (k === ' ') { e.preventDefault(); $('#ppBtn').click(); }
+  else if (k === 't' || k === 'T') { if (armed) syncTap(); else tapNow(); }
+  else if (k === 'h' || k === 'H') { if (pick) hear(pick.line); }
+  else if (k === 'ArrowLeft' && pick) { e.preventDefault(); nudge(-0.1); }
+  else if (k === 'ArrowRight' && pick) { e.preventDefault(); nudge(0.1); }
+  else if (k === 'ArrowDown') { e.preventDefault(); stepLit(1); }
+  else if (k === 'ArrowUp') { e.preventDefault(); stepLit(-1); }
+  else if (k === 'Escape') { pick = null; armed = null; renderSong(); }
+});
+go();
+})();
+</script>
+</body>
+</html>

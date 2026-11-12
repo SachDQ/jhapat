@@ -194,7 +194,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp
 const fmt = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
 const T = (item, times) => times.map(t => ({ item, t, src: 'auto' }));
 
-const SEED_V = 2;
+const SEED_V = 3;
 const TG = pairs => pairs.map(([item, t]) => ({ item, t, src: 'auto' }));
 function seed() {
   return {
@@ -213,9 +213,9 @@ function seed() {
     songs: [
       { id: 'funtastic', title: 'Funtastic (Pani Paryo)', artist: 'Almoda Rana Uprety', videos: ['Tr_MTXkQLl8'], vi: 0, offset: 0, sync: 'check',
         tags: TG([["paani",57.02],["paani",64.56],["paani",123.61],["paani",130.98],["paani",182.75],["paani",190.2],["paani",197.36],["paani",204.71]]) },
-      { id: 'simsime', title: 'Sim Sime Panima', artist: 'Rekha Shah', videos: ['7zpqYNZFdNI', '9Z3_O4ov0lY', 'kfAh1zSTgPI'], vi: 0, offset: 0, sync: 'check',
+      { id: 'simsime', title: 'Sim Sime Panima', artist: 'Rekha Shah', videos: ['7zpqYNZFdNI', 'kfAh1zSTgPI'], vi: 0, offset: 0, sync: 'check',
         tags: TG([["paani",40.2],["paani",54.79],["paani",62.09],["paani",96.51],["paani",111.21],["paani",118.52],["paani",160.11],["paani",174.83],["paani",182.09],["paani",214.0],["paani",228.67],["paani",235.98],["paani",267.87],["paani",282.53],["paani",289.88],["paani",297.29],["paani",304.68]]) },
-      { id: 'baanma', title: 'Baan Ma Fulyo Phool', artist: 'Aagantuk Kharel', videos: ['5wxm1PAv3cE'], vi: 0, offset: 0, sync: 'auto',
+      { id: 'baanma', title: 'Baan Ma Fulyo Phool', artist: 'Aagantuk Kharel', videos: ['6vDLaYhGFSY'], vi: 0, offset: 0, sync: 'check',
         tags: T('phool', [41.42, 43.74, 49.67, 70.21, 72.47, 78.49, 134.84, 137.35, 143.37, 179.43, 205.66, 211.73, 217.75])
           .concat(T('maya', [32.34, 38.39, 44.87, 50.91, 66.36, 73.80, 79.75, 102.23, 125.96, 131.80, 138.62, 144.46, 162.05, 162.98, 206.94, 212.88, 218.88])) },
       { id: 'phoolko', title: 'Phoolko Aankhama', artist: 'Ani Choying Drolma', videos: ['bJNLrJ7MUzM'], vi: 0, offset: 0, sync: 'check',
@@ -227,9 +227,9 @@ function seed() {
       { id: 'gurasai', title: 'Gurasai Fulyo', artist: '1974 AD', videos: ['NlBItVRVad0', '5WyX9LMFf5I'], vi: 0, offset: 0, sync: 'ok', tags: [] },
       { id: 'kaha', title: 'Kaha Hola Ghar', artist: 'Karma Band', videos: ['jU7L4KDAT6w'], vi: 0, offset: 0, sync: 'auto',
         tags: TG([["chithi",30.83],["chithi",35.15],["maya",67.73],["maya",71.95],["paani",96.17],["paani",104.68],["maya",110.23],["maya",114.87],["paani",118.0],["phool",170.58],["phool",179.07]]) },
-      { id: 'fulthunge', title: 'Fulthunge Rani', artist: 'Sujan Chapagain', videos: ['e7m8j0UzFdM', 'jElsEQqqun0'], vi: 0, offset: 0, sync: 'auto',
+      { id: 'fulthunge', title: 'Fulthunge Rani', artist: 'Sujan Chapagain', videos: ['e7m8j0UzFdM'], vi: 0, offset: 0, sync: 'auto',
         tags: TG([["phool",32.09],["phool",34.75],["phool",37.16],["phool",39.82],["phool",42.26],["phool",44.8],["phool",47.03],["phool",49.69],["phool",58.45],["phool",68.12],["phool",69.3],["phool",71.52],["phool",74.18],["phool",76.98],["phool",79.59],["phool",83.25],["phool",84.75],["phool",88.15],["phool",89.51],["phool",270.32],["phool",278.42],["phool",279.94],["phool",283.45],["phool",284.87]]) },
-      { id: 'gojima', title: 'Gojima Daam Chhaina', artist: 'Rajanraj Siwakoti, Melina Rai, Grishma Siwakoti', videos: ['-UReQiSQm60'], vi: 0, offset: 0, sync: 'auto',
+      { id: 'gojima', title: 'Gojima Daam Chhaina', artist: 'Rajanraj Siwakoti, Melina Rai, Grishma Siwakoti', videos: ['AhkUyEfowaU', 'Te-7vz1E3Hs'], vi: 0, offset: 0, sync: 'check',
         tags: TG([["paisa",26.94],["paisa",29.11],["paisa",31.78],["paisa",34.32],["paisa",38.77],["paisa",42.98],["chithi",43.62],["chithi",48.34],["paisa",55.74],["paisa",60.73],["paisa",62.25],["paisa",64.95],["paisa",66.64],["paisa",69.32],["paisa",137.11],["paisa",139.7],["paisa",144.12],["paisa",148.24],["paisa",167.79],["paisa",170.49],["paisa",211.33],["paisa",213.93],["paisa",218.54],["paisa",222.87],["paisa",224.4],["paisa",227.1]]) },
       { id: 'junaheri', title: 'Jun Na Heri', artist: 'Wangden Sherpa, Sushant Ghimire', videos: ['UfU0TUgJk9g'], vi: 0, offset: 0, sync: 'check',
         tags: TG([["phool",24.44],["phool",31.0],["phool",64.12],["phool",72.04],["maya",89.3],["phool",120.61],["phool",159.96],["chithi",194.11],["phool",211.14],["phool",218.73],["maya",228.01],["maya",231.89],["maya",240.37]]) },
@@ -246,14 +246,14 @@ function seed() {
     ]
   };
 }
-/* Older saves get the new seed songs added, and seed songs they never tagged get the new timings. Their own tags stay. */
+/* Older saves get new seed songs, and seed songs the person hasn't tapped, nudged or synced get the latest videos and timings. */
 function upgrade(d) {
   if ((d.seedV || 1) >= SEED_V) return d;
   const fresh = seed();
   fresh.songs.forEach(s => {
     const mine = d.songs.find(x => x.id === s.id);
     if (!mine) d.songs.push(s);
-    else if (!mine.tags.length && s.tags.length) Object.assign(mine, { videos: s.videos, vi: 0, offset: 0, sync: s.sync, tags: s.tags, broken: false });
+    else if (!mine.offset && !mine.tags.some(t => t.src !== 'auto')) Object.assign(mine, { videos: s.videos, vi: 0, offset: 0, sync: s.sync, tags: s.tags, broken: false });
   });
   fresh.items.forEach(it => {
     const mine = d.items.find(x => x.id === it.id);
@@ -282,7 +282,7 @@ let tab = 'play', songId = null;
 let current = null;          // the drop that is playing: {songId, tag, start}
 let mode = null;             // 'game' or 'tag': who loaded the video
 let revealed = false, syncing = null, lastTap = null;
-let nextTimer = null, toastTimer = null, watch = null;
+let nextTimer = null, toastTimer = null, watch = null, skipRun = 0;
 const WEB_LINK = 'https://sachdq.github.io/jhapat/';
 const onSite = /(^|\.)(github\.io|pages\.dev)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
 
@@ -356,12 +356,21 @@ function watchPlayback(start) {
   watch = setInterval(() => {
     const st = state();
     let muted = false; try { muted = !!player.isMuted(); } catch (e) {}
+    let dur = 0; try { dur = player.getDuration() || 0; } catch (e) {}
+    if (mode === 'game' && dur > 0 && start > dur - 1) {
+      clearInterval(watch); watch = null; skipRun++;
+      if (skipRun <= 3) { toast('That drop is past the end of this video, so it skipped to another song.'); nextRound(); }
+      else toast('Several drops were past the end of their videos. Tap-sync those songs in Songs.');
+      return;
+    }
     if (st === 1 && !seeked) { seeked = true; if (now() < start - 1.5) { try { player.seekTo(start, true); } catch (e) {} } }
-    if (st === 1 && !muted) { hint.hidden = true; clearInterval(watch); watch = null; return; }
-    if (Date.now() - t0 > 2000 && $('#blocked').hidden) {
+    if (st === 1 && !muted) { skipRun = 0; hint.hidden = true; clearInterval(watch); watch = null; return; }
+    const waited = Date.now() - t0;
+    // Buffering (3) is normal for a few seconds, so only call it stuck after 7s.
+    if ($('#blocked').hidden && ((waited > 2000 && st !== 3) || waited > 7000)) {
       hint.textContent = st === 1 ? 'Tap the video to turn the sound on.' : 'Tap ▶ on the video to start. Phones need one tap the first time.';
       hint.hidden = false;
-    }
+    } else if (st === 3) hint.hidden = true;
     if (Date.now() - t0 > 180000) { clearInterval(watch); watch = null; hint.hidden = true; }
   }, 400);
 }

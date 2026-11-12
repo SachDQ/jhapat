@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jhapat</title>
+<meta name="description" content="Party player for the grab-the-word game: pick the items on the table and it drops into a random song a few seconds before one of them is sung.">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;700&display=swap">
+<style>
+/* Layout: phone-first single column. Video pinned at the top so it stays visible; Play / Songs / Items tabs underneath. */
+:root{
+  --bg:#f3f1f8; --surface:#ffffff; --raise:#ebe7f3; --ink:#221a35; --muted:#625a78; --line:#dcd6e7;
+  --gold:#8f5b00; --gold-fill:#ffb000; --gold-ink:#1d1406;
+  --red:#c8193f; --red-soft:#f7d7df; --ok:#14774a; --warn:#985600;
+  --shadow:0 1px 2px rgba(34,26,53,.08), 0 6px 18px rgba(34,26,53,.07);
+  --display:"Baloo 2", ui-rounded, system-ui, sans-serif;
+  --body:"Mukta", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#120e1f; --surface:#1c172d; --raise:#272040; --ink:#f2eef9; --muted:#aaa1c0; --line:#352c4e;
+    --gold:#ffc14d; --gold-fill:#ffb000; --gold-ink:#1d1406;
+    --red:#ff5c7c; --red-soft:#47202d; --ok:#4ade80; --warn:#fbbf24;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);
+  padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:var(--gold)}
+button{font:inherit}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* header */
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding-block:calc(12px + env(safe-area-inset-top,0px)) 10px}
+.brand{display:flex;align-items:baseline;gap:8px}
+.brand .word{font:800 30px/1 var(--display);letter-spacing:-.01em}
+.brand .dev{font:600 19px/1 var(--display);color:var(--gold)}
+.tabs{display:flex;background:var(--raise);border-radius:999px;padding:3px;gap:2px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:700 15px/1 var(--body);padding:10px 15px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+/* a strip of dhaka-weave triangles */
+.dhaka{height:7px;opacity:.9;background:
+  linear-gradient(135deg,var(--red) 25%,transparent 25%) -7px 0/14px 14px,
+  linear-gradient(225deg,var(--red) 25%,transparent 25%) -7px 0/14px 14px,
+  linear-gradient(315deg,var(--ink) 25%,transparent 25%) 0 0/14px 14px,
+  linear-gradient(45deg,var(--ink) 25%,transparent 25%) 0 0/14px 14px,
+  var(--gold-fill)}
+
+/* player */
+.stage{position:sticky;top:0;z-index:5;background:var(--bg);padding-block:10px 6px}
+.screen{position:relative;width:100%;height:clamp(200px,56.25vw,330px);border-radius:16px;overflow:hidden;background:#000;box-shadow:var(--shadow)}
+#yt{position:absolute;inset:0;width:100%;height:100%;border:0}
+.screen .idle{position:absolute;inset:0;display:grid;place-items:center;color:#cfc7e2;font:600 15px/1.4 var(--body);text-align:center;padding:16px;pointer-events:none}
+#tapHint{position:absolute;left:8px;right:8px;top:8px;background:#ffb000;color:#1d1406;font:700 15px/1.3 var(--body);padding:10px 12px;border-radius:10px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#blocked{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:18px;background:#120e1f;color:#f2eef9;font:600 15px/1.4 var(--body);text-align:center}
+#blocked b{font:800 21px/1.15 var(--display)}
+#blocked span{max-width:40ch;color:#cfc7e2}
+#blocked a{color:#ffc14d;font:800 18px/1.2 var(--body);word-break:break-all}
+
+/* cards + type */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px}
+h2{font:800 21px/1.15 var(--display);margin:0 0 6px;text-wrap:balance}
+h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
+.hint{color:var(--muted);margin:0 0 12px;font-size:15px;max-width:62ch}
+.hint.small{font-size:14px;margin-top:8px}
+.kicker{font:700 12px/1 var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--gold);margin-bottom:6px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.row.between{justify-content:space-between;margin-top:12px}
+.lbl{font:700 13px/1 var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+/* buttons */
+.btn{appearance:none;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:700 15px/1.1 var(--body);
+  padding:12px 15px;border-radius:12px;cursor:pointer;min-height:44px}
+.btn.primary{background:var(--gold-fill);border-color:transparent;color:var(--gold-ink)}
+.btn.big{font:800 20px/1 var(--display);padding:16px 18px;min-height:60px}
+.btn.wide{width:100%}
+.btn.small{font-size:14px;padding:9px 12px;min-height:40px}
+.btn.ghost{background:transparent}
+.btn.danger{background:transparent;color:var(--red);border-color:var(--red-soft);margin-top:12px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.mini{min-width:42px;min-height:42px;padding:0 8px;border-radius:10px;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:700 15px/1 var(--body);cursor:pointer}
+:is(.btn,.mini,.chip,.tap,.songbtn,.tabs button):focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* play tab */
+.now .title{font:800 24px/1.12 var(--display);text-wrap:balance}
+.now .meta{color:var(--muted);margin-top:2px}
+.now .row{margin-top:12px}
+.reveal{font-size:16px}
+.bigrow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;margin-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:baseline;gap:6px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:999px;padding:9px 13px;font:700 15px/1 var(--body);cursor:pointer}
+.chip .d{font-weight:600;color:var(--muted)}
+.chip .n{font:700 12px/1 var(--body);color:var(--muted);font-variant-numeric:tabular-nums;background:var(--raise);border-radius:999px;padding:3px 6px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"] .d{color:inherit;opacity:.75}
+.chip[aria-pressed="true"] .n{background:var(--gold-fill);color:var(--gold-ink)}
+.pool{margin:14px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+.leadrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+.stepper{display:inline-flex;align-items:center;gap:6px}
+.stepper output{min-width:3ch;text-align:center;font:800 21px/1 var(--display);font-variant-numeric:tabular-nums}
+.switch{display:flex;align-items:center;gap:10px;font-weight:600}
+.switch input{width:22px;height:22px;accent-color:var(--gold-fill)}
+
+/* songs */
+.songs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.songbtn{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:12px 14px;cursor:pointer;display:grid;gap:4px}
+.songbtn .t{font:800 19px/1.15 var(--display)}
+.songbtn .a{color:var(--muted);font-size:14px}
+.songbtn .row{margin-top:4px;gap:6px}
+.badge{display:inline-block;font:700 12px/1 var(--body);padding:5px 8px;border-radius:999px;background:var(--raise);color:var(--muted);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.badge.ok{color:var(--ok)} .badge.warn{color:var(--warn)} .badge.bad{color:var(--red)}
+.form{display:grid;gap:8px}
+.form label{font-weight:700;font-size:14px;margin-top:4px}
+input[type=text],input[type=url],textarea{width:100%;font:16px/1.3 var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+textarea{margin:10px 0 8px;resize:vertical}
+
+/* tagger */
+.crumb{margin-top:12px}
+.songhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.songhead .a{color:var(--muted)}
+.transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.clock{margin-left:auto;font:800 22px/1 var(--display);font-variant-numeric:tabular-nums}
+.tapgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tap{min-height:76px;border-radius:14px;border:0;background:var(--raise);color:var(--ink);font:800 22px/1 var(--display);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:manipulation}
+.tap small{font:600 15px/1 var(--body);color:var(--muted)}
+.tap.hit{animation:hit .4s ease-out}
+@keyframes hit{from{background:var(--gold-fill);color:var(--gold-ink)}to{background:var(--raise)}}
+.tags{list-style:none;margin:0;padding:0}
+.tagrow{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.tagrow:last-child{border-bottom:0}
+.tagrow .time{font:700 16px/1 var(--body);font-variant-numeric:tabular-nums}
+.tagrow .acts{display:flex;gap:4px}
+.itemlist{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.itemrow{display:grid;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.itemrow:last-child{border-bottom:0;padding-bottom:0}
+.ihead{display:flex;align-items:center;gap:10px}
+.iname{font:800 20px/1 var(--display);flex:1;min-width:0}
+.iname .d{font:600 16px/1 var(--display);color:var(--muted)}
+.itemrow .meta{color:var(--muted);font-size:14px}
+
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:var(--ink);color:var(--bg);
+  padding:12px 16px;border-radius:12px;font:600 15px/1.35 var(--body);width:max-content;max-width:min(92vw,560px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion: reduce){.tap.hit{animation:none;outline:3px solid var(--gold)} #toast{transition:none}}
+@media (max-width:380px){.tabs button{padding:9px 11px}.brand .word{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span></div>
+    <nav class="tabs" aria-label="Sections">
+      <button data-act="tab" data-arg="play" aria-selected="true">Play</button>
+      <button data-act="tab" data-arg="songs" aria-selected="false">Songs</button>
+      <button data-act="tab" data-arg="items" aria-selected="false">Items</button>
+    </nav>
+  </header>
+</div>
+<div class="dhaka" aria-hidden="true"></div>
+<div class="stage">
+  <div class="wrap">
+    <div class="screen">
+      <div class="idle" id="idle">The video shows here once a song starts.</div>
+      <div id="yt"></div>
+      <div id="tapHint" hidden></div>
+      <div id="blocked" hidden></div>
+    </div>
+  </div>
+</div>
+<main class="wrap" id="view"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- data ---------- */
+const KEY = 'jhapat.v1';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
+const T = (item, times) => times.map(t => ({ item, t, src: 'auto' }));
+
+const SEED_V = 2;
+const TG = pairs => pairs.map(([item, t]) => ({ item, t, src: 'auto' }));
+function seed() {
+  return {
+    v: 1, seedV: SEED_V,
+    settings: { minLead: 3, maxLead: 8, autoNext: true, lag: 0.3 },
+    played: [], lastSong: null,
+    items: [
+      { id: 'paani',  name: 'Paani',  dev: 'पानी', words: 'paani, pani, panima', on: true },
+      { id: 'phool',  name: 'Phool',  dev: 'फूल',  words: 'phool, phul, ful, phulyo/fulyo (bloomed)', on: true },
+      { id: 'chiya',  name: 'Chiya',  dev: 'चिया', words: 'chiya, chiyabari', on: true },
+      { id: 'paisa',  name: 'Paisa',  dev: 'पैसा', words: 'paisa, paisaa, daam', on: true },
+      { id: 'chithi', name: 'Chithi', dev: 'चिठी', words: 'chithi, chitthi (use an envelope)', on: true },
+      { id: 'maya',   name: 'Maya',   dev: 'माया', words: 'maya, mayalu, mayako (use a heart card)', on: false },
+      { id: 'rakshi', name: 'Rakshi', dev: 'रक्सी', words: 'rakshi, raksi', on: false }
+    ],
+    songs: [
+      { id: 'funtastic', title: 'Funtastic (Pani Paryo)', artist: 'Almoda Rana Uprety', videos: ['Tr_MTXkQLl8'], vi: 0, offset: 0, sync: 'check',
+        tags: TG([["paani",57.02],["paani",64.56],["paani",123.61],["paani",130.98],["paani",182.75],["paani",190.2],["paani",197.36],["paani",204.71]]) },
+      { id: 'simsime', title: 'Sim Sime Panima', artist: 'Rekha Shah', videos: ['7zpqYNZFdNI', '9Z3_O4ov0lY', 'kfAh1zSTgPI'], vi: 0, offset: 0, sync: 'check',
+        tags: TG([["paani",40.2],["paani",54.79],["paani",62.09],["paani",96.51],["paani",111.21],["paani",118.52],["paani",160.11],["paani",174.83],["paani",182.09],["paani",214.0],["paani",228.67],["paani",235.98],["paani",267.87],["paani",282.53],["paani",289.88],["paani",297.29],["paani",304.68]]) },
+      { id: 'baanma', title: 'Baan Ma Fulyo Phool', artist: 'Aagantuk Kharel', videos: ['5wxm1PAv3cE'], vi: 0, offset: 0, sync: 'auto',
+        tags: T('phool', [41.42, 43.74, 49.67, 70.21, 72.47, 78.49, 134.84, 137.35, 143.37, 179.43, 205.66, 211.73, 217.75])
+          .concat(T('maya', [32.34, 38.39, 44.87, 50.91, 66.36, 73.80, 79.75, 102.23, 125.96, 131.80, 138.62, 144.46, 162.05, 162.98, 206.94, 212.88, 218.88])) },
+      { id: 'phoolko', title: 'Phoolko Aankhama', artist: 'Ani Choying Drolma', videos: ['bJNLrJ7MUzM'], vi: 0, offset: 0, sync: 'check',
+        tags: T('phool', [29.74, 43.43, 71.07, 153.20, 228.57, 242.34, 269.85]) },
+      { id: 'chiyabari', title: 'Chiya Barima Ho', artist: 'Deepa Jha', videos: ['1mdiDuh-bUI', 'PhLFbAhtDpY'], vi: 0, offset: 0, sync: 'ok', tags: [] },
+      { id: 'paisaa', title: 'Paisaa', artist: 'Kushal Grumpy', videos: ['luMzKL1LJ2o'], vi: 0, offset: 0, sync: 'auto',
+        tags: T('paisa', [20.08, 22.59, 25.20, 27.81, 30.12, 32.72, 35.20, 37.80, 40.36, 45.54, 50.37, 52.91, 55.32, 57.94, 68.08, 71.00, 73.52,
+          80.62, 83.16, 85.87, 88.25, 93.50, 109.29, 111.10, 113.65, 116.01, 118.77, 129.98, 149.47, 151.45, 153.85, 156.55, 158.95, 161.68, 164.12, 166.72, 169.13]) },
+      { id: 'gurasai', title: 'Gurasai Fulyo', artist: '1974 AD', videos: ['NlBItVRVad0', '5WyX9LMFf5I'], vi: 0, offset: 0, sync: 'ok', tags: [] },
+      { id: 'kaha', title: 'Kaha Hola Ghar', artist: 'Karma Band', videos: ['jU7L4KDAT6w'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["chithi",30.83],["chithi",35.15],["maya",67.73],["maya",71.95],["paani",96.17],["paani",104.68],["maya",110.23],["maya",114.87],["paani",118.0],["phool",170.58],["phool",179.07]]) },
+      { id: 'fulthunge', title: 'Fulthunge Rani', artist: 'Sujan Chapagain', videos: ['e7m8j0UzFdM', 'jElsEQqqun0'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["phool",32.09],["phool",34.75],["phool",37.16],["phool",39.82],["phool",42.26],["phool",44.8],["phool",47.03],["phool",49.69],["phool",58.45],["phool",68.12],["phool",69.3],["phool",71.52],["phool",74.18],["phool",76.98],["phool",79.59],["phool",83.25],["phool",84.75],["phool",88.15],["phool",89.51],["phool",270.32],["phool",278.42],["phool",279.94],["phool",283.45],["phool",284.87]]) },
+      { id: 'gojima', title: 'Gojima Daam Chhaina', artist: 'Rajanraj Siwakoti, Melina Rai, Grishma Siwakoti', videos: ['-UReQiSQm60'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["paisa",26.94],["paisa",29.11],["paisa",31.78],["paisa",34.32],["paisa",38.77],["paisa",42.98],["chithi",43.62],["chithi",48.34],["paisa",55.74],["paisa",60.73],["paisa",62.25],["paisa",64.95],["paisa",66.64],["paisa",69.32],["paisa",137.11],["paisa",139.7],["paisa",144.12],["paisa",148.24],["paisa",167.79],["paisa",170.49],["paisa",211.33],["paisa",213.93],["paisa",218.54],["paisa",222.87],["paisa",224.4],["paisa",227.1]]) },
+      { id: 'junaheri', title: 'Jun Na Heri', artist: 'Wangden Sherpa, Sushant Ghimire', videos: ['UfU0TUgJk9g'], vi: 0, offset: 0, sync: 'check',
+        tags: TG([["phool",24.44],["phool",31.0],["phool",64.12],["phool",72.04],["maya",89.3],["phool",120.61],["phool",159.96],["chithi",194.11],["phool",211.14],["phool",218.73],["maya",228.01],["maya",231.89],["maya",240.37]]) },
+      { id: 'simsimepaani', title: 'Simsime Paani', artist: 'VTEN', videos: ['N9vC4dXzBMA'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["paani",25.05],["paani",108.13]]) },
+      { id: 'surke', title: 'Surke Thaili', artist: 'Rajanraj Siwakoti, Anju Panta, Raju Bishowkarma', videos: ['nLxhhR5hL0Q'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["paani",97.88]]) },
+      { id: 'mayaraicha', title: 'Maya Raicha Ra', artist: 'Kali Prasad Baskota, Sadeekshya Kattel', videos: ['WO0Bwf8SLp8'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["maya",19.92],["maya",28.36],["maya",37.31],["maya",45.08],["maya",53.52],["maya",62.5],["maya",70.3],["maya",138.22],["maya",146.15],["maya",155.09],["maya",162.96]]) },
+      { id: 'bistarai', title: 'Bistarai', artist: 'Rohit John Chettri', videos: ['44tjJP7cI74'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["maya",27.53],["maya",50.83],["maya",55.79],["maya",78.95],["maya",102.53],["maya",107.49]]) },
+      { id: 'axechiya', title: 'Chiya Barima', artist: 'The Axe Band · extra, not from your playlist', videos: ['QKqakx_a6bI'], vi: 0, offset: 0, sync: 'auto',
+        tags: TG([["chiya",82.02],["chiya",148.81],["chiya",215.95],["chiya",255.12],["chiya",264.6]]) }
+    ]
+  };
+}
+/* Older saves get the new seed songs added, and seed songs they never tagged get the new timings. Their own tags stay. */
+function upgrade(d) {
+  if ((d.seedV || 1) >= SEED_V) return d;
+  const fresh = seed();
+  fresh.songs.forEach(s => {
+    const mine = d.songs.find(x => x.id === s.id);
+    if (!mine) d.songs.push(s);
+    else if (!mine.tags.length && s.tags.length) Object.assign(mine, { videos: s.videos, vi: 0, offset: 0, sync: s.sync, tags: s.tags, broken: false });
+  });
+  fresh.items.forEach(it => {
+    const mine = d.items.find(x => x.id === it.id);
+    if (!mine) d.items.push(it);
+    else if (it.id === 'paisa' && !/daam/.test(mine.words || '')) mine.words = (mine.words ? mine.words + ', ' : '') + 'daam';
+  });
+  d.seedV = SEED_V;
+  return d;
+}
+function loadState() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || 'null');
+    return d && d.v === 1 && Array.isArray(d.songs) && Array.isArray(d.items) ? upgrade(d) : null;
+  } catch (e) { return null; }
+}
+let S = loadState() || seed();
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+const byId = id => S.songs.find(s => s.id === id);
+const itemById = id => S.items.find(i => i.id === id);
+const itemName = id => (itemById(id) || { name: id }).name;
+const sortTags = s => s.tags.sort((a, b) => a.t - b.t);
+S.songs.forEach(sortTags);
+
+/* ---------- ui state ---------- */
+let tab = 'play', songId = null;
+let current = null;          // the drop that is playing: {songId, tag, start}
+let mode = null;             // 'game' or 'tag': who loaded the video
+let revealed = false, syncing = null, lastTap = null;
+let nextTimer = null, toastTimer = null, watch = null;
+const WEB_LINK = 'https://sachdq.github.io/jhapat/';
+const onSite = /(^|\.)(github\.io|pages\.dev)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+
+/* A full cover over the video when YouTube can't run on this page at all. */
+function showBlocked(kind) {
+  const b = $('#blocked');
+  if (kind === 'net' && onSite) {
+    b.innerHTML = '<b>Can’t reach YouTube</b><span>Check the phone’s internet connection, then reload the page.</span>';
+  } else {
+    b.innerHTML = '<b>YouTube can’t play in here</b><span>The Claude app’s preview and downloaded files block YouTube. Open Jhapat from its web link in Safari or Chrome:</span>' +
+      '<a href="' + WEB_LINK + '" target="_blank" rel="noopener">' + WEB_LINK.replace(/^https:\/\//, '').replace(/\/$/, '') + '</a>';
+  }
+  b.dataset.kind = kind; b.hidden = false; $('#idle').hidden = true;
+}
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+/* ---------- YouTube player ---------- */
+let player = null, ready = false, queued = null;
+window.onYouTubeIframeAPIReady = () => {
+  player = new YT.Player('yt', {
+    width: '100%', height: '100%',
+    playerVars: { playsinline: 1, rel: 0, origin: location.origin },
+    events: {
+      onReady() {
+        ready = true;
+        const b = $('#blocked'); if (b.dataset.kind === 'net') { b.hidden = true; b.dataset.kind = ''; }
+        if (queued) { const f = queued; queued = null; f(); }
+      },
+      onStateChange: onState,
+      onError: onErr
+    }
+  });
+};
+(function loadApi() {
+  const s = document.createElement('script');
+  s.src = 'https://www.youtube.com/iframe_api';
+  s.onerror = () => showBlocked('net');
+  document.head.appendChild(s);
+  if (location.protocol === 'file:') showBlocked('ref');
+  setTimeout(() => { if (!ready) showBlocked('net'); }, 10000);
+})();
+
+const curVid = s => s.videos[s.vi || 0];
+function now() { try { return ready ? player.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+function state() { try { return ready ? player.getPlayerState() : -1; } catch (e) { return -1; } }
+function isOn(song) { try { return ready && (player.getVideoData() || {}).video_id === curVid(song); } catch (e) { return false; } }
+
+function playSong(song, start, m) {
+  mode = m;
+  clearTimeout(nextTimer); nextTimer = null;
+  const go = () => {
+    $('#idle').hidden = true;
+    player.loadVideoById({ videoId: curVid(song), startSeconds: Math.max(0, start) });
+    watchPlayback(Math.max(0, start));
+  };
+  if (ready) go();
+  else if (!$('#blocked').hidden) toast('YouTube can’t load on this page. Use the web link in the video box.');
+  else { queued = go; toast('Loading the YouTube player…'); }
+}
+/* Phones (iPhone especially) won't start sound until the video itself is tapped once.
+   Watch for real, unmuted playback; if it hasn't started after 2s, say so on the video. */
+function watchPlayback(start) {
+  clearInterval(watch);
+  const hint = $('#tapHint'), t0 = Date.now();
+  let seeked = false;
+  hint.hidden = true;
+  watch = setInterval(() => {
+    const st = state();
+    let muted = false; try { muted = !!player.isMuted(); } catch (e) {}
+    if (st === 1 && !seeked) { seeked = true; if (now() < start - 1.5) { try { player.seekTo(start, true); } catch (e) {} } }
+    if (st === 1 && !muted) { hint.hidden = true; clearInterval(watch); watch = null; return; }
+    if (Date.now() - t0 > 2000 && $('#blocked').hidden) {
+      hint.textContent = st === 1 ? 'Tap the video to turn the sound on.' : 'Tap ▶ on the video to start. Phones need one tap the first time.';
+      hint.hidden = false;
+    }
+    if (Date.now() - t0 > 180000) { clearInterval(watch); watch = null; hint.hidden = true; }
+  }, 400);
+}
+function togglePause() {
+  if (!ready) return;
+  const st = state();
+  if (st === 1 || st === 3) player.pauseVideo(); else player.playVideo();
+}
+function onState(e) {
+  const st = e.data;
+  if (st === 1) keepAwake(true);
+  if (st === 0 && mode === 'game' && S.settings.autoNext) {
+    nextTimer = setTimeout(() => { nextTimer = null; nextRound(); }, 3000);
+    renderNow();
+  }
+}
+function onErr(e) {
+  const code = e.data;
+  const song = mode === 'game' ? (current && byId(current.songId)) : byId(songId);
+  if ((code === 100 || code === 101 || code === 150) && song) {
+    if ((song.vi || 0) < song.videos.length - 1) {
+      song.vi = (song.vi || 0) + 1;
+      if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
+      save();
+      toast('That upload won’t play outside YouTube, so it switched to another upload of ' + song.title + '.');
+      if (mode === 'game') { const p = pickFromSong(song); if (p) { current = p; playSong(song, p.start, 'game'); } else nextRound(); }
+      else playSong(song, 0, 'tag');
+    } else {
+      song.broken = true; save();
+      toast(song.title + ' won’t play outside YouTube. Open it in Songs and paste a different upload.');
+      if (mode === 'game') nextRound();
+    }
+    render(); return;
+  }
+  if (code === 152 || code === 153) { showBlocked('ref'); return; }
+  toast('YouTube couldn’t play that video (error ' + code + ').');
+}
+
+let lock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !lock && 'wakeLock' in navigator) { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); }
+    if (!on && lock) { await lock.release(); lock = null; }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state() === 1) keepAwake(true); });
+
+/* ---------- picking the next drop ---------- */
+const onItems = () => new Set(S.items.filter(i => i.on).map(i => i.id));
+const eligible = () => { const on = onItems(); return S.songs.filter(s => !s.broken && s.tags.some(t => on.has(t.item))); };
+
+function pickFromSong(song) {
+  const on = onItems(), minL = S.settings.minLead, maxL = S.settings.maxLead;
+  const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
+  if (!tags.length) return null;
+  // gap = quiet time before this word since the previous table word in the song
+  const all = tags.map((t, i) => ({ tag: t, gap: i ? t.t - tags[i - 1].t : t.t }));
+  let cands = all.filter(c => c.gap >= minL + 0.4);
+  if (!cands.length) cands = all;
+  const its = [...new Set(cands.map(c => c.tag.item))];
+  const it = its[Math.floor(Math.random() * its.length)];
+  const pool = cands.filter(c => c.tag.item === it);
+  const c = pool[Math.floor(Math.random() * pool.length)];
+  const room = c.gap - 0.4;
+  const lead = room >= minL ? minL + Math.random() * Math.max(0, Math.min(maxL, room) - minL) : Math.max(1, room);
+  const at = c.tag.t + (song.offset || 0);
+  return { songId: song.id, tag: c.tag, start: Math.max(0, at - lead) };
+}
+function nextRound() {
+  clearTimeout(nextTimer); nextTimer = null;
+  const el = eligible();
+  if (!el.length) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
+  let pool = el.filter(s => !S.played.includes(s.id));
+  if (!pool.length) {
+    S.played = [];
+    pool = el.filter(s => s.id !== S.lastSong);
+    if (!pool.length) pool = el;
+    toast('Every matching song has played. Starting the list again.');
+  }
+  const song = pool[Math.floor(Math.random() * pool.length)];
+  current = pickFromSong(song); revealed = false;
+  S.played.push(song.id); S.lastSong = song.id; save();
+  if (tab !== 'play') { tab = 'play'; songId = null; }
+  playSong(song, current.start, 'game');
+  render();
+}
+
+/* ---------- tagging ---------- */
+function tapTag(itemId) {
+  const song = byId(songId); if (!song) return;
+  if (mode !== 'tag' || !isOn(song)) { toast('Press “Play from start” first, then tap along as the words come.'); return; }
+  const tag = { item: itemId, t: Math.round(Math.max(0, now() - S.settings.lag - (song.offset || 0)) * 100) / 100, src: 'tap' };
+  song.tags.push(tag); sortTags(song); lastTap = { songId: song.id, tag };
+  if (song.broken) song.broken = false;
+  save(); render();
+  const b = document.getElementById('tap-' + itemId);
+  if (b) { b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); }
+}
+function startSync() {
+  const song = byId(songId); if (!song || !song.tags.length) return;
+  syncing = { tag: song.tags[0] };
+  playSong(song, 0, 'tag');
+  render();
+}
+function syncTap() {
+  const song = byId(songId); if (!song || !syncing) return;
+  if (!isOn(song)) { toast('The song isn’t playing yet. Wait for it to start, then tap.'); return; }
+  song.offset = Math.round((now() - S.settings.lag - syncing.tag.t) * 100) / 100;
+  song.sync = 'ok'; syncing = null; save();
+  toast('Synced. Every tag in this song moved ' + (song.offset >= 0 ? '+' : '') + song.offset.toFixed(2) + 's.');
+  render();
+}
+
+/* ---------- rendering ---------- */
+function nowHTML() {
+  if (!current) return '<div class="kicker">Ready</div><div class="title">Put the items out and press Start</div>' +
+    '<div class="meta">It drops into a random song a few seconds before one of the words, then lets it play.</div>';
+  const s = byId(current.songId);
+  if (!s) return '<div class="kicker">Ready</div><div class="title">Press Next song</div>';
+  const at = current.tag.t + (s.offset || 0);
+  return '<div class="kicker">Now playing</div><div class="title">' + esc(s.title) + '</div>' +
+    '<div class="meta">' + esc(s.artist || '') + ' · dropped in at ' + fmt(current.start) + '</div>' +
+    (nextTimer ? '<div class="row"><span>Next song in a moment…</span><button class="btn small" data-act="stay">Stay here</button></div>' : '') +
+    '<div class="row">' + (revealed
+      ? '<span class="reveal">Word: <b>' + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
+      : '<button class="btn small" data-act="reveal">Show the word</button>') +
+    '<button class="btn small" data-act="replay">Replay the drop</button></div>';
+}
+function renderPlay() {
+  const el = eligible();
+  const left = el.filter(s => !S.played.includes(s.id)).length;
+  const songsWith = id => S.songs.filter(s => !s.broken && s.tags.some(t => t.item === id)).length;
+  return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
+    '<div class="bigrow"><button class="btn primary big" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
+    '<button class="btn big" data-act="pause" data-pausebtn' + (current ? '' : ' disabled') + '>Pause</button></div>' +
+    '<section class="card"><h2>On the table</h2><p class="hint">Turn on the items you’ve put out. It only drops in before words that are on the table. The number is how many songs have that word tagged.</p>' +
+    '<div class="chips">' + S.items.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span>' + esc(it.name) +
+      '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + songsWith(it.id) + '</span></button>').join('') + '</div>' +
+    '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
+      : '<span>No tagged song matches these items yet. Tag one in Songs.</span>') +
+    (S.played.length ? '<button class="btn ghost small" data-act="reset">Start the list over</button>' : '') + '</p></section>' +
+    '<section class="card"><h2>Drop-in timing</h2><p class="hint">How far before the word the song starts. Each drop picks a random point in this range, so nobody can count it in.</p>' +
+    '<div class="leadrow"><div class="stepper"><button class="mini" data-act="lead" data-arg="min-" aria-label="Shorter minimum">−</button><output>' + S.settings.minLead + '</output>' +
+    '<button class="mini" data-act="lead" data-arg="min+" aria-label="Longer minimum">+</button></div><span>to</span>' +
+    '<div class="stepper"><button class="mini" data-act="lead" data-arg="max-" aria-label="Shorter maximum">−</button><output>' + S.settings.maxLead + '</output>' +
+    '<button class="mini" data-act="lead" data-arg="max+" aria-label="Longer maximum">+</button></div><span>seconds</span></div>' +
+    '<label class="switch"><input type="checkbox" id="autoNext"' + (S.settings.autoNext ? ' checked' : '') + '> Roll into the next song when one ends</label></section>';
+}
+function statusOf(s) {
+  if (s.broken) return ['bad', 'Video blocked'];
+  if (!s.tags.length) return ['warn', 'Needs tags'];
+  if (s.sync === 'check') return ['warn', 'Check sync'];
+  if (s.sync === 'auto') return ['ok', 'Auto-timed'];
+  return ['ok', 'Ready'];
+}
+function itemCounts(s) {
+  const m = {}; s.tags.forEach(t => { m[t.item] = (m[t.item] || 0) + 1; });
+  return Object.keys(m).map(k => '<span class="badge">' + esc(itemName(k)) + ' ' + m[k] + '</span>').join('');
+}
+function renderSongs() {
+  return '<section class="card"><h2>Songs</h2><p class="hint">Open a song to tap its words in, check its timing, or swap the video.</p><ul class="songs">' +
+    S.songs.map(s => { const st = statusOf(s);
+      return '<li><button class="songbtn" data-act="open" data-arg="' + esc(s.id) + '"><span class="t">' + esc(s.title) + '</span><span class="a">' + esc(s.artist || '') +
+        '</span><span class="row"><span class="badge ' + st[0] + '">' + st[1] + '</span>' + itemCounts(s) + '</span></button></li>'; }).join('') + '</ul></section>' +
+    '<section class="card"><h2>Add a song</h2><form class="form" id="addForm">' +
+    '<label for="addLink">YouTube link</label><input id="addLink" type="url" inputmode="url" placeholder="https://youtu.be/…" required>' +
+    '<label for="addTitle">Title</label><input id="addTitle" type="text" placeholder="Leave blank to use the video’s title">' +
+    '<label for="addArtist">Artist</label><input id="addArtist" type="text" placeholder="Optional">' +
+    '<button class="btn primary" type="submit">Add and start tagging</button></form></section>' +
+    '<section class="card"><h2>Backup</h2><p class="hint">Songs and tags are saved in this browser on this phone only. Copy a backup to keep them safe or load them on another phone.</p>' +
+    '<div class="row"><button class="btn" data-act="copy">Copy backup</button><button class="btn" data-act="dl">Download backup</button></div>' +
+    '<label for="importBox" class="sr">Paste a backup</label><textarea id="importBox" rows="3" placeholder="Paste a backup here to load it"></textarea>' +
+    '<button class="btn" data-act="import">Load this backup</button></section>';
+}
+function renderSong() {
+  const s = byId(songId); if (!s) { songId = null; return renderSongs(); }
+  const st = statusOf(s), off = s.offset || 0;
+  const syncText = !s.tags.length ? 'Tag at least one word first, then you can sync.'
+    : s.sync === 'check' ? 'These tags came from a lyrics timing database built on a different upload, so this video may be a few seconds off. Sync once and every tag shifts to match.'
+    : s.sync === 'auto' ? 'Timed from a lyrics database on the same audio as this video, so it should line up. Play a couple of tags to be sure.'
+    : 'Use this if the drops land early or late on this video.';
+  const backups = s.videos.length - 1 - (s.vi || 0);
+  return '<div class="crumb"><button class="btn ghost small" data-act="back">← All songs</button></div>' +
+    '<section class="card"><div class="songhead"><div><h2>' + esc(s.title) + '</h2><div class="a">' + esc(s.artist || '') + '</div></div><span class="badge ' + st[0] + '">' + st[1] + '</span></div>' +
+    '<div class="transport"><button class="btn primary" data-act="tstart">Play from start</button><button class="btn" data-act="ttoggle" data-pausebtn>Pause</button>' +
+    '<button class="btn" data-act="tskip" data-arg="-5">−5s</button><button class="btn" data-act="tskip" data-arg="5">+5s</button><span class="clock" id="clock">0:00.0</span></div>' +
+    '<p class="hint">Tap an item the moment you hear its word. Every tap saves on its own.</p>' +
+    '<div class="tapgrid">' + S.items.map(it => '<button class="tap" data-act="tap" data-arg="' + esc(it.id) + '" id="tap-' + esc(it.id) + '">' + esc(it.name) +
+      '<small lang="ne">' + esc(it.dev || '') + '</small></button>').join('') + '</div>' +
+    '<div class="row between"><button class="btn small" data-act="undo"' + (lastTap && lastTap.songId === s.id ? '' : ' disabled') + '>Undo last tap</button>' +
+    '<div class="stepper"><span class="lbl">Tap delay</span><button class="mini" data-act="lag" data-arg="-" aria-label="Less delay">−</button><output>' + S.settings.lag.toFixed(2) +
+    's</output><button class="mini" data-act="lag" data-arg="+" aria-label="More delay">+</button></div></div></section>' +
+    '<section class="card"><h2>Sync</h2><p class="hint">' + syncText + '</p>' +
+    (syncing
+      ? '<p class="hint">Playing from the start. Tap the big button the first time you hear <b>' + esc(itemName(syncing.tag.item)) + '</b>.</p>' +
+        '<button class="btn primary big wide" data-act="synctap">Heard “' + esc(itemName(syncing.tag.item)) + '”</button>' +
+        '<div class="row" style="margin-top:8px"><button class="btn ghost small" data-act="synccancel">Cancel</button></div>'
+      : '<div class="row"><button class="btn" data-act="sync"' + (s.tags.length ? '' : ' disabled') + '>Tap-sync</button>' +
+        '<div class="stepper"><span class="lbl">Shift</span><button class="mini" data-act="off" data-arg="-1" aria-label="One second earlier">−1</button>' +
+        '<button class="mini" data-act="off" data-arg="-0.25" aria-label="Quarter second earlier">−¼</button><output>' + (off >= 0 ? '+' : '') + off.toFixed(2) + 's</output>' +
+        '<button class="mini" data-act="off" data-arg="0.25" aria-label="Quarter second later">+¼</button><button class="mini" data-act="off" data-arg="1" aria-label="One second later">+1</button></div></div>') +
+    '</section>' +
+    '<section class="card"><h2>Tags<span class="count">' + s.tags.length + '</span></h2>' +
+    (s.tags.length ? '<ol class="tags">' + s.tags.map((t, i) => '<li class="tagrow"><span class="time">' + fmt(t.t + off) + '</span><span>' + esc(itemName(t.item)) +
+      (t.src === 'auto' ? ' <span class="badge">auto</span>' : '') + '</span><span class="acts">' +
+      '<button class="mini" data-act="ttest" data-arg="' + i + '" aria-label="Play from just before this tag">▶</button>' +
+      '<button class="mini" data-act="tnudge" data-arg="' + i + ':-0.25" aria-label="Move earlier">−¼</button>' +
+      '<button class="mini" data-act="tnudge" data-arg="' + i + ':0.25" aria-label="Move later">+¼</button>' +
+      '<button class="mini" data-act="tdel" data-arg="' + i + '" aria-label="Delete tag">✕</button></span></li>').join('') + '</ol>'
+      : '<p class="hint">No tags yet. Press Play from start and tap along.</p>') + '</section>' +
+    '<section class="card"><h2>Video</h2><p class="hint">Playing <a href="https://youtu.be/' + esc(curVid(s)) + '" target="_blank" rel="noopener">youtu.be/' + esc(curVid(s)) + '</a>' +
+    (backups > 0 ? ' · ' + backups + ' backup upload' + (backups === 1 ? '' : 's') + ' if this one won’t play' : '') + '</p>' +
+    '<form class="form" id="vidForm"><label for="vidLink">Use a different upload</label><input id="vidLink" type="url" inputmode="url" placeholder="Paste a YouTube link">' +
+    '<button class="btn" type="submit">Switch video</button></form>' +
+    '<p class="hint small">Switching keeps the tags. Sync again afterwards, since uploads often start at different points.</p>' +
+    '<button class="btn danger" data-act="delsong">Delete this song</button></section>';
+}
+function renderItems() {
+  return '<section class="card"><h2>Items</h2><p class="hint">“Counts as” is your house rule for which sung words count for each item. Turn items on when they’re on the table.</p><ul class="itemlist">' +
+    S.items.map(it => {
+      const n = S.songs.filter(s => s.tags.some(t => t.item === it.id)).length;
+      const tg = S.songs.reduce((a, s) => a + s.tags.filter(t => t.item === it.id).length, 0);
+      return '<li class="itemrow"><div class="ihead"><div class="iname">' + esc(it.name) + ' <span class="d" lang="ne">' + esc(it.dev || '') + '</span></div>' +
+        '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '">' + (it.on ? 'On the table' : 'Off') + '</button>' +
+        '<button class="mini" data-act="delitem" data-arg="' + esc(it.id) + '" aria-label="Delete ' + esc(it.name) + '">✕</button></div>' +
+        '<label class="lbl" for="w-' + esc(it.id) + '">Counts as</label><input type="text" id="w-' + esc(it.id) + '" data-words="' + esc(it.id) + '" value="' + esc(it.words || '') + '">' +
+        '<div class="meta">' + n + ' song' + (n === 1 ? '' : 's') + ' · ' + tg + ' tag' + (tg === 1 ? '' : 's') + '</div></li>';
+    }).join('') + '</ul></section>' +
+    '<section class="card"><h2>Add an item</h2><form class="form" id="itemForm">' +
+    '<label for="iName">Name</label><input id="iName" type="text" placeholder="e.g. Rumal" required>' +
+    '<label for="iDev">In Devanagari</label><input id="iDev" type="text" lang="ne" placeholder="रुमाल (optional)">' +
+    '<label for="iWords">Counts as</label><input id="iWords" type="text" placeholder="rumal, rumalai">' +
+    '<button class="btn primary" type="submit">Add item</button></form></section>';
+}
+function render() {
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
+  $('#view').innerHTML = tab === 'play' ? renderPlay() : tab === 'items' ? renderItems() : (songId ? renderSong() : renderSongs());
+  tick();
+}
+function renderNow() { const n = document.querySelector('.now'); if (n && tab === 'play') n.innerHTML = nowHTML(); }
+function tick() {
+  const c = document.getElementById('clock'); if (c) c.textContent = fmt(now());
+  const st = state();
+  document.querySelectorAll('[data-pausebtn]').forEach(b => { b.textContent = st === 2 ? 'Resume' : 'Pause'; });
+}
+setInterval(tick, 200);
+
+/* ---------- actions ---------- */
+function parseYT(input) {
+  const s = (input || '').trim();
+  if (/^[\w-]{11}$/.test(s)) return s;
+  try {
+    const u = new URL(s), h = u.hostname.replace(/^(www|m|music)\./, '');
+    if (h === 'youtu.be') return (u.pathname.slice(1).match(/^[\w-]{11}/) || [null])[0];
+    if (/(^|\.)youtube(-nocookie)?\.com$/.test(h)) {
+      const v = u.searchParams.get('v'); if (v && /^[\w-]{11}/.test(v)) return v.slice(0, 11);
+      const m = u.pathname.match(/\/(?:shorts|embed|live|v)\/([\w-]{11})/); if (m) return m[1];
+    }
+  } catch (e) {}
+  return null;
+}
+function backupText() { return JSON.stringify(S); }
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const act = b.dataset.act, arg = b.dataset.arg, song = byId(songId);
+  switch (act) {
+    case 'tab': tab = arg; songId = null; syncing = null; render(); break;
+    case 'next': nextRound(); break;
+    case 'pause': case 'ttoggle': togglePause(); setTimeout(tick, 120); break;
+    case 'reveal': revealed = true; renderNow(); break;
+    case 'replay': if (current && byId(current.songId)) { revealed = false; playSong(byId(current.songId), current.start, 'game'); renderNow(); } break;
+    case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
+    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; save(); render(); } break; }
+    case 'lead': {
+      const st = S.settings;
+      if (arg === 'min-') st.minLead = Math.max(1, st.minLead - 1);
+      if (arg === 'min+') st.minLead = Math.min(st.maxLead, st.minLead + 1);
+      if (arg === 'max-') st.maxLead = Math.max(st.minLead, st.maxLead - 1);
+      if (arg === 'max+') st.maxLead = Math.min(20, st.maxLead + 1);
+      save(); render(); break;
+    }
+    case 'reset': S.played = []; save(); render(); toast('Every song is back in the list.'); break;
+    case 'open': songId = arg; syncing = null; render(); window.scrollTo(0, 0); break;
+    case 'back': songId = null; syncing = null; render(); break;
+    case 'tstart': if (song) { syncing = null; playSong(song, 0, 'tag'); render(); } break;
+    case 'tskip': if (ready && song && isOn(song)) { player.seekTo(Math.max(0, now() + Number(arg)), true); } break;
+    case 'tap': tapTag(arg); break;
+    case 'undo': if (lastTap) { const s2 = byId(lastTap.songId); if (s2) { const i = s2.tags.indexOf(lastTap.tag); if (i > -1) s2.tags.splice(i, 1); save(); } lastTap = null; render(); } break;
+    case 'lag': S.settings.lag = Math.min(1, Math.max(0, Math.round((S.settings.lag + (arg === '+' ? 0.05 : -0.05)) * 100) / 100)); save(); render(); break;
+    case 'sync': startSync(); break;
+    case 'synctap': syncTap(); break;
+    case 'synccancel': syncing = null; render(); break;
+    case 'off': if (song) { song.offset = Math.round(((song.offset || 0) + Number(arg)) * 100) / 100; song.sync = 'ok'; save(); render(); } break;
+    case 'ttest': if (song && song.tags[arg]) { playSong(song, song.tags[arg].t + (song.offset || 0) - 3, 'tag'); } break;
+    case 'tnudge': if (song) { const [i, d] = arg.split(':'); const t = song.tags[i]; if (t) { t.t = Math.max(0, Math.round((t.t + Number(d)) * 100) / 100); t.src = 'tap'; sortTags(song); save(); render(); } } break;
+    case 'tdel': if (song) { song.tags.splice(Number(arg), 1); save(); render(); } break;
+    case 'delsong':
+      if (song && confirm('Delete “' + song.title + '” and its ' + song.tags.length + ' tags?')) {
+        S.songs = S.songs.filter(x => x.id !== song.id); S.played = S.played.filter(x => x !== song.id);
+        if (current && current.songId === song.id) current = null;
+        songId = null; save(); render(); toast('Deleted.');
+      } break;
+    case 'delitem': {
+      const it = itemById(arg); if (!it) break;
+      const n = S.songs.reduce((a, s) => a + s.tags.filter(t => t.item === it.id).length, 0);
+      if (confirm('Delete ' + it.name + (n ? ' and its ' + n + ' tags' : '') + '?')) {
+        S.items = S.items.filter(x => x.id !== it.id);
+        S.songs.forEach(s => { s.tags = s.tags.filter(t => t.item !== it.id); });
+        save(); render();
+      } break;
+    }
+    case 'copy': {
+      const txt = backupText(), box = $('#importBox');
+      try { await navigator.clipboard.writeText(txt); toast('Backup copied. Paste it into Notes or a message to keep it.'); }
+      catch (err) { if (box) { box.value = txt; box.select(); } toast('Copying was blocked, so the backup is in the box below. Select it and copy.'); }
+      break;
+    }
+    case 'dl': {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([backupText()], { type: 'application/json' }));
+      a.download = 'jhapat-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove(); break;
+    }
+    case 'import': {
+      const raw = ($('#importBox') || {}).value || '';
+      try {
+        const d = JSON.parse(raw);
+        if (!d || d.v !== 1 || !Array.isArray(d.songs) || !Array.isArray(d.items)) throw new Error('shape');
+        if (!confirm('Replace everything here with this backup (' + d.songs.length + ' songs)?')) break;
+        S = upgrade(d); S.songs.forEach(sortTags); current = null; songId = null; save(); render(); toast('Backup loaded.');
+      } catch (err) { toast('That isn’t a Jhapat backup. Paste the whole text you copied.'); }
+      break;
+    }
+  }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'autoNext') { S.settings.autoNext = e.target.checked; save(); }
+  const w = e.target.dataset && e.target.dataset.words;
+  if (w) { const it = itemById(w); if (it) { it.words = e.target.value.trim(); save(); toast('Saved.'); } }
+});
+
+document.addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === 'addForm') {
+    const link = $('#addLink').value, vid = parseYT(link);
+    if (!vid) { toast('That doesn’t look like a YouTube link. Copy it from the Share button on the video.'); return; }
+    const title = $('#addTitle').value.trim(), artist = $('#addArtist').value.trim();
+    const song = { id: 's' + Date.now().toString(36), title: title || 'New song', artist, videos: [vid], vi: 0, offset: 0, sync: 'ok', tags: [] };
+    S.songs.push(song); save(); songId = song.id; render(); window.scrollTo(0, 0);
+    if (!title) {
+      try {
+        const r = await fetch('https://noembed.com/embed?url=' + encodeURIComponent('https://youtu.be/' + vid));
+        const d = await r.json();
+        if (d && d.title) { song.title = d.title; save(); render(); }
+        if (d && d.error) toast('YouTube says: ' + d.error + '. This video may not play here.');
+      } catch (err) {}
+    }
+  }
+  if (f.id === 'vidForm') {
+    const song = byId(songId), vid = parseYT($('#vidLink').value);
+    if (!song) return;
+    if (!vid) { toast('That doesn’t look like a YouTube link.'); return; }
+    song.videos = [vid].concat(song.videos.filter(x => x !== vid)); song.vi = 0; song.broken = false;
+    if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
+    save(); render(); toast('Switched. Press Play from start to try it.');
+  }
+  if (f.id === 'itemForm') {
+    const name = $('#iName').value.trim(); if (!name) return;
+    let id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+    while (itemById(id)) id += '-2';
+    S.items.push({ id, name, dev: $('#iDev').value.trim(), words: $('#iWords').value.trim(), on: true });
+    save(); render(); toast(name + ' added and turned on. Tag it in your songs.');
+  }
+});
+
+render();
+})();
+</script>
+</body>
+</html>

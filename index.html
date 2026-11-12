@@ -63,7 +63,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .ytbox.front{z-index:2}
 .ytbox>*{position:absolute;inset:0;width:100%;height:100%;border:0}
 .stage.small .screen{width:356px;max-width:100%;height:200px;margin-inline:auto}
-.screen .idle{position:absolute;inset:0;z-index:3;display:grid;place-items:center;color:#cfc7e2;font:600 15px/1.4 var(--body);text-align:center;padding:16px;pointer-events:none}
+.screen .idle{position:absolute;inset:0;z-index:3;background:#000;display:grid;place-items:center;color:#cfc7e2;font:600 15px/1.4 var(--body);text-align:center;padding:16px;pointer-events:none}
 #tapHint{position:absolute;z-index:4;left:8px;right:8px;top:8px;background:#ffb000;color:#1d1406;font:700 15px/1.3 var(--body);padding:10px 12px;border-radius:10px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #blocked{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:18px;background:#120e1f;color:#f2eef9;font:600 15px/1.4 var(--body);text-align:center}
 #blocked b{font:800 21px/1.15 var(--display)}
@@ -394,10 +394,13 @@ function watchPlayback(start, fromSwap) {
       return;
     }
     const waited = Date.now() - t0;
-    // Buffering (3) is normal for a few seconds, so only call it stuck after 7s.
-    if ($('#blocked').hidden && ((waited > 2000 && st !== 3) || waited > 7000)) {
+    // Buffering (3) is normal for a few seconds, so only call it stuck after 7s. Computers autoplay,
+    // but YouTube can sit unstarted for a while there, so they get longer before the tap hint.
+    const quick = st === 1 || appleTouch ? 2000 : 6000;
+    if ($('#blocked').hidden && ((waited > quick && st !== 3) || waited > Math.max(quick, 7000))) {
       if (fromSwap && st !== 3) { swapFailed = true; discardPre(); } // this browser won't give sound to the player behind, so stop using it
-      hint.textContent = st === 1 ? 'Tap the video to turn the sound on.' : 'Tap ▶ on the video to start. Phones need one tap the first time.';
+      hint.textContent = st === 1 ? 'Tap the video to turn the sound on.'
+        : appleTouch ? 'Tap ▶ on the video to start. iPhones need one tap the first time.' : 'Tap ▶ on the video if it doesn’t start.';
       hint.hidden = false;
     } else if (st === 3) hint.hidden = true;
     if (Date.now() - t0 > 180000) { clearInterval(watch); watch = null; hint.hidden = true; }

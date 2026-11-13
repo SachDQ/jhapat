@@ -297,7 +297,7 @@ let pick = null;                                // { line, w, item } the word be
 let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, list: null };
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
-const VERSION = 21; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 22; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -704,9 +704,24 @@ function parseLrc(txt) {
   }
   return out.sort((a, b) => a.t - b.t);
 }
+/* LRCLIB limits how fast one address may ask. Searches are spaced out, and a "too many requests" answer waits and asks
+   again instead of passing for "no lyrics"; if LRCLIB stays busy the search throws { busy: true }. */
+const lrcPace = () => Object.assign({ gap: 700, wait: 3000 }, window.__lrcPace || {}); // tests shorten these
+let lrcLast = 0;
 async function lrcFind(q, n = 12) { // LRCLIB's versions of a song, identical copies folded, timed ones first
-  const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
-  const list = await r.json(), seen = new Set();
+  const { gap, wait } = lrcPace();
+  let list = null;
+  for (let k = 0; ; k++) {
+    const pause = lrcLast + gap - Date.now(); if (pause > 0) await new Promise(res => setTimeout(res, pause));
+    lrcLast = Date.now();
+    const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
+    list = await r.json().catch(() => null);
+    const busy = r.status === 429 || r.status >= 500 || (list && !Array.isArray(list) && (list.statusCode === 429 || list.name === 'RateLimitExceeded'));
+    if (!busy) break;
+    if (k >= 3) throw Object.assign(new Error('LRCLIB is busy'), { busy: true });
+    await new Promise(res => setTimeout(res, wait * (k + 1)));
+  }
+  const seen = new Set();
   return (Array.isArray(list) ? list : []).filter(x => { const k = (x.syncedLyrics || x.plainLyrics || '').slice(0, 200) + '|' + Math.round(x.duration || 0); if (seen.has(k)) return false; seen.add(k); return true; })
     .sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics)).slice(0, n);
 }
@@ -1249,7 +1264,8 @@ function parseImport(text) {
     const parts = line.split('|').map(x => x.trim()), m = parts[0].match(/^(.*?)\s+[-–—]\s+(.*)$/);
     let yt = null, len = null;
     for (const q of parts.slice(1)) { const t = q.match(/^(\d{1,2}):(\d{2})$/); if (t) len = +t[1] * 60 + +t[2]; else if (!yt) yt = parseYT(q); }
-    return { title: (m ? m[1] : parts[0]).trim(), artist: m ? m[2].trim() : '', yt, len, given: len != null, cands: null, pick: 0, dupe: null, done: null };
+    const title = (m ? m[1] : parts[0]).trim(), artist = m ? m[2].trim() : '';
+    return { key: [norm(title), norm(artist), yt, len].join('|'), title, artist, yt, len, given: len != null, cands: null, pick: 0, dupe: null, done: null, failed: false };
   });
 }
 function ytApi() { // the IFrame API itself, without waiting for the song player
@@ -1293,12 +1309,16 @@ function impPlan(r) { // what Add will do with this row
 function renderImport() { if (route.view === 'import' && editor) $('#view').innerHTML = importHTML(); }
 async function importFind() {
   const ta = $('#impText'); if (ta) imp.text = ta.value;
-  const rows = parseImport(imp.text); if (!rows.length) { toast('Paste at least one song.'); return; }
+  const keep = new Map((imp.rows || []).filter(r => r.cands || r.done).map(r => [r.key, r])); // Find again only looks up rows that are new or weren't answered
+  const rows = parseImport(imp.text).map(r => keep.get(r.key) || r); if (!rows.length) { toast('Paste at least one song.'); return; }
   imp.rows = rows; imp.busy = true; renderImport();
   for (const r of rows) {
+    if (r.cands || r.done) continue;
+    r.failed = false;
     r.dupe = songs.find(s => norm(s.title) === norm(r.title) && (!r.artist || !s.artist || norm(s.artist) === norm(r.artist))) || null;
     if (r.dupe) { renderImport(); continue; }
-    try { r.cands = await lrcFind([r.title, r.artist].filter(Boolean).join(' '), 8); } catch (e) { r.cands = []; }
+    try { r.cands = await lrcFind([r.title, r.artist].filter(Boolean).join(' '), 8); }
+    catch (e) { if (!e.busy) r.cands = []; else { r.failed = true; renderImport(); continue; } } // still busy: the row waits for Find again
     if (r.yt && !r.given) r.len = await measure(r.yt);
     const timed = r.cands.filter(x => x.syncedLyrics), len = typeof r.len === 'number' ? r.len : null;
     const near = len ? timed.filter(x => x.duration && Math.abs(x.duration - len) <= 2).sort((a, b) => Math.abs(a.duration - len) - Math.abs(b.duration - len))[0] : null;
@@ -1306,6 +1326,8 @@ async function importFind() {
     renderImport();
   }
   imp.busy = false; renderImport();
+  const failed = rows.filter(r => r.failed).length;
+  if (failed) toast('LRCLIB was busy and didn’t answer for ' + failed + ' song' + (failed === 1 ? '' : 's') + '. Press Find again in a minute: only those are looked up again.');
 }
 async function importAdd() {
   if (!imp.rows || imp.busy) return;
@@ -1338,15 +1360,15 @@ async function importAdd() {
 }
 function importHTML() {
   const rows = imp.rows || [], plans = rows.map(r => (r.cands || r.dupe ? impPlan(r) : null));
-  const count = k => plans.filter(q => q && q.kind === k).length, todo = rows.filter(r => !r.dupe && !r.done && r.cands).length;
+  const count = k => plans.filter(q => q && q.kind === k).length, todo = rows.filter(r => !r.dupe && !r.done && r.cands).length, waiting = rows.filter(r => r.failed).length;
   return '<div class="row" style="padding-block:14px"><a class="btn small ghost" href="#">← Songs</a><h1 class="grow">Add many songs</h1></div>' +
     '<div class="card"><p class="muted">One song per line: <code>Title - Artist | YouTube link</code>. A length after it, like <code>| 3:40</code>, saves measuring the upload. ' +
     'When a song’s timed lyrics are the same length as its upload, every item word is tagged automatically and it goes live as <span class="pill auto">auto</span>. Anything else comes in as a draft.</p>' +
     '<textarea id="impText" rows="7" placeholder="Kaha Hola Ghar - Karma Band | https://youtu.be/jU7L4KDAT6w">' + esc(imp.text) + '</textarea>' +
     '<div class="row"><label class="row small">Add to <select id="impPl" style="width:auto"><option value="">no playlist</option>' + playlists.map(q => '<option value="' + esc(q.id) + '"' + (imp.pl === q.id ? ' selected' : '') + '>' + esc(q.name) + '</option>').join('') + '</select></label>' +
-    '<span class="grow"></span><button class="btn primary" data-act="impfind"' + (imp.busy ? ' disabled' : '') + '>' + (imp.busy && !rows.some(r => r.done) ? 'Looking…' : 'Find lyrics and lengths') + '</button></div></div>' +
+    '<span class="grow"></span><button class="btn primary" data-act="impfind"' + (imp.busy ? ' disabled' : '') + '>' + (imp.busy && !rows.some(r => r.done) ? 'Looking…' : rows.some(r => r.failed) ? 'Find again' : 'Find lyrics and lengths') + '</button></div></div>' +
     (rows.length ? '<div class="results" style="margin-top:12px">' + rows.map((r, k) => impRowHTML(r, k, plans[k])).join('') + '</div>' +
-      '<div class="row" style="margin-top:12px"><span class="grow small muted">' + count('auto') + ' auto · ' + count('draft') + ' draft' + (count('skip') ? ' · ' + count('skip') + ' already here' : '') + '</span>' +
+      '<div class="row" style="margin-top:12px"><span class="grow small muted">' + count('auto') + ' auto · ' + count('draft') + ' draft' + (count('skip') ? ' · ' + count('skip') + ' already here' : '') + (waiting ? ' · ' + waiting + ' waiting for LRCLIB' : '') + '</span>' +
       '<button class="btn primary" data-act="impadd"' + (todo && !imp.busy ? '' : ' disabled') + '>Add ' + todo + ' song' + (todo === 1 ? '' : 's') + '</button></div>' : '');
 }
 function impRowHTML(r, k, plan) {
@@ -1355,6 +1377,7 @@ function impRowHTML(r, k, plan) {
     (r.yt ? 'youtu.be/' + esc(r.yt) + ' · ' + (len ? fmtLen(len) : r.len === 'blocked' ? 'won’t play outside YouTube' : r.cands ? 'length unknown' : 'measuring…') : 'no upload') + '</span>';
   if (r.done) return '<div class="res imp"><span>' + head + '<div class="small okc">Added as ' + esc(r.made.status) + (r.made.tags ? ' with ' + r.made.tags + ' tags' : '') + '.</div></span><a class="btn small" href="#song:' + esc(r.done) + '">Open</a></div>';
   if (r.dupe) return '<div class="res imp"><span>' + head + '<div class="small muted">Already in the studio.</div></span><a class="btn small ghost" href="#song:' + esc(r.dupe.id) + '">Open</a></div>';
+  if (r.failed) return '<div class="res imp"><span>' + head + '<div class="small warnc">LRCLIB was busy and didn’t answer. Press Find again in a minute; this one won’t be added until then.</div></span></div>';
   if (!r.cands) return '<div class="res imp"><span>' + head + '</span><span class="small muted">Looking…</span></div>';
   const opts = r.cands.map(x => {
     const d = len && x.duration ? Math.round(x.duration - len) : null, lit = x.syncedLyrics ? parseLrc(x.syncedLyrics).reduce((n, l) => n + litWords(l.x).length, 0) : 0;

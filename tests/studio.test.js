@@ -84,7 +84,12 @@ function makeDom(db, opts) {
       win.__fakeSb = fakeSb(db, opts);
       win.scrollTo = () => {}; win.HTMLElement.prototype.scrollIntoView = function () {};
       win.CSS = win.CSS || {}; win.CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
-      win.fetch = async url => /version\.json/.test(url) ? { ok: true, json: async () => ({ v: db.ver || 0 }) } : ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
+      win.__lrcPace = { gap: 0, wait: 5 };
+      win.fetch = async url => { if (/lrclib/.test(url)) db.lrcCalls = (db.lrcCalls || 0) + 1;
+        const busy = /lrclib/.test(url) && (db.lrcDown || (/Long Cut/.test(decodeURIComponent(url)) && !db.busyOnce && (db.busyOnce = true)));
+        if (busy) return { ok: false, status: 429, json: async () => ({ statusCode: 429, name: 'RateLimitExceeded' }) };
+        return realFetch(url); };
+      const realFetch = async url => /version\.json/.test(url) ? { ok: true, json: async () => ({ v: db.ver || 0 }) } : ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
         : [{ id: 555, trackName: 'Test Rain', artistName: 'Test Band', albumName: 'Demo', duration: 42, syncedLyrics: LRC, plainLyrics: 'x' }] });
       win.YT = { Player: function (id, o) {
         if (id === 'measure') { // the importer's off-screen player
@@ -307,13 +312,16 @@ function makeDom(db, opts) {
   // add many songs: lengths measured, lyrics of the same length picked, auto-tagged
   w.location.hash = '#import'; await sleep(20);
   const ta = d.querySelector('#impText');
-  ta.value = ['Rain Again - Band A | https://youtu.be/DDDDDDDDDDD', 'Long Cut - Band B | EEEEEEEEEEE', 'Nothing Song - Band C', 'Old Song - Someone | FFFFFFFFFFF | 3:20'].join('\n');
+  ta.value = ['Rain Again - Band A | https://youtu.be/DDDDDDDDDDD', 'Long Cut - Band B | EEEEEEEEEEE', 'Nothing Song - Band C', 'Old Song - Someone | FFFFFFFFFFF | 3:20', 'Busy Song - Band D | GGGGGGGGGGG | 3:00'].join('\n');
+  const busyFetch = w.fetch; w.fetch = async url => (/Busy Song/.test(decodeURIComponent(url)) ? { ok: false, status: 429, json: async () => ({ statusCode: 429 }) } : busyFetch(url)); // LRCLIB stays busy for this one
   ta.dispatchEvent(new w.Event('input', { bubbles: true }));
   const pl = d.querySelector('#impPl'); pl.value = 'party-mix'; pl.dispatchEvent(new w.Event('change', { bubbles: true }));
   click('[data-act="impfind"]'); await sleep(1600);
   const rowsT = [...d.querySelectorAll('.res.imp')].map(r => r.textContent);
-  ok(rowsT.length === 4 && rowsT[0].includes('0:42') && rowsT[0].includes('same length') && rowsT[0].includes('goes live as auto'), 'a measured upload with lyrics of the same length will go live as auto');
-  ok(rowsT[1].includes('1:39') && rowsT[1].includes('differ by 57 s'), 'one whose lengths differ comes in as a draft to sync');
+  ok(rowsT.length === 5 && rowsT[0].includes('0:42') && rowsT[0].includes('same length') && rowsT[0].includes('goes live as auto'), 'a measured upload with lyrics of the same length will go live as auto');
+  ok(rowsT[1].includes('1:39') && rowsT[1].includes('differ by 57 s') && db.busyOnce, 'one whose lengths differ comes in as a draft to sync (LRCLIB said “too many requests” once, so it waited and asked again)');
+  ok(rowsT[4].includes('LRCLIB was busy') && d.querySelector('[data-act="impadd"]').textContent === 'Add 3 songs' && d.querySelector('[data-act="impfind"]').textContent === 'Find again',
+    'a song LRCLIB stays busy for is marked, left out of Add (not added as a draft), and Find becomes Find again');
   ok(rowsT[2].includes('Not on LRCLIB') && rowsT[2].includes('tap-along'), 'one not on LRCLIB comes in as a draft for tap-along: ' + rowsT[2]);
   ok(rowsT[3].includes('Already in the studio'), 'one already in the studio is skipped');
   click('[data-act="impadd"]'); await sleep(200);
@@ -324,6 +332,11 @@ function makeDom(db, opts) {
   ok(lc.status === 'draft' && db.videos.find(v => v.song_id === 'long-cut').synced === false && ns.status === 'draft' && !db.videos.some(v => v.song_id === 'nothing-song'), 'the others are drafts');
   ok(['rain-again', 'long-cut', 'nothing-song'].every(id => db.playlist_songs.some(x => x.playlist_id === 'party-mix' && x.song_id === id)) && db.songs.filter(s => s.id.startsWith('old')).length === 1,
     'all three join the chosen playlist; nothing is duplicated');
+  ok(!db.songs.some(s => s.id === 'busy-song'), 'the song LRCLIB never answered for wasn’t added');
+  w.fetch = busyFetch; const calls = db.lrcCalls;
+  click('[data-act="impfind"]'); await sleep(300);
+  const again = [...d.querySelectorAll('.res.imp')].map(r => r.textContent);
+  ok(db.lrcCalls === calls + 1 && again[4].includes('differ by 138 s') && again[0].includes('Added as auto'), 'Find again looks up only that song; the added ones stay as they were: ' + (db.lrcCalls - calls) + ' search');
 
   // Auto-tag all songs (Items page): only words without a tag; existing tags stay put
   const before = db.tags.length, kept = JSON.stringify(db.tags.map(t => [t.id, t.t]));

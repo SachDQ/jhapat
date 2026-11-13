@@ -280,6 +280,58 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(d4.querySelector('.tabs').hidden && d4.querySelector('.pool').textContent.includes('Nepali Party Mix'), 'tagging tabs step aside and the playlist is named');
   ok(D4.songs[0].offsets.join(',') === '0,2.5', 'each upload keeps its own offset');
 
+  // 16. Playlist picker: pick a playlist → only its items, with counts → play. Items are remembered per playlist; opened playlists work offline.
+  const IT = [{ id: 'paani', name: 'Paani', dev: 'पानी' }, { id: 'phool', name: 'Phool', dev: 'फूल' }, { id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'chiya', name: 'Chiya', dev: 'चिया' }];
+  const mkSong = (id, tags) => ({ id, title: 'Song ' + id, artist: 'A', status: 'tagged', videos: [{ yt: (id + 'xxxxxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags });
+  const B = {
+    'party-mix': { id: 'party-mix', name: 'Nepali Party Mix', items: IT, songs: [mkSong('p1', [['paani', 30], ['phool', 60]]), mkSong('p2', [['paani', 40], ['maya', 80]])] },
+    'love': { id: 'love', name: 'Love Songs', items: IT, songs: [mkSong('l1', [['maya', 30], ['phool', 50]]), mkSong('l2', [['maya', 45]])] },
+  };
+  const CARDS = [{ id: 'party-mix', name: 'Nepali Party Mix', description: 'The big one', songs: 2, items: { paani: 2, phool: 1, maya: 1 }, sort: 0 },
+    { id: 'love', name: 'Love Songs', description: null, songs: 2, items: { maya: 2, phool: 1 }, sort: 1 },
+    { id: 'empty', name: 'Empty', description: null, songs: 0, items: {}, sort: 2 }];
+  let online = true; const asked = [];
+  const net = async (url, o) => { asked.push(url.replace(/^.*\/rest\/v1\//, '') + (o && o.body ? ' ' + o.body : ''));
+    if (!online) throw new Error('offline');
+    if (/playlist_cards/.test(url)) return { ok: true, json: async () => CARDS };
+    return { ok: true, json: async () => B[JSON.parse(o.body).pid] || null }; };
+  const dom5 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.fetch = net; } });
+  const w5 = dom5.window, d5 = w5.document, st5 = () => JSON.parse(w5.localStorage.getItem('jhapat.v1'));
+  const c5 = sel => { const el = d5.querySelector(sel); if (!el) throw new Error('missing ' + sel); el.dispatchEvent(new w5.MouseEvent('click', { bubbles: true })); };
+  const chips5 = () => [...d5.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg + (b.getAttribute('aria-pressed') === 'true' ? '+' : '-') + b.querySelector('.n').textContent);
+  await sleep(60);
+  ok(asked.some(a => /^playlist_cards\?.*owner=is\.null.*is_public=is\.true/.test(a)), 'asks for the official public playlist cards');
+  const cards5 = [...d5.querySelectorAll('[data-act="pickpl"]')];
+  ok(cards5.length === 2 && d5.body.textContent.includes('Pick a playlist') && !d5.querySelector('[data-act="next"]'), 'first visit: the playlist list comes first (the empty playlist is left out)');
+  ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('Paani 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, item counts and description');
+  c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
+  ok(st5().playlist.id === 'love' && st5().chosen === true && !!d5.querySelector('[data-act="next"]'), 'picking a playlist loads it and opens the Play screen');
+  ok(chips5().join(' ') === 'phool+1 maya-2', 'only the items in that playlist, with how many of its songs have each: ' + chips5().join(' '));
+  ok(d5.querySelector('.plbar').textContent.includes('Love Songs') && !!d5.querySelector('[data-act="lists"]'), 'the Play screen names the playlist and offers Change');
+  c5('[data-act="item"][data-arg="maya"]'); await sleep(10);
+  ok(st5().tables.love.includes('maya') && st5().tables.love.includes('phool') && !st5().tables['party-mix'], 'turning Maya on is remembered for Love Songs only (the party mix that loaded first wasn’t chosen)');
+  c5('[data-act="next"]'); await sleep(20);
+  ok(['l1', 'l2'].includes(st5().lastSong), 'Start plays a song from the chosen playlist');
+  c5('[data-act="lists"]'); await sleep(10);
+  ok(d5.querySelector('[data-act="pickpl"][data-arg="love"]').getAttribute('aria-current') === 'true' && !!d5.querySelector('[data-act="keeppl"]'), 'Change shows the list with the current playlist marked and a way back');
+  c5('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
+  ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani+2 phool+1 maya+1', 'a playlist opened for the first time starts with what was on the table: ' + chips5().join(' '));
+  c5('[data-act="item"][data-arg="paani"]'); await sleep(10);
+  c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
+  ok(chips5().join(' ') === 'phool+1 maya+2', 'back on Love Songs, its own table choices come back');
+  online = false;
+  c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
+  ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani-2 phool+1 maya+1', 'offline: a playlist opened before still loads from the phone, with its table');
+  c5('[data-act="lists"]'); await sleep(10);
+  ok(d5.querySelectorAll('[data-act="pickpl"]').length === 2, 'offline: the playlist list still shows');
+  const keep5 = w5.localStorage.getItem('jhapat.v1');
+  const dom6 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.localStorage.setItem('jhapat.v1', keep5); win.fetch = async () => { throw new Error('offline'); }; } });
+  await sleep(40);
+  const d6 = dom6.window.document;
+  ok(!!d6.querySelector('[data-act="next"]') && d6.querySelector('.plbar').textContent.includes('Nepali Party Mix') && JSON.parse(dom6.window.localStorage.getItem('jhapat.v1')).songs.length === 2,
+    'reopened offline: straight to Play with the last playlist and its songs');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

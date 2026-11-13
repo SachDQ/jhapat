@@ -113,6 +113,15 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .leadrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
 .stepper{display:inline-flex;align-items:center;gap:6px}
 .stepper output{min-width:3ch;text-align:center;font:800 21px/1 var(--display);font-variant-numeric:tabular-nums}
+.plbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.plbar span{min-width:0}
+.lists{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.listbtn{width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:14px;cursor:pointer;display:grid;gap:6px}
+.listbtn .t{font:800 21px/1.15 var(--display)}
+.listbtn .a{color:var(--muted);font-size:15px}
+.listbtn .row{gap:6px}
+.listbtn[aria-current="true"]{border-color:var(--gold-fill);box-shadow:inset 0 0 0 1px var(--gold-fill)}
+.listbtn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .switch{display:flex;align-items:center;gap:10px;font-weight:600}
 .switch input{width:22px;height:22px;accent-color:var(--gold-fill)}
 
@@ -291,6 +300,7 @@ let tab = 'play', songId = null;
 let current = null;          // the drop that is playing: {songId, tag, start}
 let mode = null;             // 'game' or 'tag': who loaded the video
 let revealed = false, syncing = null, lastTap = null;
+let picking = false, loadingList = null;   // the playlist list is open / which playlist is loading
 let nextTimer = null, toastTimer = null, watch = null, skipRun = 0;
 const WEB_LINK = 'https://sachdq.github.io/jhapat/';
 const onSite = /(^|\.)(github\.io|pages\.dev)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
@@ -594,15 +604,39 @@ function nowHTML() {
       : '<button class="btn small" data-act="reveal">Show the word</button>') +
     '<button class="btn small" data-act="replay">Replay the drop</button></div>';
 }
+/* Official playlists to choose from (cached, so the list also shows offline). */
+const lists = () => (S.cards || []).filter(c => c.songs > 0);
+const needPick = () => S.source === 'db' && !S.chosen && !current && lists().length > 1; // never over a song that's playing
+function renderPicker() {
+  const active = S.playlist && S.playlist.id;
+  return '<section class="card"><div class="kicker">Step 1 of 2</div><h2>Pick a playlist</h2>' +
+    '<p class="hint">Each one is a set of songs with their words tagged. Next you turn on the items you’ve put out, then press Start.</p>' +
+    '<ul class="lists">' + lists().map(c => {
+      const its = Object.keys(c.items || {}).filter(k => c.items[k] > 0).sort((a, b) => c.items[b] - c.items[a]);
+      return '<li><button class="listbtn" data-act="pickpl" data-arg="' + esc(c.id) + '" aria-current="' + (S.chosen && c.id === active) + '">' +
+        '<span class="t">' + esc(c.name) + (loadingList === c.id ? ' <span class="badge">Loading…</span>' : '') + '</span>' +
+        (c.description ? '<span class="a">' + esc(c.description) + '</span>' : '') +
+        '<span class="row"><span class="badge ok">' + c.songs + ' song' + (c.songs === 1 ? '' : 's') + '</span>' +
+        its.map(k => '<span class="badge">' + esc(itemName(k)) + ' ' + c.items[k] + '</span>').join('') + '</span></button></li>';
+    }).join('') + '</ul>' +
+    (S.chosen ? '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="keeppl">Keep ' + esc((S.playlist || {}).name || 'this playlist') + '</button></div>' : '') +
+    '</section>';
+}
 function renderPlay() {
+  if (picking || needPick()) return renderPicker();
   const el = eligible();
   const left = el.filter(s => !S.played.includes(s.id)).length;
   const songsWith = id => S.songs.filter(s => !s.broken && s.tags.some(t => t.item === id)).length;
+  const fromDb = S.source === 'db';
+  const shown = fromDb ? S.items.filter(it => songsWith(it.id) > 0) : S.items; // a playlist only offers the items its songs have
   return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
     '<div class="bigrow"><button class="btn primary big" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
     '<button class="btn big" data-act="pause" data-pausebtn' + (current ? '' : ' disabled') + '>Pause</button></div>' +
-    '<section class="card"><h2>On the table</h2><p class="hint">Turn on the items you’ve put out. It only drops in before words that are on the table. The number is how many songs have that word tagged.</p>' +
-    '<div class="chips">' + S.items.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span>' + esc(it.name) +
+    '<section class="card" id="table">' +
+    (fromDb && S.playlist ? '<div class="plbar"><span>Playlist: <b>' + esc(S.playlist.name) + '</b> · ' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span>' +
+      (lists().length > 1 ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</div>' : '') +
+    '<h2>On the table</h2><p class="hint">Turn on the items you’ve put out. It only drops in before words that are on the table. The number is how many songs have that word tagged.</p>' +
+    '<div class="chips">' + shown.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span>' + esc(it.name) +
       '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + songsWith(it.id) + '</span></button>').join('') + '</div>' +
     '<p class="pool">' + (el.length ? '<span>' + (S.source === 'db' && S.playlist ? esc(S.playlist.name) + ': ' : '') + '<b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
       : '<span>No tagged song matches these items yet. Tag one in Songs.</span>') +
@@ -749,7 +783,10 @@ document.addEventListener('click', async e => {
     case 'reveal': revealed = true; renderNow(); break;
     case 'replay': if (current && byId(current.songId)) { revealed = false; playSong(byId(current.songId), current.start, 'game'); renderNow(); } break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
-    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; save(); render(); schedulePreload(1200, true); } break; }
+    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; rememberTable(); save(); render(); schedulePreload(1200, true); } break; }
+    case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
+    case 'keeppl': picking = false; render(); break;
+    case 'pickpl': await pickPlaylist(arg); break;
     case 'lead': {
       const st = S.settings;
       if (arg === 'min-') st.minLead = Math.max(1, st.minLead - 1);
@@ -867,30 +904,62 @@ function atVideo(song) { // a song moved to its next upload: use that upload's o
   if (song.offsets) { song.offset = song.offsets[song.vi || 0] || 0; song.sync = (song.synced || [])[song.vi || 0] ? 'ok' : 'check'; }
   else if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
 }
+/* The items someone turns on or off are remembered for that playlist (only real choices, not the defaults it opened with). */
+function rememberTable() {
+  if (S.source !== 'db' || !S.playlist) return;
+  (S.tables = S.tables || {})[S.playlist.id] = S.items.filter(i => i.on).map(i => i.id);
+}
 function applyBundle(b) {
-  const wasOn = new Map(S.items.map(i => [i.id, i.on]));
-  S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', words: '', note: i.note || '', on: wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id) }));
+  const wasOn = new Map(S.items.map(i => [i.id, i.on])); // a playlist opened for the first time starts with what's on the table now
+  const mem = (S.tables || {})[b.id];
+  S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', words: '', note: i.note || '',
+    on: mem ? mem.includes(i.id) : wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id) }));
   S.songs = b.songs.filter(s => s.videos && s.videos.length).map(s => ({
     id: s.id, title: s.title, artist: s.artist || '', vi: 0,
     videos: s.videos.map(v => v.yt), offsets: s.videos.map(v => Number(v.offset) || 0), synced: s.videos.map(v => !!v.synced),
     offset: Number(s.videos[0].offset) || 0, sync: s.videos[0].synced ? 'ok' : 'check',
     tags: (s.tags || []).map(([item, t]) => ({ item, t: Number(t), src: 'db' })).sort((x, y) => x.t - y.t) }));
   S.source = 'db'; S.playlist = { id: b.id, name: b.name }; S.dbAt = Date.now();
+  (S.bundles = S.bundles || {})[b.id] = b; // every playlist opened here stays on the phone for parties without signal
   S.played = S.played.filter(id => S.songs.some(s => s.id === id));
   save(); render(); schedulePreload(1200, true);
 }
+const goodBundle = b => !!b && Array.isArray(b.songs) && b.songs.length > 0 && Array.isArray(b.items);
+async function dbGet(path, body) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = setTimeout(() => ctl && ctl.abort(), 8000);
+  try {
+    const r = await fetch(DB.rest + path, body
+      ? { method: 'POST', signal: ctl ? ctl.signal : undefined, headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : { signal: ctl ? ctl.signal : undefined, headers: { apikey: DB.key } });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; } // offline or blocked: keep what this phone already has
+  finally { clearTimeout(timer); }
+}
+const bundleOf = pid => dbGet('rpc/playlist_bundle', { pid });
 async function loadDb() {
   if (typeof fetch !== 'function') return;
-  try {
-    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = setTimeout(() => ctl && ctl.abort(), 8000);
-    const r = await fetch(DB.rest + 'rpc/playlist_bundle', { method: 'POST', signal: ctl ? ctl.signal : undefined,
-      headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ pid: DB.playlist }) });
-    clearTimeout(timer);
-    if (!r.ok) return;
-    const b = await r.json();
-    if (b && Array.isArray(b.songs) && b.songs.length && Array.isArray(b.items)) applyBundle(b);
-  } catch (e) { /* offline or blocked: keep what this phone already has */ }
+  const pid = (S.source === 'db' && S.playlist && S.playlist.id) || DB.playlist;
+  const [cards, b] = await Promise.all([
+    dbGet('playlist_cards?select=id,name,description,songs,items,sort&owner=is.null&is_public=is.true&order=sort,name'), bundleOf(pid)]);
+  if (Array.isArray(cards)) S.cards = cards.map(c => ({ id: c.id, name: c.name, description: c.description || '', songs: Number(c.songs) || 0, items: c.items || {} }));
+  if (goodBundle(b)) return applyBundle(b);
+  if (pid !== DB.playlist && Array.isArray(cards) && !cards.some(c => c.id === pid)) { // that playlist is gone: back to the party mix
+    const d = await bundleOf(DB.playlist); if (goodBundle(d)) return applyBundle(d);
+  }
+  save(); render();
+}
+async function pickPlaylist(pid) {
+  if (loadingList) return;
+  if (S.source === 'db' && S.playlist && S.playlist.id === pid) { S.chosen = true; picking = false; save(); render(); toast('Turn on the items you’ve put out, then press Start.'); return; }
+  loadingList = pid; render();
+  let b = await bundleOf(pid);
+  if (!goodBundle(b)) b = (S.bundles || {})[pid] || null; // offline: the copy from the last time it was opened here
+  loadingList = null;
+  if (!goodBundle(b)) { render(); toast('Couldn’t load that playlist. Check the internet connection and try again.'); return; }
+  discardPre(); S.chosen = true; picking = false;
+  applyBundle(b);
+  toast(b.name + ': turn on the items you’ve put out, then press Start.');
 }
 
 applySmall();

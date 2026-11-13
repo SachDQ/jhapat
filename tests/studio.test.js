@@ -34,7 +34,7 @@ function fakeSb(db, opts) {
       insert(rows) { st.op = 'insert'; st.rows = Array.isArray(rows) ? rows : [rows]; return api; },
       update(p) { st.op = 'update'; st.patch = p; return api; },
       delete() { st.op = 'delete'; return api; },
-      then(res, rej) { return Promise.resolve().then(run).then(res, rej); },
+      then(res, rej) { return (db.delay ? new Promise(r => setTimeout(r, db.delay)) : Promise.resolve()).then(run).then(res, rej); },
     };
     const match = r => st.filters.every(f => f(r));
     const embed = r => {
@@ -193,7 +193,11 @@ function makeDom(db, opts) {
   ok(db.songs.find(s => s.id === 'test-rain').status === 'checked', 'Mark checked saves');
 
   // old song: attach lyrics → its estimate tag lands on a line
-  w.location.hash = '#song:old'; await sleep(80);
+  db.delay = 60; w.location.hash = '#song:old'; await sleep(20); // a slow connection: the next song is still opening
+  ok(d.querySelector('#sidePanel').innerHTML === '' && !d.querySelector('[data-pl]') && d.querySelector('#view').textContent.includes('Opening'),
+    'while the next song opens, the last song’s panel is gone (its playlist boxes can’t act on the wrong song)');
+  await sleep(150); db.delay = 0;
+  ok(d.querySelector('[data-pl="party-mix"]') && d.querySelector('[data-pl="party-mix"]').checked && d.querySelector('h1').textContent === 'Old Song', 'then the new song’s own panel shows');
   ok(!!d.querySelector('#lrcForm'), 'a song without lyrics offers the LRCLIB search');
   submit('#lrcForm'); await sleep(30); click('[data-act="uselrc"][data-arg="555"]'); await sleep(60);
   ok(db.songs.find(s => s.id === 'old').lines.length === 8 && !!d.querySelector('.lines'), 'lyrics attach to an existing song');

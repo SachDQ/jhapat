@@ -527,7 +527,11 @@ async function render() {
   $('#layout').classList.toggle('solo', solo); $('#side').hidden = solo;
   if (!editor) { $('#view').innerHTML = user && editor === null ? '<p class="muted">Checking your account…</p>' : gateHTML(); return; }
   if (route.view === 'song') {
-    if (!cur || cur.s.id !== route.id) { $('#view').innerHTML = '<p class="muted">Opening…</p>'; await openSong(route.id); if (!cur || cur.s.id !== route.id) return; }
+    if (!cur || cur.s.id !== route.id) {
+      // the last song's panel would otherwise stay clickable and act on that song until this one opens
+      $('#view').innerHTML = '<p class="muted">Opening…</p>'; $('#sidePanel').innerHTML = ''; cur = null; pick = null; armed = null;
+      await openSong(route.id); if (!cur || cur.s.id !== route.id) return;
+    }
     renderSong(); return;
   }
   if (cur) { try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; }

@@ -910,10 +910,12 @@ function rememberTable() {
   (S.tables = S.tables || {})[S.playlist.id] = S.items.filter(i => i.on).map(i => i.id);
 }
 function applyBundle(b) {
-  const wasOn = new Map(S.items.map(i => [i.id, i.on])); // a playlist opened for the first time starts with what's on the table now
-  const mem = (S.tables || {})[b.id];
+  // A playlist opened for the first time starts with what's on the table now, plus any item all of its songs have (a Maya Round opens with Maya on).
+  const wasOn = new Map(S.items.map(i => [i.id, i.on]));
+  const mem = (S.tables || {})[b.id], playable = b.songs.filter(s => s.videos && s.videos.length);
+  const inAll = id => playable.length > 0 && playable.every(s => (s.tags || []).some(t => t[0] === id));
   S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', words: '', note: i.note || '',
-    on: mem ? mem.includes(i.id) : wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id) }));
+    on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id)) }));
   S.songs = b.songs.filter(s => s.videos && s.videos.length).map(s => ({
     id: s.id, title: s.title, artist: s.artist || '', vi: 0,
     videos: s.videos.map(v => v.yt), offsets: s.videos.map(v => Number(v.offset) || 0), synced: s.videos.map(v => !!v.synced),

@@ -302,7 +302,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 23; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 24; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -688,7 +688,7 @@ const timeNext = () => timing.done.filter(d => d.kind !== 'again').length; // th
 function timeStart() {
   const v = cur.videos[vi];
   if (!v) { toast('Add an upload first.'); return; }
-  timing = { texts: plainLines(), done: [] };
+  timing = { texts: cur.lines.length ? cur.lines.filter(l => l.x).map(l => l.x) : plainLines(), done: [], again: cur.lines.length > 0 };
   withYt(() => { try { if (videoOn()) { yt.seekTo(0, true); yt.playVideo(); } else yt.loadVideoById({ videoId: v.yt }); } catch (e) {} });
   renderSong();
 }
@@ -709,6 +709,12 @@ async function timeSave() {
   const lines = timing.done.filter(d => d.kind !== 'skip').map(d => ({ t: d.t, x: timing.texts[d.i] })).sort((a, b) => a.t - b.t);
   if (!lines.length) { toast('Tap at least one line first.'); return; }
   const v = cur.videos[vi]; let d = 0; try { d = Math.round(yt.getDuration() || 0); } catch (e) {}
+  if (timing.again) { // re-timed: estimates from the old timing go, tags timed by hand stay; other uploads need a new sync
+    const { error } = await sb.from('tags').delete().eq('song_id', cur.s.id).eq('source', 'estimate').eq('checked', false);
+    if (error) return fail('Couldn’t clear the old estimates', error);
+    cur.tags = cur.tags.filter(t => !(t.source === 'estimate' && !t.checked));
+    for (const o of cur.videos) if (o !== v && o.synced) await updateVideo(o, { synced: false });
+  }
   if (!(await updateSong({ lines, duration: d || (v && v.duration) || cur.s.duration || null }))) return;
   timing = null; prepLines();
   let n = 0; try { n = await autoTag(cur); } catch (e) { fail('Couldn’t tag the item words', e); }
@@ -996,6 +1002,7 @@ function songHTML() {
       : '<button class="btn small ghost danger" data-act="askdel">Delete song</button>') + '</div>' +
     '<div class="card"><div class="row"><div class="grow"><h1>' + esc(s.title) + '</h1><p class="muted">' + esc(s.artist || '') + (s.duration ? ' · lyrics timed to a ' + fmt(s.duration).replace(/\.\d$/, '') + ' recording' : '') + '</p></div><span class="pill ' + s.status + '">' + s.status + '</span></div>' +
     (s.notes ? '<p class="small muted">' + esc(s.notes) + '</p>' : '') + '</div>';
+  if (timing && timing.again) return h + plainHTML();
   if (!cur.lines.length) {
     h += '<div class="card"><h2>Timed lyrics</h2><p class="muted">Find this song on LRCLIB so the item words light up with their times.</p>' +
       '<form id="lrcForm" class="row"><input class="grow" type="search" id="lrcQ" value="' + esc(lrc.q) + '"><button class="btn primary">Search LRCLIB</button></form>' +
@@ -1011,6 +1018,8 @@ function songHTML() {
   const miss = missingRows(cur), fresh = {}; miss.forEach(r => { fresh[r.item_id] = (fresh[r.item_id] || 0) + 1; });
   h += '<div class="card"><div class="row"><h2 class="grow">Lyrics</h2><label class="row small"><input type="checkbox" id="onlyLit"' + (ui.onlyLit ? ' checked' : '') + '> Only lines with item words</label>' +
     '<label class="row small"><input type="checkbox" id="showAll"' + (showAll ? ' checked' : '') + '> Show repeats</label></div>' +
+    (s.status === 'draft' || !cur.videos.some(v => v.synced) ? '<div class="newbar"><span>Lyrics from another recording? Sync the upload, or if they drift, <b>time the lines again</b> on this upload: tap as each line starts.</span>' +
+      '<button class="btn small" data-act="tstart"' + (cur.videos.length ? '' : ' disabled') + '>Time the lines again</button></div>' : '') +
     '<p class="small muted">Click a lit word to tag it in every repeat, then <b>Hear</b> and <b>Tap</b>. <span class="kbd">↑</span> <span class="kbd">↓</span> move between lit lines.</p>' +
     '<div class="keyrow" aria-hidden="true"><span><span class="wk">word</span> not tagged yet</span><span><span class="wk auto">word</span> estimated</span><span><span class="wk tagged">word</span> timed or checked by ear</span></div>' +
     (miss.length ? '<div class="newbar"><span><b>' + miss.length + ' item word' + (miss.length === 1 ? '' : 's') + ' not tagged yet</b> (every repeat counted). Auto-tag times each one from its place in the line.</span>' +
@@ -1047,8 +1056,8 @@ function songHTML() {
 }
 /* Untimed lyrics (LRCLIB had no timings): shown with the item words marked. Time the lines turns them into timed lyrics. */
 function plainHTML() {
-  if (!cur.s.plain_lyrics) return '';
-  const texts = plainLines(), at = new Map(), skipped = new Set(), k = timing ? timeNext() : -1;
+  if (!cur.s.plain_lyrics && !timing) return '';
+  const texts = timing ? timing.texts : plainLines(), at = new Map(), skipped = new Set(), k = timing ? timeNext() : -1;
   if (timing) timing.done.forEach(d => { if (d.kind === 'skip') skipped.add(d.i); else if (!at.has(d.i)) at.set(d.i, d.t); });
   let n = 0, lit = 0;
   const rows = texts.map((l, i) => {
@@ -1056,7 +1065,7 @@ function plainHTML() {
     const cls = i === k ? 'cur' : skipped.has(i) ? 'skip' : at.has(i) ? 'done' : m.n ? '' : 'dim';
     return '<div' + (cls ? ' class="' + cls + '"' : '') + '>' + (at.has(i) ? '<span class="tt">' + fmt(at.get(i)) + '</span>' : '') + m.html + '</div>';
   }).join('');
-  return '<div class="card"><h2>Lyrics, untimed</h2><p class="small muted">' + n + ' item word' + (n === 1 ? '' : 's') + ' on ' + lit + ' line' + (lit === 1 ? '' : 's') + '. ' +
+  return '<div class="card"><h2>' + (timing && timing.again ? 'Lyrics, timing again' : 'Lyrics, untimed') + '</h2><p class="small muted">' + n + ' item word' + (n === 1 ? '' : 's') + ' on ' + lit + ' line' + (lit === 1 ? '' : 's') + '. ' +
     (timing ? 'Tap <b>Line starts now</b> (or <span class="kbd">T</span>) as each line starts; <b>Again</b> when a line is sung once more than it’s written.'
       : 'Time the lines: play the upload and tap as each of the ' + texts.length + ' lines starts. Every item word, choruses too, then gets tagged from those times.') + '</p>' +
     (timing ? '' : '<div class="row"><button class="btn primary" data-act="tstart"' + (cur.videos.length ? '' : ' disabled title="Add an upload first"') + '>Time the lines</button></div>') +

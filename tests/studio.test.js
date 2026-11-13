@@ -400,6 +400,19 @@ function makeDom(db, opts) {
   ok(d.querySelectorAll('.songrow').length === 6, 'Show every song clears the filters');
 
   // a long item list shows twelve, then the rest on request
+  // a draft whose timed lyrics come from another recording: time the lines again on its own upload
+  w.location.hash = '#song:long-cut'; await sleep(80);
+  const oldEst = db.tags.filter(t => t.song_id === 'long-cut').map(t => t.id);
+  ok(oldEst.length === 4 && !!d.querySelector('.newbar [data-act="tstart"]'), 'a draft with timed lyrics offers Time the lines again');
+  click('.newbar [data-act="tstart"]'); await sleep(20);
+  ok(d.body.textContent.includes('Lyrics, timing again') && d.querySelectorAll('#plain > div').length === 7, 'it lists the 7 sung lines (the instrumental gap left out)');
+  for (let k = 0; k < 7; k++) { yt.t = 20.25 + 4 * k; click('[data-act="tline"]'); await sleep(2); }
+  click('[data-act="tsave"]'); await sleep(80);
+  const lc2 = db.songs.find(x => x.id === 'long-cut'), lt = db.tags.filter(t => t.song_id === 'long-cut');
+  ok(lc2.lines.length === 7 && lc2.lines[0].t === 20 && lc2.lines[6].t === 44 && lt.length === 4 && !lt.some(t => oldEst.includes(t.id)) && lt.find(t => t.item_id === 'chithi').t >= 20,
+    'the new times replace the old lines, and the old estimates give way to new ones: ' + lt.map(t => t.item_id + '@' + t.t).join(', '));
+  ok(lc2.status === 'auto' && db.videos.find(v => v.song_id === 'long-cut').synced === true, 'the draft goes live as auto on that upload');
+
   { const db3 = makeDb(); for (let k = 0; k < 18; k++) db3.items.push({ id: 'x' + k, name: 'Thing ' + k, dev: '', words: ['thing' + k], note: null, sort: 2 + k });
     const { w: w3, d: d3 } = makeDom(db3, { signedIn: true, editor: true }); await sleep(50);
     w3.location.hash = '#items'; await sleep(20);

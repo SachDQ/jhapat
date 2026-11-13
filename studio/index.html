@@ -159,6 +159,10 @@ aside.side{position:sticky;top:8px;display:grid;gap:12px;max-height:calc(100vh -
 .plain{max-height:40vh;overflow:auto;display:grid;gap:2px;font-size:17px;line-height:1.55;padding-right:4px}
 .plain .dim{color:var(--muted)}
 .plain mark{background:var(--gold-soft);color:var(--ink);border-radius:5px;padding:0 3px;box-shadow:inset 0 -2px 0 var(--gold-fill)}
+.plain .done{color:var(--muted)}.plain .done .tt{font:600 12px/1 var(--mono, ui-monospace, monospace);margin-right:6px}
+.plain .cur{background:var(--gold-soft);border-radius:8px;padding:2px 6px;margin-inline:-6px;font-weight:700}.plain .skip{color:var(--muted);text-decoration:line-through}
+.tnext{font:800 21px/1.3 var(--display);overflow-wrap:anywhere}.tthen{color:var(--muted);font-size:15px;overflow-wrap:anywhere}
+.tnext mark,.tthen mark{background:var(--gold-fill);color:var(--ink);border-radius:5px;padding:0 3px}
 
 .results{display:grid;gap:6px}
 .res{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
@@ -297,7 +301,8 @@ let pick = null;                                // { line, w, item } the word be
 let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, list: null };
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
-const VERSION = 22; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
+const VERSION = 23; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -386,7 +391,7 @@ async function openSong(id) {
   if (error) return fail('Couldn’t open that song', error);
   cur = { s: data, videos: (data.videos || []).sort((x, y) => x.rank - y.rank || x.id - y.id), tags: (data.tags || []).sort((x, y) => x.t - y.t) };
   delete cur.s.videos; delete cur.s.tags;
-  prepLines(); pick = null; armed = null; confirmDel = false; confirmVid = null; tapAlong = [];
+  prepLines(); pick = null; armed = null; confirmDel = false; confirmVid = null; tapAlong = []; timing = null;
   lrc = { q: [data.title, data.artist].filter(Boolean).join(' '), busy: false, list: null };
   const first = cur.videos.findIndex(v => v.embeddable);
   if (first > -1) loadVideo(first, false); else { vi = -1; }
@@ -674,6 +679,64 @@ async function delTag(id) {
   cur.tags = cur.tags.filter(t => t.id !== id); tapAlong = tapAlong.filter(x => x !== id); assign(); renderSong();
 }
 
+/* ---------- timing untimed lyrics, line by line ----------
+   LRCLIB sometimes has only the words. Play the upload and tap as each line starts: the words become timed lyrics, so
+   every item word is tagged the way an auto song's are, a repeated line (a chorus) groups itself and counts once, and
+   new items get tagged later by Auto-tag all songs. "Again" is for a line sung once more than it's written. */
+const plainLines = () => String(cur.s.plain_lyrics || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+const timeNext = () => timing.done.filter(d => d.kind !== 'again').length; // the line to tap next
+function timeStart() {
+  const v = cur.videos[vi];
+  if (!v) { toast('Add an upload first.'); return; }
+  timing = { texts: plainLines(), done: [] };
+  withYt(() => { try { if (videoOn()) { yt.seekTo(0, true); yt.playVideo(); } else yt.loadVideoById({ videoId: v.yt }); } catch (e) {} });
+  renderSong();
+}
+function timeTap(kind) {
+  if (!timing) return;
+  const k = timeNext(), n = timing.texts.length;
+  if (kind === 'skip') { if (k < n) timing.done.push({ i: k, kind }); renderSong(); return; }
+  if (!videoOn()) { toast('Press Play first.'); return; }
+  const t = r2(Math.max(0, now() - LAG - offset())), last = timing.done.filter(d => d.kind !== 'skip').pop();
+  if (last && t <= last.t) { toast('That tap is before the last line’s (' + fmt2(last.t) + '). Play on, or Undo.'); return; }
+  if (kind === 'again') { if (!last) return; timing.done.push({ i: last.i, t, kind }); }
+  else if (k >= n) { toast('That was the last line. Save the timings.'); return; }
+  else timing.done.push({ i: k, t, kind: 'line' });
+  renderSong();
+}
+function timeUndo() { if (timing && timing.done.length) { timing.done.pop(); renderSong(); } }
+async function timeSave() {
+  const lines = timing.done.filter(d => d.kind !== 'skip').map(d => ({ t: d.t, x: timing.texts[d.i] })).sort((a, b) => a.t - b.t);
+  if (!lines.length) { toast('Tap at least one line first.'); return; }
+  const v = cur.videos[vi]; let d = 0; try { d = Math.round(yt.getDuration() || 0); } catch (e) {}
+  if (!(await updateSong({ lines, duration: d || (v && v.duration) || cur.s.duration || null }))) return;
+  timing = null; prepLines();
+  let n = 0; try { n = await autoTag(cur); } catch (e) { fail('Couldn’t tag the item words', e); }
+  if (v && !v.synced) await updateVideo(v, { synced: true }); // timed on this upload, so it lines up
+  if (cur.s.status === 'draft' && cur.tags.length) await updateSong({ status: 'auto' });
+  syncRow(); renderSong();
+  toast('Timed ' + lines.length + ' lines, and ' + n + ' item word' + (n === 1 ? '' : 's') + ' tagged from them. Check tags polishes them by ear.');
+}
+function markLine(l) { // a line's HTML with its item words marked
+  let p = 0, html = '', n = 0;
+  for (const tk of tokens(l)) {
+    html += esc(l.slice(p, tk.s)); p = tk.s + tk.x.length;
+    const it = itemFor(tk.x);
+    if (it) { n++; html += '<mark title="' + esc(itemName(it)) + '">' + esc(tk.x) + '</mark>'; } else html += esc(tk.x);
+  }
+  return { html: html + esc(l.slice(p)), n };
+}
+function timeBarHTML() {
+  if (!timing) return '';
+  const k = timeNext(), n = timing.texts.length, next = timing.texts[k], then = timing.texts[k + 1];
+  return '<div class="selbar"><span class="big">Tap as each line starts</span><span class="small">' + (k < n ? 'Line ' + (k + 1) + ' of ' + n : 'All ' + n + ' lines done') + '</span>' +
+    (next != null ? '<div class="tnext" lang="ne">' + markLine(next).html + '</div>' + (then != null ? '<div class="tthen" lang="ne">then: ' + markLine(then).html + '</div>' : '') : '') +
+    '<div class="row"><button class="btn primary tapbtn" data-act="tline"' + (k < n ? '' : ' disabled') + '>Line starts now <span class="kbd">T</span></button>' +
+    '<button class="btn" data-act="tagain" title="The last line is sung once more">Again <span class="kbd">A</span></button></div>' +
+    '<div class="row"><button class="btn small" data-act="tskip" title="A line that isn’t sung">Skip line <span class="kbd">S</span></button><button class="btn small" data-act="tundo">Undo <span class="kbd">⌫</span></button>' +
+    '<span class="grow"></span><button class="btn small primary" data-act="tsave"' + (timing.done.some(d => d.kind !== 'skip') ? '' : ' disabled') + '>Save timings</button><button class="btn small ghost" data-act="tstop">Cancel</button></div></div>';
+}
+
 /* ---------- song + upload updates ---------- */
 async function updateSong(patch) {
   const { error } = await sb.from('songs').update(patch).eq('id', cur.s.id);
@@ -704,27 +767,33 @@ function parseLrc(txt) {
   }
   return out.sort((a, b) => a.t - b.t);
 }
-/* LRCLIB limits how fast one address may ask. Searches are spaced out, and a "too many requests" answer waits and asks
-   again instead of passing for "no lyrics"; if LRCLIB stays busy the search throws { busy: true }. */
-const lrcPace = () => Object.assign({ gap: 700, wait: 3000 }, window.__lrcPace || {}); // tests shorten these
+/* LRCLIB limits how fast one address may ask: about 45 requests a minute from a browser. Requests are spaced out, and a
+   "too many requests" answer waits as long as LRCLIB says (Retry-After) and asks again instead of passing for "no lyrics";
+   if LRCLIB stays busy the request throws { busy: true }. */
+const lrcPace = () => Object.assign({ gap: 1400, wait: 3000 }, window.__lrcPace || {}); // tests shorten these
 let lrcLast = 0;
-async function lrcFind(q, n = 12) { // LRCLIB's versions of a song, identical copies folded, timed ones first
+async function lrcJSON(path) {
   const { gap, wait } = lrcPace();
-  let list = null;
   for (let k = 0; ; k++) {
     const pause = lrcLast + gap - Date.now(); if (pause > 0) await new Promise(res => setTimeout(res, pause));
     lrcLast = Date.now();
-    const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
-    list = await r.json().catch(() => null);
-    const busy = r.status === 429 || r.status >= 500 || (list && !Array.isArray(list) && (list.statusCode === 429 || list.name === 'RateLimitExceeded'));
-    if (!busy) break;
+    const r = await fetch('https://lrclib.net' + path);
+    if (r.status === 404) return null;
+    const j = await r.json().catch(() => null);
+    const busy = r.status === 429 || r.status >= 500 || (j && !Array.isArray(j) && (j.statusCode === 429 || j.name === 'RateLimitExceeded'));
+    if (!busy) return j;
     if (k >= 3) throw Object.assign(new Error('LRCLIB is busy'), { busy: true });
-    await new Promise(res => setTimeout(res, wait * (k + 1)));
+    let after = 0; try { after = Number(r.headers && r.headers.get && r.headers.get('retry-after')) || 0; } catch (e) {}
+    await new Promise(res => setTimeout(res, Math.min(60000, Math.max(wait * (k + 1), after * 1000 * (1 + Math.random() * 0.3)))));
   }
+}
+async function lrcFind(q, n = 12) { // LRCLIB's versions of a song, identical copies folded, timed ones first
+  const list = await lrcJSON('/api/search?q=' + encodeURIComponent(q));
   const seen = new Set();
   return (Array.isArray(list) ? list : []).filter(x => { const k = (x.syncedLyrics || x.plainLyrics || '').slice(0, 200) + '|' + Math.round(x.duration || 0); if (seen.has(k)) return false; seen.add(k); return true; })
     .sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics)).slice(0, n);
 }
+const lrcById = async id => { const x = await lrcJSON('/api/get/' + id); return x && x.id ? x : null; }; // one exact version, when a line names it
 async function lrcSearch(q) {
   lrc = { q, busy: true, list: null }; renderSong();
   try { lrc.list = await lrcFind(q); } catch (e) { lrc.list = []; toast('LRCLIB didn’t answer. Try again in a moment.'); }
@@ -906,7 +975,7 @@ function sideHTML() {
   const playing = cur.videos.filter(x => x.embeddable), good = !!cur.videos[0] && cur.videos[0].embeddable && cur.videos[0].synced; // folds itself away while all is well
   const upSum = !cur.videos.length ? 'None yet' : cur.videos.length + ' · ' + (playing.some(x => x.synced) ? 'synced' : playing.length ? 'not synced' : 'blocked');
   const inPl = playlists.filter(p => inPlaylist(p, s.id)).map(p => p.name);
-  return checkHTML() + syncHint + sel +
+  return checkHTML() + timeBarHTML() + syncHint + sel +
     foldCard('uploads', 'Uploads', esc(upSum), '<div class="vids">' + (vids || '<p class="muted small">No upload yet. Paste a YouTube link below.</p>') + '</div>' +
       '<form id="addVid" class="row"><input class="grow" type="url" id="vidLink" placeholder="YouTube link" required><button class="btn small">Add upload</button></form>' +
       '<a class="small" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(s.title + ' ' + (s.artist || '')) + '">Search YouTube for it</a>', good) +
@@ -934,7 +1003,7 @@ function songHTML() {
       (lrc.list ? (lrc.list.length ? '<div class="results">' + lrc.list.map(x => '<div class="res"><span><b>' + esc(x.trackName) + '</b> · ' + esc(x.artistName) + '<br><span class="meta">' + fmt(x.duration || 0).replace(/\.\d$/, '') +
         (s.duration && x.duration ? (Math.abs(x.duration - s.duration) <= 2 ? ' · same length as before' : '') : '') + ' · ' + (x.syncedLyrics ? 'timed' : 'plain only') + '</span></span>' +
         '<button class="btn small primary" data-act="uselrc" data-arg="' + x.id + '">Use these</button></div>').join('') + '</div>' : '<p class="muted">Nothing found. Try fewer words, or tap along below.</p>') : '') + '</div>';
-    h += plainHTML() + tapAlongHTML();
+    h += plainHTML() + (cur.s.plain_lyrics ? foldCard('tapalong', 'Tap along item by item', 'Instead of timing the lines', tapAlongHTML(true), true) : tapAlongHTML());
     return h;
   }
   // legend + lines
@@ -976,26 +1045,26 @@ function songHTML() {
     (cur.loose.length ? '<p class="small muted">Tags before the first line: ' + cur.loose.map(t => esc(itemName(t.item_id)) + ' ' + fmt2(t.t)).join(', ') + '</p>' : '') + '</div>';
   return h;
 }
-/* Untimed lyrics (LRCLIB had no timings): shown with the item words marked, to follow while tapping along. */
+/* Untimed lyrics (LRCLIB had no timings): shown with the item words marked. Time the lines turns them into timed lyrics. */
 function plainHTML() {
-  const txt = cur.s.plain_lyrics; if (!txt) return '';
+  if (!cur.s.plain_lyrics) return '';
+  const texts = plainLines(), at = new Map(), skipped = new Set(), k = timing ? timeNext() : -1;
+  if (timing) timing.done.forEach(d => { if (d.kind === 'skip') skipped.add(d.i); else if (!at.has(d.i)) at.set(d.i, d.t); });
   let n = 0, lit = 0;
-  const rows = String(txt).split(/\r?\n/).map(l => {
-    let p = 0, html = '', any = false;
-    for (const tk of tokens(l)) {
-      html += esc(l.slice(p, tk.s)); p = tk.s + tk.x.length;
-      const it = itemFor(tk.x);
-      if (it) { n++; any = true; html += '<mark title="' + esc(itemName(it)) + '">' + esc(tk.x) + '</mark>'; } else html += esc(tk.x);
-    }
-    if (any) lit++;
-    return '<div' + (any ? '' : ' class="dim"') + '>' + (html + esc(l.slice(p)) || '&nbsp;') + '</div>';
+  const rows = texts.map((l, i) => {
+    const m = markLine(l); n += m.n; if (m.n) lit++;
+    const cls = i === k ? 'cur' : skipped.has(i) ? 'skip' : at.has(i) ? 'done' : m.n ? '' : 'dim';
+    return '<div' + (cls ? ' class="' + cls + '"' : '') + '>' + (at.has(i) ? '<span class="tt">' + fmt(at.get(i)) + '</span>' : '') + m.html + '</div>';
   }).join('');
-  return '<div class="card"><h2>Lyrics, untimed</h2><p class="small muted">' + n + ' item word' + (n === 1 ? '' : 's') + ' on ' + lit + ' line' + (lit === 1 ? '' : 's') +
-    '. Follow along and tap the first one in each line as it’s sung.</p><div class="plain" id="plain">' + rows + '</div></div>';
+  return '<div class="card"><h2>Lyrics, untimed</h2><p class="small muted">' + n + ' item word' + (n === 1 ? '' : 's') + ' on ' + lit + ' line' + (lit === 1 ? '' : 's') + '. ' +
+    (timing ? 'Tap <b>Line starts now</b> (or <span class="kbd">T</span>) as each line starts; <b>Again</b> when a line is sung once more than it’s written.'
+      : 'Time the lines: play the upload and tap as each of the ' + texts.length + ' lines starts. Every item word, choruses too, then gets tagged from those times.') + '</p>' +
+    (timing ? '' : '<div class="row"><button class="btn primary" data-act="tstart"' + (cur.videos.length ? '' : ' disabled title="Add an upload first"') + '>Time the lines</button></div>') +
+    '<div class="plain" id="plain">' + rows + '</div></div>';
 }
-function tapAlongHTML() {
+function tapAlongHTML(bare) {
   const recent = cur.tags.slice(-8).reverse();
-  return '<div class="card"><h2>Tap along</h2><p class="muted">No timed lyrics? Load an upload, press Play, and tap an item each time its word is sung. Your reaction delay (' + LAG + ' s) is taken off.</p>' +
+  return (bare ? '<div>' : '<div class="card"><h2>Tap along</h2>') + '<p class="muted">No lyrics? Load an upload, press Play, and tap an item each time its word is sung: every time, choruses too. Your reaction delay (' + LAG + ' s) is taken off.</p>' +
     '<div class="tapgrid">' + items.map(it => '<button class="btn" data-act="tapitem" data-arg="' + esc(it.id) + '">' + esc(itemLabel(it.id)) + ' <span lang="ne" class="small">' + esc(it.dev || '') + '</span></button>').join('') + '</div>' +
     (recent.length ? '<div class="tchips">' + recent.map(t => '<button class="tchip tap" data-act="deltag" data-arg="' + t.id + '" title="Delete">' + esc(itemLabel(t.item_id)) + ' ' + fmt2(t.t) + ' ✕</button>').join('') + '</div>' : '') + '</div>';
 }
@@ -1004,6 +1073,7 @@ function renderSong() {
   const keep = window.scrollY;
   $('#view').innerHTML = songHTML(); renderSide();
   window.scrollTo(0, keep);
+  const c = timing && document.querySelector('#plain .cur'); if (c) c.parentNode.scrollTop = Math.max(0, c.offsetTop - c.parentNode.offsetTop - 60);
 }
 
 function itemStats() { // songs and tags per item, from the song list
@@ -1136,6 +1206,13 @@ document.addEventListener('click', async e => {
     case 'nudge': nudge(Number(arg)); break;
     case 'deltag': await delTag(Number(arg)); break;
     case 'tapitem': await tapItem(arg); break;
+    case 'tstart': timeStart(); break;
+    case 'tline': timeTap('line'); break;
+    case 'tagain': timeTap('again'); break;
+    case 'tskip': timeTap('skip'); break;
+    case 'tundo': timeUndo(); break;
+    case 'tsave': await timeSave(); break;
+    case 'tstop': timing = null; renderSong(); break;
     case 'load': loadVideo(Number(arg), true); renderSide(); break;
     case 'pp': if (ytOk) { const st = yt.getPlayerState(); if (st === 1 || st === 3) yt.pauseVideo(); else yt.playVideo(); } break;
     case 'skip': if (ytOk) yt.seekTo(Math.max(0, now() + Number(arg)), true); break;
@@ -1254,7 +1331,8 @@ async function lrcSearchOnly(q) {
 }
 
 /* ---------- add many songs ----------
-   One line per song: "Title - Artist | YouTube link", optionally "| 3:40". Each upload's length is measured (muted,
+   One line per song: "Title - Artist | YouTube link", optionally "| 3:40" and "| lrclib:12345" (that exact LRCLIB version,
+   fetched by id instead of searched for). Each upload's length is measured (muted,
    off-screen) and LRCLIB's version with the same length is picked. Those songs get every item word tagged
    automatically and go live as auto; anything that doesn't line up comes in as a draft. */
 let imp = { text: '', rows: null, busy: false, pl: '' };
@@ -1263,9 +1341,11 @@ function parseImport(text) {
   return String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
     const parts = line.split('|').map(x => x.trim()), m = parts[0].match(/^(.*?)\s+[-–—]\s+(.*)$/);
     let yt = null, len = null;
-    for (const q of parts.slice(1)) { const t = q.match(/^(\d{1,2}):(\d{2})$/); if (t) len = +t[1] * 60 + +t[2]; else if (!yt) yt = parseYT(q); }
+    let lrcId = null;
+    for (const q of parts.slice(1)) { const t = q.match(/^(\d{1,2}):(\d{2})$/), id = q.match(/^(?:lrclib\s*[:#]?\s*|#)(\d+)$/i);
+      if (t) len = +t[1] * 60 + +t[2]; else if (id) lrcId = +id[1]; else if (!yt) yt = parseYT(q); }
     const title = (m ? m[1] : parts[0]).trim(), artist = m ? m[2].trim() : '';
-    return { key: [norm(title), norm(artist), yt, len].join('|'), title, artist, yt, len, given: len != null, cands: null, pick: 0, dupe: null, done: null, failed: false };
+    return { key: [norm(title), norm(artist), yt, len, lrcId].join('|'), title, artist, yt, len, lrcId, given: len != null, cands: null, pick: 0, dupe: null, done: null, failed: false };
   });
 }
 function ytApi() { // the IFrame API itself, without waiting for the song player
@@ -1317,7 +1397,8 @@ async function importFind() {
     r.failed = false;
     r.dupe = songs.find(s => norm(s.title) === norm(r.title) && (!r.artist || !s.artist || norm(s.artist) === norm(r.artist))) || null;
     if (r.dupe) { renderImport(); continue; }
-    try { r.cands = await lrcFind([r.title, r.artist].filter(Boolean).join(' '), 8); }
+    try { if (r.lrcId) { const x = await lrcById(r.lrcId); r.cands = x ? [x] : await lrcFind([r.title, r.artist].filter(Boolean).join(' '), 8); } // a named version, else a search
+      else r.cands = await lrcFind([r.title, r.artist].filter(Boolean).join(' '), 8); }
     catch (e) { if (!e.busy) r.cands = []; else { r.failed = true; renderImport(); continue; } } // still busy: the row waits for Find again
     if (r.yt && !r.given) r.len = await measure(r.yt);
     const timed = r.cands.filter(x => x.syncedLyrics), len = typeof r.len === 'number' ? r.len : null;
@@ -1362,7 +1443,7 @@ function importHTML() {
   const rows = imp.rows || [], plans = rows.map(r => (r.cands || r.dupe ? impPlan(r) : null));
   const count = k => plans.filter(q => q && q.kind === k).length, todo = rows.filter(r => !r.dupe && !r.done && r.cands).length, waiting = rows.filter(r => r.failed).length;
   return '<div class="row" style="padding-block:14px"><a class="btn small ghost" href="#">← Songs</a><h1 class="grow">Add many songs</h1></div>' +
-    '<div class="card"><p class="muted">One song per line: <code>Title - Artist | YouTube link</code>. A length after it, like <code>| 3:40</code>, saves measuring the upload. ' +
+    '<div class="card"><p class="muted">One song per line: <code>Title - Artist | YouTube link</code>. A length after it, like <code>| 3:40</code>, saves measuring the upload; <code>| lrclib:12345</code> picks that LRCLIB version. ' +
     'When a song’s timed lyrics are the same length as its upload, every item word is tagged automatically and it goes live as <span class="pill auto">auto</span>. Anything else comes in as a draft.</p>' +
     '<textarea id="impText" rows="7" placeholder="Kaha Hola Ghar - Karma Band | https://youtu.be/jU7L4KDAT6w">' + esc(imp.text) + '</textarea>' +
     '<div class="row"><label class="row small">Add to <select id="impPl" style="width:auto"><option value="">no playlist</option>' + playlists.map(q => '<option value="' + esc(q.id) + '"' + (imp.pl === q.id ? ' selected' : '') + '>' + esc(q.name) + '</option>').join('') + '</select></label>' +
@@ -1461,6 +1542,12 @@ document.addEventListener('keydown', e => {
     else if (k === 'Escape') { chk = null; renderSong(); }
     else if (k === ' ') { e.preventDefault(); $('#ppBtn').click(); }
     return;
+  }
+  if (timing) { // timing the lines: T line starts, A again, S skip, Backspace undo
+    if (k === 't' || k === 'T' || k === 'Enter') { if (e.target.tagName !== 'BUTTON' || k !== 'Enter') { e.preventDefault(); timeTap('line'); } return; }
+    if (k === 'a' || k === 'A') { timeTap('again'); return; }
+    if (k === 's' || k === 'S') { timeTap('skip'); return; }
+    if (k === 'Backspace') { e.preventDefault(); timeUndo(); return; }
   }
   if (k === ' ') { e.preventDefault(); $('#ppBtn').click(); }
   else if (k === 't' || k === 'T') { if (armed) syncTap(); else tapNow(); }

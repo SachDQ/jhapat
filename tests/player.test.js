@@ -401,6 +401,28 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   c8('[data-act="next"]'); await sleep(10);
   ok(!d8.querySelector('.stage').classList.contains('off') && !!d8.querySelector('[data-act="pause"]'), 'Start opens the video box and brings Pause');
 
+  // 19. Items take even turns: Maya is in every song, Chithi in two, yet each gets about a third of the drops
+  const IT9 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'paani', name: 'Paani', dev: 'पानी' }, { id: 'chithi', name: 'Chithi', dev: 'चिठी' }];
+  const S9 = [];
+  for (let k = 0; k < 14; k++) { const tg = [['maya', 30], ['maya', 95]]; if (k < 4) tg.push(['paani', 60]); if (k >= 12) tg.push(['chithi', 140]); S9.push(mkSong('e' + k, tg)); }
+  const B9 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT9, songs: S9 };
+  const dom9 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 14, items: {} }] : B9) }); } });
+  await sleep(60);
+  const w9 = dom9.window, d9 = w9.document, c9 = sel => d9.querySelector(sel).dispatchEvent(new w9.MouseEvent('click', { bubbles: true }));
+  for (const id of ['maya', 'paani', 'chithi']) if (d9.querySelector(`[data-act="item"][data-arg="${id}"]`).getAttribute('aria-pressed') !== 'true') c9(`[data-act="item"][data-arg="${id}"]`);
+  const got9 = { maya: 0, paani: 0, chithi: 0 }, last9 = []; let rep9 = 0;
+  for (let k = 0; k < 300; k++) {
+    c9('[data-act="next"]'); await sleep(0);
+    c9('[data-act="reveal"]');
+    const rv = d9.querySelector('.reveal').textContent; got9[/Chithi/.test(rv) ? 'chithi' : /Paani/.test(rv) ? 'paani' : 'maya']++;
+    const t9 = d9.querySelector('.now .title').textContent; if (last9.slice(-3).includes(t9)) rep9++; last9.push(t9);
+  }
+  ok(Object.values(got9).every(n => n >= 65 && n <= 135), 'each item on the table gets about a third of 300 drops, though Maya is in all 14 songs and Chithi in 2: ' + JSON.stringify(got9));
+  ok(rep9 === 0, 'no song comes back within three drops, even when Chithi’s two songs are used up (' + rep9 + ')');
+  const st9 = JSON.parse(w9.localStorage.getItem('jhapat.v1'));
+  ok(new Set(st9.played).size === st9.played.length, 'a song played again moves to the end of the played list instead of being listed twice');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

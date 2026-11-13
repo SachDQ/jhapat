@@ -85,11 +85,13 @@ function makeDom(db, opts) {
       win.scrollTo = () => {}; win.HTMLElement.prototype.scrollIntoView = function () {};
       win.CSS = win.CSS || {}; win.CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
       win.__lrcPace = { gap: 0, wait: 5 };
-      win.fetch = async url => { if (/lrclib/.test(url)) db.lrcCalls = (db.lrcCalls || 0) + 1;
+      win.fetch = async url => { if (/lrclib/.test(url)) { db.lrcCalls = (db.lrcCalls || 0) + 1; (db.lrcUrls = db.lrcUrls || []).push(url); }
         const busy = /lrclib/.test(url) && (db.lrcDown || (/Long Cut/.test(decodeURIComponent(url)) && !db.busyOnce && (db.busyOnce = true)));
         if (busy) return { ok: false, status: 429, json: async () => ({ statusCode: 429, name: 'RateLimitExceeded' }) };
         return realFetch(url); };
-      const realFetch = async url => /version\.json/.test(url) ? { ok: true, json: async () => ({ v: db.ver || 0 }) } : ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
+      const realFetch = async url => /version\.json/.test(url) ? { ok: true, json: async () => ({ v: db.ver || 0 }) }
+        : /api\/get\/\d+/.test(url) ? { ok: true, status: 200, json: async () => ({ id: +url.match(/api\/get\/(\d+)/)[1], trackName: 'Exact One', artistName: 'Band E', albumName: 'Demo', duration: 42, syncedLyrics: LRC, plainLyrics: 'x' }) }
+        : ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
         : [{ id: 555, trackName: 'Test Rain', artistName: 'Test Band', albumName: 'Demo', duration: 42, syncedLyrics: LRC, plainLyrics: 'x' }] });
       win.YT = { Player: function (id, o) {
         if (id === 'measure') { // the importer's off-screen player
@@ -267,6 +269,7 @@ function makeDom(db, opts) {
   // untimed lyrics only (invented): shown with item words marked above the tap-along buttons
   db.songs.push({ id: 'plain', title: 'Plain Song', artist: null, status: 'draft', lrclib_id: 9, duration: 42, notes: null, lines: null,
     plain_lyrics: 'पानी पर्यो आज\nहावा चल्यो\nपानीमा चिठी बग्यो' });
+  db.videos.push({ id: 77, song_id: 'plain', yt: 'PPPPPPPPPPP', kind: 'official', duration: 42, offset_s: 0, synced: false, embeddable: true, rank: 0 });
   w.location.hash = '#song:plain'; await sleep(80);
   const marks = [...d.querySelectorAll('#plain mark')].map(m => m.textContent);
   ok(marks.join(',') === 'पानी,पानीमा,चिठी' && d.querySelector('#plain .dim') && d.querySelector('#plain').textContent.includes('हावा चल्यो'),
@@ -294,6 +297,28 @@ function makeDom(db, opts) {
   w.location.hash = '#song:plain'; await sleep(80);
   ok([...d.querySelectorAll('#plain mark')].map(m => m.textContent).join(',') === 'पानी,चिठी' && d.querySelector('.tapgrid').textContent.includes('💧 Paani'),
     '“-पानीमा” stops पानीमा counting; the emoji shows on the item');
+
+  // timing untimed lyrics line by line: the taps become timed lines, Again repeats a line, every item word gets tagged
+  const key = k => d.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, bubbles: true }));
+  const tapFold = d.querySelector('[data-act="fold"][data-arg="tapalong"]');
+  ok(!!d.querySelector('[data-act="tstart"]') && !!tapFold && tapFold.parentNode.querySelector('.foldbody').hidden && !!tapFold.parentNode.querySelector('.tapgrid'), 'untimed lyrics offer Time the lines, with item-by-item tap-along folded away');
+  click('[data-act="tstart"]'); await sleep(20);
+  ok(d.querySelector('.tnext').textContent.includes('पानी पर्यो') && d.querySelector('.tnext mark') && yt.st === 1 && d.querySelector('#plain .cur'), 'Time the lines plays the upload and shows the first line, its item word marked');
+  yt.t = 10.25; key('T'); await sleep(5);
+  yt.t = 14.25; key('a'); await sleep(5); // the first line is sung twice but written once
+  yt.t = 13; click('[data-act="tline"]'); await sleep(5);
+  ok(d.querySelector('#toast').textContent.includes('before the last line'), 'a tap earlier than the last one is refused');
+  key('s'); await sleep(5); // the second line isn't sung
+  yt.t = 21.25; click('[data-act="tline"]'); await sleep(5); key('Backspace'); await sleep(5);
+  ok(d.querySelector('.tnext').textContent.includes('चिठी') && d.querySelector('#plain .skip').textContent.includes('हावा'), 'Skip and Undo step through the lines');
+  yt.t = 23.25; click('[data-act="tline"]'); await sleep(5);
+  ok(d.querySelector('[data-act="tline"]').disabled && d.querySelector('.selbar').textContent.includes('All 3 lines done'), 'after the last line, Line is done and Save is next');
+  click('[data-act="tsave"]'); await sleep(60);
+  const ps = db.songs.find(x => x.id === 'plain'), ptags = db.tags.filter(t => t.song_id === 'plain');
+  ok(ps.lines.map(l => l.t + ' ' + l.x).join(' / ') === '10 पानी पर्यो आज / 14 पानी पर्यो आज / 23 पानीमा चिठी बग्यो' && ps.duration === 42, 'the taps (less the reaction delay) become timed lines: ' + ps.lines.map(l => l.t).join(', '));
+  ok(ptags.length === 3 && ptags.filter(t => t.item_id === 'paani').every(t => t.rep === 0 && t.source === 'estimate') && ptags.some(t => t.item_id === 'chithi' && t.line === 2),
+    'every item word is tagged, and the line sung twice is one repeat group: ' + ptags.map(t => t.item_id + '@' + t.t + ' rep ' + t.rep).join(', '));
+  ok(ps.status === 'auto' && db.videos.find(v => v.id === 77).synced === true && !!d.querySelector('.lines .ln'), 'the draft goes live as auto, its upload counts as synced, and the lyrics show as timed');
 
   // playlists page lists both songs in order
   w.location.hash = '#playlists'; await sleep(20);
@@ -338,6 +363,14 @@ function makeDom(db, opts) {
   const again = [...d.querySelectorAll('.res.imp')].map(r => r.textContent);
   ok(db.lrcCalls === calls + 1 && again[4].includes('differ by 138 s') && again[0].includes('Added as auto'), 'Find again looks up only that song; the added ones stay as they were: ' + (db.lrcCalls - calls) + ' search');
 
+  // a line can name the exact LRCLIB version: it's fetched by id, not searched for
+  w.location.hash = '#import'; await sleep(20);
+  const ta2 = d.querySelector('#impText'); ta2.value = 'Exact One - Band E | https://youtu.be/HHHHHHHHHHH | 0:42 | lrclib:777'; ta2.dispatchEvent(new w.Event('input', { bubbles: true }));
+  const urls = db.lrcUrls.length; click('[data-act="impfind"]'); await sleep(200);
+  ok(db.lrcUrls.slice(urls).join() === 'https://lrclib.net/api/get/777' && d.querySelector('.res.imp').textContent.includes('goes live as auto'), 'lrclib:777 fetches that version by id (one request, no search)');
+  click('[data-act="impadd"]'); await sleep(150);
+  ok(db.songs.some(x => x.id === 'exact-one' && x.lrclib_id === 777 && x.status === 'auto'), 'and adds it as auto');
+
   // Auto-tag all songs (Items page): only words without a tag; existing tags stay put
   const before = db.tags.length, kept = JSON.stringify(db.tags.map(t => [t.id, t.t]));
   w.location.hash = '#items'; await sleep(20);
@@ -356,7 +389,7 @@ function makeDom(db, opts) {
   ok(rowsNow() === 'long-cut,nothing-song' && d.querySelector('[data-act="show"][data-arg="draft"]').textContent.includes('2'), 'Drafts shows only the drafts, with a count: ' + rowsNow());
   click('[data-act="show"][data-arg="all"]'); await sleep(5);
   const so = d.querySelector('#ssort'); so.value = 'status'; so.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(5);
-  ok(rowsNow() === 'long-cut,nothing-song,rain-again,old,test-rain' && JSON.parse(w.localStorage.getItem('jhapat.studio')).sort === 'status',
+  ok(rowsNow() === 'long-cut,nothing-song,exact-one,rain-again,old,test-rain' && JSON.parse(w.localStorage.getItem('jhapat.studio')).sort === 'status',
     'By status puts drafts first and checked last, and is remembered: ' + rowsNow());
   const fi = d.querySelector('#filter'); fi.value = 'rain'; fi.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(5);
   ok(rowsNow() === 'rain-again,test-rain' && d.querySelector('#filter') === fi, 'search narrows the list without redrawing the search box');
@@ -364,7 +397,7 @@ function makeDom(db, opts) {
   const sp = d.querySelector('#spl'); sp.value = '-'; sp.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(5);
   ok(!d.querySelector('.songrow') && !!d.querySelector('[data-act="clearf"]'), 'In no playlist: every song is in one here, so it says none match');
   click('[data-act="clearf"]'); await sleep(5);
-  ok(d.querySelectorAll('.songrow').length === 5, 'Show every song clears the filters');
+  ok(d.querySelectorAll('.songrow').length === 6, 'Show every song clears the filters');
 
   // a long item list shows twelve, then the rest on request
   { const db3 = makeDb(); for (let k = 0; k < 18; k++) db3.items.push({ id: 'x' + k, name: 'Thing ' + k, dev: '', words: ['thing' + k], note: null, sort: 2 + k });

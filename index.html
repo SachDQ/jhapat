@@ -236,7 +236,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 22; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 23; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -489,7 +489,7 @@ function onErr(e) {
       atVideo(song);
       save();
       toast('That upload won’t play outside YouTube, so it switched to another upload of ' + song.title + '.');
-      if (mode === 'game') { const p = pickFromSong(song); if (p) { current = p; playSong(song, p.start, 'game'); } else nextRound(); }
+      if (mode === 'game') { const p = pickFromSong(song, current && current.tag.item); if (p) { current = p; playSong(song, p.start, 'game'); } else nextRound(); }
       else playSong(song, 0, 'tag');
     } else {
       song.broken = true; save();
@@ -540,21 +540,27 @@ const MARGIN = 1.2; // quiet kept after the previous table word: a tag marks whe
    the drop starts just after the earlier word instead. A repeated line (a chorus) counts once: its word drops in
    before whichever repeat has the most room, such as the first chorus after an instrumental, so a chorus sung
    seven times isn't seven times as likely and gets the longest run-up. */
-function pickFromSong(song) {
+function dropsFor(song, want) { // the places a drop can go in this song, for one item or any table item
   const on = onItems(), minL = S.settings.minLead, maxL = S.settings.maxLead, off = song.offset || 0;
   const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
-  if (!tags.length) return null;
   // room = how far back the drop can start before this word without passing an earlier table word
   const all = tags.map((t, i) => ({ tag: t, room: i ? t.t - tags[i - 1].t - MARGIN : t.t + off }));
   const groups = new Map(); // item + repeat group → its repeats; tags without a group stand alone
-  all.forEach((c, i) => { const k = c.tag.g != null ? c.tag.item + '|' + c.tag.g : '#' + i; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(c); });
+  all.forEach((c, i) => { if (want && c.tag.item !== want) return; const k = c.tag.g != null ? c.tag.item + '|' + c.tag.g : '#' + i; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(c); });
   const one = [...groups.values()].map(m => { // repeats that all have the full run-up take turns; otherwise the roomiest one
     const full = m.filter(c => c.room >= maxL);
     return full.length ? full[Math.floor(Math.random() * full.length)] : m.reduce((a, c) => (c.room > a.room ? c : a));
   });
   const good = one.filter(c => c.room >= minL);
-  let cands = good.length ? good : one.filter(c => c.room >= Math.min(minL, 3));
-  if (!cands.length) cands = one;
+  if (good.length) return { list: good, good: true };
+  const ok = one.filter(c => c.room >= Math.min(minL, 3));
+  return { list: ok.length ? ok : one, good: false };
+}
+function pickFromSong(song, want) {
+  const minL = S.settings.minLead, maxL = S.settings.maxLead, off = song.offset || 0;
+  let cands = dropsFor(song, want).list;
+  if (!cands.length && want) cands = dropsFor(song).list;
+  if (!cands.length) return null;
   const its = [...new Set(cands.map(c => c.tag.item))];
   const it = its[Math.floor(Math.random() * its.length)];
   const pool = cands.filter(c => c.tag.item === it);
@@ -563,14 +569,25 @@ function pickFromSong(song) {
   const at = c.tag.t + off;
   return { songId: song.id, tag: c.tag, lead, start: Math.max(0, at - lead) };
 }
-/* Choose the next song and drop without changing anything, so it can be planned ahead. */
+/* Choose the next song and drop without changing anything, so it can be planned ahead.
+   Items take even turns: the item comes first (every item on the table with a song for it is as likely as the next),
+   then one of its songs, not played yet if it has one. So Maya, sung in most songs, gets no more drops than Chithi.
+   An item whose songs have all played reuses the one played longest ago; the last three songs never come back. */
+const allPlayed = el => el.every(s => S.played.includes(s.id));
+let recent = []; // the last songs played, kept apart from S.played, which empties when the list starts again
 function planRound(avoid) {
   const el = eligible();
   if (!el.length) return null;
-  let pool = el.filter(s => !S.played.includes(s.id) && s.id !== avoid), wrap = false;
-  if (!pool.length) { wrap = true; pool = el.filter(s => s.id !== S.lastSong && s.id !== avoid); if (!pool.length) pool = el; }
-  const song = pool[Math.floor(Math.random() * pool.length)];
-  return { song, drop: pickFromSong(song), wrap };
+  const rand = a => a[Math.floor(Math.random() * a.length)], age = id => S.played.lastIndexOf(id); // -1: not played yet
+  const options = skip => [...onItems()].map(it => ({ it, songs: el.filter(s => !skip.includes(s.id) && s.tags.some(t => t.item === it)) })).filter(o => o.songs.length);
+  let opts = options(recent.slice(-3).concat(S.lastSong, avoid || []));
+  if (!opts.length) opts = options([S.lastSong, avoid]);
+  if (!opts.length) opts = options([]);
+  const o = rand(opts), fresh = o.songs.filter(s => age(s.id) < 0);
+  let song;
+  if (fresh.length) { const roomy = fresh.filter(s => dropsFor(s, o.it).good); song = rand(roomy.length ? roomy : fresh); }
+  else song = o.songs.reduce((a, s) => (age(s.id) < age(a.id) ? s : a));
+  return { song, drop: pickFromSong(song, o.it), wrap: age(song.id) >= 0 && allPlayed(el) };
 }
 function nextRound() {
   clearTimeout(nextTimer); nextTimer = null;
@@ -578,7 +595,8 @@ function nextRound() {
   if (!plan) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
   if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); }
   current = plan.drop; revealed = false;
-  S.played.push(plan.song.id); S.lastSong = plan.song.id; save();
+  S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id; save();
+  recent = recent.filter(x => x !== plan.song.id).concat(plan.song.id).slice(-3);
   if (tab !== 'play') { tab = 'play'; songId = null; }
   if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
   render();
@@ -609,7 +627,7 @@ function takePreloaded() {
   const p = pre;
   if (!preloadOK() || !preGood(p)) { discardPre(); return null; }
   const song = byId(p.songId), at = p.tag.t + (song.offset || 0);
-  return { song, drop: { songId: song.id, tag: p.tag, lead: p.lead, start: Math.max(0, at - p.lead) }, wrap: S.played.includes(song.id), swap: true };
+  return { song, drop: { songId: song.id, tag: p.tag, lead: p.lead, start: Math.max(0, at - p.lead) }, wrap: S.played.includes(song.id) && allPlayed(eligible()), swap: true };
 }
 function swapIn(drop) {
   mode = 'game';

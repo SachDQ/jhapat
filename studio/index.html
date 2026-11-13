@@ -146,6 +146,8 @@ aside.side{position:sticky;top:8px;display:grid;gap:12px;max-height:calc(100vh -
 .newbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--new-soft);border:1.5px dashed var(--new);border-radius:12px;padding:10px 12px}
 .chip .nn{background:var(--new-soft);color:var(--new)}
 .keyrow{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.w.dp,.wk.dp{position:relative}
+.w.dp::after,.wk.dp::after{content:"";position:absolute;left:50%;top:-5px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:var(--red);box-shadow:0 0 0 1.5px var(--surface)}
 .wk{cursor:default}
 .opts{display:grid;gap:4px;margin:8px 0 4px}
 .opt{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-size:14px}
@@ -302,7 +304,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 26; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 27; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -592,16 +594,32 @@ function hear(i) {
   yt.seekTo(Math.max(0, cur.lines[i].t + offset() - 3), true); yt.playVideo();
 }
 
-/* ---------- Check tags: hear every tag from 3 s before ----------
-   One stop per word, a chorus's repeats counting once: the first repeat with room for a 7 s run-up (else the roomiest),
-   which is where the party player drops in. Right marks them all checked; Earlier/Later moves every repeat and plays it again. */
+/* ---------- drop points: where the party player can drop in ----------
+   The player drops each item in at its first clean mention: its first word with room for the 7 s run-up after the
+   previous table word (else at least 4.5 s), so the run-up never crosses another item's word. Which words clash depends
+   on what's on the table, so each item has up to two drop points: its first clean mention with nothing else on the
+   table, and its first one with every item on it. Only these need hearing; the other tags stay as estimates that mark
+   where the words are, so no run-up starts across one. */
+function dropPoints(c = cur) {
+  const all = c.tags.slice().sort((a, b) => a.t - b.t), off = offset(), pts = new Set();
+  const first = (list, among) => { const room = t => { const k = among.indexOf(t); return k ? t.t - among[k - 1].t - 1.2 : t.t + off; };
+    return list.find(t => room(t) >= 7) || list.find(t => room(t) >= 4.5); };
+  for (const it of new Set(all.map(t => t.item_id))) {
+    const mine = all.filter(t => t.item_id === it);
+    const alone = first(mine, mine), crowded = first(mine, all);
+    if (alone) pts.add(alone); if (crowded) pts.add(crowded);
+  }
+  return pts;
+}
+/* ---------- Check tags: hear every drop point from 3 s before ----------
+   One stop per drop point, a chorus's repeats counting once. Right marks every repeat checked; Earlier/Later moves every
+   repeat and plays it again. */
 function checkList() {
-  const all = cur.tags.slice().sort((a, b) => a.t - b.t);
-  const room = new Map(all.map((t, k) => [t, k ? t.t - all[k - 1].t - 1.2 : t.t + offset()]));
+  const all = cur.tags.slice().sort((a, b) => a.t - b.t), dp = dropPoints();
   const repFor = t => (t.rep != null ? t.rep : cur.lines.length ? repOf(lineOf(t)) : null);
   const groups = new Map();
   for (const t of all) { const r = repFor(t), k = r != null ? t.item_id + '|' + r : '#' + t.id; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
-  return [...groups.values()].map(m => ({ members: m, tag: m.find(t => room.get(t) >= 7) || m.reduce((a, t) => (room.get(t) > room.get(a) ? t : a)) })).sort((a, b) => a.tag.t - b.tag.t);
+  return [...groups.values()].filter(m => m.some(t => dp.has(t))).map(m => ({ members: m, tag: m.find(t => dp.has(t)) })).sort((a, b) => a.tag.t - b.tag.t);
 }
 function checkStart() {
   if (!videoOn()) { toast('Load an upload first.'); return; }
@@ -646,11 +664,11 @@ async function checkNudge(d) {
 function checkHTML() {
   if (!chk) return '';
   const g = chk.list[chk.i];
-  if (!g) return '<div class="selbar check"><span class="big">All ' + chk.list.length + ' words checked</span><span class="small">Each was heard from 3 s before.</span><div class="row">' +
+  if (!g) return '<div class="selbar check"><span class="big">All ' + chk.list.length + ' drop point' + (chk.list.length === 1 ? '' : 's') + ' checked</span><span class="small">Each was heard from 3 s before.</span><div class="row">' +
     (cur.s.status !== 'checked' ? '<button class="btn primary" data-act="status" data-arg="checked">Mark song checked</button>' : '') + '<button class="btn" data-act="chkstop">Done</button></div></div>';
   const done = g.members.every(t => t.checked);
   return '<div class="selbar check"><div class="row"><span class="big grow">' + esc(itemLabel(g.tag.item_id)) + ' at ' + fmt2(g.tag.t) + '</span><span class="small mono">' + (chk.i + 1) + ' / ' + chk.list.length + '</span></div>' +
-    '<span class="small">Plays from 3 s before' + (g.members.length > 1 ? ', at repeat ' + (g.members.indexOf(g.tag) + 1) + ' of ' + g.members.length + ', where the game drops in' : '') + '. The word should start on “now”: earlier than that, press Earlier; later, press Later.' + (done ? ' Already checked.' : '') + '</span>' +
+    '<span class="small">A drop point: plays from 3 s before' + (g.members.length > 1 ? ' (repeat ' + (g.members.indexOf(g.tag) + 1) + ' of ' + g.members.length + ')' : '') + '. The word should start on “now”: earlier than that, press Earlier; later, press Later.' + (done ? ' Already checked.' : '') + '</span>' +
     '<div class="countdown" id="cd" aria-hidden="true">3</div>' +
     '<div class="row"><button class="btn primary tapbtn" data-act="chkok">Right <span class="kbd">Enter</span></button><button class="btn" data-act="chkplay">Again <span class="kbd">R</span></button><button class="btn ghost" data-act="chknext">Skip</button></div>' +
     '<div class="row"><button class="btn small" data-act="chknudge" data-arg="-0.1">Earlier 0.1 s <span class="kbd">←</span></button><button class="btn small" data-act="chknudge" data-arg="0.1">Later 0.1 s <span class="kbd">→</span></button>' +
@@ -1030,12 +1048,13 @@ function songHTML() {
     (s.status === 'draft' || !cur.videos.some(v => v.synced) ? '<div class="newbar"><span>Lyrics from another recording? Sync the upload, or if they drift, <b>time the lines again</b> on this upload: tap as each line starts.</span>' +
       '<button class="btn small" data-act="tstart"' + (cur.videos.length ? '' : ' disabled') + '>Time the lines again</button></div>' : '') +
     '<p class="small muted">Click a lit word to tag it in every repeat, then <b>Hear</b> and <b>Tap</b>. <span class="kbd">↑</span> <span class="kbd">↓</span> move between lit lines.</p>' +
-    '<div class="keyrow" aria-hidden="true"><span><span class="wk">word</span> not tagged yet</span><span><span class="wk auto">word</span> estimated</span><span><span class="wk tagged">word</span> timed or checked by ear</span></div>' +
+    '<div class="keyrow" aria-hidden="true"><span><span class="wk">word</span> not tagged yet</span><span><span class="wk auto">word</span> estimated</span><span><span class="wk tagged">word</span> timed or checked by ear</span><span><span class="wk auto dp">word</span> a drop point: the game drops in here, so only these need checking</span></div>' +
     (miss.length ? '<div class="newbar"><span><b>' + miss.length + ' item word' + (miss.length === 1 ? '' : 's') + ' not tagged yet</b> (every repeat counted). Auto-tag times each one from its place in the line.</span>' +
       '<button class="btn small primary" data-act="autotag">Auto-tag them</button></div>' : '') +
     '<div class="legend">' + items.filter(it => counts[it.id]).map(it => '<span class="chip">' + (it.emoji ? '<span aria-hidden="true">' + esc(it.emoji) + '</span> ' : '') + esc(it.name) + ' <span lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + counts[it.id] + '</span>' +
       (fresh[it.id] ? '<span class="n nn">' + fresh[it.id] + ' new</span>' : '') + '</span>').join('') + '</div>';
   h += '<div class="lines">';
+  const dpAt = new Set([...dropPoints()].filter(t => t.line != null).map(t => t.line + ':' + t.word));
   let quiet = 0; // lines left out by "Only lines with item words"
   cur.lines.forEach((l, i) => {
     const grp = groupOf(i), first = grp[0] === i;
@@ -1049,9 +1068,9 @@ function songHTML() {
       const m = lit.find(x => x.w === tk.w);
       if (!m) { html += esc(tk.x); continue; }
       const tg = showAll ? tagOn(i, tk.w) : tagIn(i, tk.w), picked = pick && grp.includes(pick.line) && pick.w === tk.w;
-      const state = !tg ? '' : tg.source === 'estimate' && !tg.checked ? ' auto' : ' tagged';
-      html += '<button class="w' + state + (picked ? ' picked' : '') + '" data-act="word" data-arg="' + i + ':' + tk.w + ':' + esc(m.item) + '" title="' + esc(itemLabel(m.item)) +
-        (tg ? ' at ' + fmt2(tg.t) + (state === ' auto' ? ', estimated' : '') : ': not tagged yet, click to tag') + '">' + esc(tk.x) + '</button>';
+      const state = !tg ? '' : tg.source === 'estimate' && !tg.checked ? ' auto' : ' tagged', dp = (showAll ? [i] : grp).some(j => dpAt.has(j + ':' + tk.w));
+      html += '<button class="w' + state + (dp ? ' dp' : '') + (picked ? ' picked' : '') + '" data-act="word" data-arg="' + i + ':' + tk.w + ':' + esc(m.item) + '" title="' + esc(itemLabel(m.item)) +
+        (tg ? ' at ' + fmt2(tg.t) + (state === ' auto' ? ', estimated' : '') : ': not tagged yet, click to tag') + (dp ? '. The game drops in here' : '') + '">' + esc(tk.x) + '</button>';
     }
     html += esc(l.x.slice(p));
     const chips = tags.filter(o => o.w == null).map(o => '<button class="tchip' + (o.tag.source !== 'estimate' ? ' tap' : '') + '" data-act="deltag" data-arg="' + o.tag.id + '" title="Not on a highlighted word. Click to delete.">' + esc(itemLabel(o.tag.item_id)) + ' ' + fmt2(o.tag.t) + ' ✕</button>').join('');
@@ -1509,7 +1528,7 @@ async function syncTap() {
 }
 function tryDrop() {
   const v = cur.videos[vi]; if (!v || !cur.tags.length) return;
-  const tg = cur.tags[Math.floor(Math.random() * cur.tags.length)];
+  const dps = [...dropPoints()], tg = dps.length ? dps[Math.floor(Math.random() * dps.length)] : cur.tags[Math.floor(Math.random() * cur.tags.length)];
   const prev = cur.tags.filter(t => t.t < tg.t - 0.01).pop();
   const room = prev ? tg.t - prev.t - 1.2 : tg.t + offset();
   const lead = room >= 7 ? 7 + Math.random() * (Math.min(10, room) - 7) : Math.max(1, room);

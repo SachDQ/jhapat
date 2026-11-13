@@ -435,6 +435,34 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(mid.rep + even.rep + songsOnly.rep === 0, 'no song comes back within 7 drops (half of these 14 songs), even at 10 with Chithi’s two songs (' + [mid.rep, even.rep, songsOnly.rep] + ')');
   ok(new Set(even.st.played).size === even.st.played.length, 'a song played again moves to the end of the played list instead of being listed twice');
 
+  // 20. Drop points: a word sung right behind another table word is never a drop; a word with less room gets a shorter run-up
+  const IT10 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'phool', name: 'Phool', dev: 'फूल' }];
+  const A10 = mkSong('a10', [['maya', 20], ['phool', 34], ['maya', 36], ['maya', 80]]);  // the second Maya comes 2 s after Phool
+  const B10 = mkSong('b10', [['phool', 10], ['maya', 16]]);                             // Maya 6 s after Phool: a short run-up
+  const C10 = mkSong('c10', [['phool', 12], ['maya', 14.5]]);                           // Maya too close behind Phool: never a Maya drop
+  const B10x = { id: 'party-mix', name: 'Nepali Party Mix', items: IT10, songs: [A10, B10, C10] };
+  const dom10 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 3, items: {} }] : B10x) }); } });
+  await sleep(60);
+  const w10 = dom10.window, d10 = w10.document, c10 = sel => d10.querySelector(sel).dispatchEvent(new w10.MouseEvent('click', { bubbles: true }));
+  for (const id of ['maya', 'phool']) if (d10.querySelector(`[data-act="item"][data-arg="${id}"]`).getAttribute('aria-pressed') !== 'true') c10(`[data-act="item"][data-arg="${id}"]`);
+  const seen10 = new Set(); let crossed10 = 0, shortOk = true;
+  for (let k = 0; k < 120; k++) {
+    c10('[data-act="next"]'); await sleep(0);
+    const title = d10.querySelector('.now .title').textContent, start = secs(d10.querySelector('.now .meta').textContent.split('dropped in at')[1]);
+    c10('[data-act="reveal"]');
+    const rv = d10.querySelector('.reveal').textContent, at = secs(rv.split(' at ')[1]), item = /Maya/.test(rv) ? 'maya' : 'phool';
+    seen10.add(title.slice(0, 1) + ':' + item + '@' + at);
+    const song = [A10, B10, C10].find(x => x.title === title), before = song.tags.filter(t => t[1] < at - 0.01).map(t => t[1]);
+    if (before.length && start < Math.max(...before) + 1.2 - 0.05) crossed10++;
+    if (song === B10 && item === 'maya' && !(at - start >= 4.5 - 0.05 && at - start < 7)) shortOk = false;
+  }
+  const keys10 = [...seen10].sort();
+  ok(!keys10.some(k => /:maya@(36|14\.5)$/.test(k)), 'a Maya sung right behind Phool is never a drop (not 0:36 in one song, not 0:14.5 in another): ' + keys10.join(' '));
+  ok(keys10.some(k => /:maya@20$/.test(k)) && !keys10.some(k => /:maya@80$/.test(k)) && keys10.some(k => /:phool@34$/.test(k)), 'Maya drops at its first clean mention (0:20), and Phool gets its own (0:34)');
+  ok(keys10.some(k => /:maya@16$/.test(k)) && shortOk, 'a Maya 6 s behind Phool still drops, with a shorter run-up that starts after Phool');
+  ok(crossed10 === 0, 'no run-up starts before an earlier table word has finished (' + crossed10 + ')');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

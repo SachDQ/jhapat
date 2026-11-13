@@ -236,7 +236,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 26; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 27; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -536,28 +536,26 @@ const onItems = () => new Set(S.items.filter(i => i.on).map(i => i.id));
 const eligible = () => { const on = onItems(); return S.songs.filter(s => !s.broken && s.tags.some(t => on.has(t.item))); };
 
 const MARGIN = 1.2; // quiet kept after the previous table word: a tag marks where its word starts, and singing it takes about a second
-/* The run-up is random within the Drop-in range (7–10s by default) and never reaches back past an earlier table word.
-   Words with an earlier table word closer than that are skipped while the song has roomier ones; in a packed song
-   the drop starts just after the earlier word instead. A drop goes to the first place in the song with room for the
-   run-up: a chorus drops in at its first roomy repeat, so the rest of the song can play on if the room likes it. */
+const SHORT = 4.5;  // the shortest run-up a drop gets; a word sung closer than this behind another table word is left to that word
+/* Drop points. The run-up is random within the Drop-in range (7–10 s by default) and never reaches back past an earlier
+   table word, which would hand the room an earlier word to grab. Each item drops in at its first clean mention: the first
+   of its words with room for the full run-up, else the first with at least 4.5 s (the run-up then takes what there is).
+   A word sung closer than that behind another table word is never a drop point: the earlier word is. So a chorus drops in
+   at its first roomy repeat, and the rest of the song can play on if the room likes it. */
 function dropsFor(song, want) { // the places a drop can go in this song, earliest first, for one item or any table item
   const on = onItems(), minL = S.settings.minLead, off = song.offset || 0;
   const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
   // room = how far back the drop can start before this word without passing an earlier table word
   const all = tags.map((t, i) => ({ tag: t, room: i ? t.t - tags[i - 1].t - MARGIN : t.t + off })).filter(c => !want || c.tag.item === want);
-  const good = all.filter(c => c.room >= minL);
-  if (good.length) return { list: good, good: true };
-  const ok = all.filter(c => c.room >= Math.min(minL, 3));
-  return { list: ok.length ? ok : all.length ? [all.reduce((a, c) => (c.room > a.room ? c : a))] : [], good: false };
+  const full = all.filter(c => c.room >= minL), short = all.filter(c => c.room < minL && c.room >= SHORT);
+  return { full, short, all, list: full.length ? full : short };
 }
 function pickFromSong(song, want) {
   const minL = S.settings.minLead, maxL = S.settings.maxLead, off = song.offset || 0;
-  let cands = dropsFor(song, want).list;
-  if (!cands.length && want) cands = dropsFor(song).list;
-  if (!cands.length) return null;
-  const its = [...new Set(cands.map(c => c.tag.item))];
-  const it = its.includes(want) ? want : its[Math.floor(Math.random() * its.length)];
-  const c = cands.find(x => x.tag.item === it); // the earliest
+  let d = dropsFor(song, want);
+  if (!d.list.length && want) d = dropsFor(song); // no clean word for that item here: the song's own first clean word
+  const c = d.list[0] || (d.all.length ? d.all.reduce((a, x) => (x.room > a.room ? x : a)) : null); // a packed song: its roomiest word
+  if (!c) return null;
   const lead = c.room >= minL ? minL + Math.random() * (Math.min(maxL, c.room) - minL) : Math.max(1, c.room);
   const at = c.tag.t + off;
   return { songId: song.id, tag: c.tag, lead, start: Math.max(0, at - lead) };
@@ -574,7 +572,7 @@ let recent = []; // the last songs played, kept apart from S.played, which empti
 const recentSkip = el => { const gap = Math.min(RECENT, Math.floor(el.length / 2)); return gap ? recent.slice(-gap) : []; };
 function itemOdds(el, skip) { // each table item with a song for it: its songs (less those skipped) and its share of the next drop
   const beta = Math.min(10, Math.max(0, +S.settings.balance || 0)) / 10;
-  const opts = [...onItems()].map(it => { const all = el.filter(s => s.tags.some(t => t.item === it));
+  const opts = [...onItems()].map(it => { const all = el.filter(s => s.tags.some(t => t.item === it) && dropsFor(s, it).list.length); // songs with a clean word for it
     return { it, n: all.length, songs: all.filter(s => !skip.includes(s.id)) }; }).filter(o => o.songs.length);
   const tot = opts.reduce((a, o) => a + o.n, 0);
   opts.forEach(o => { o.w = (beta / opts.length + (1 - beta) * o.n / tot) * (o.songs.some(s => !S.played.includes(s.id)) ? 1 : 0.25); });
@@ -589,11 +587,16 @@ function planRound(avoid) {
   if (!el.length) return null;
   const rand = a => a[Math.floor(Math.random() * a.length)], age = id => S.played.lastIndexOf(id); // -1: not played yet
   const opts = nextOdds(el, avoid);
+  if (!opts.length) { // no table word anywhere has a clean run-up: any song, at its roomiest word
+    const pool = el.filter(s => s.id !== S.lastSong && s.id !== avoid), fresh = pool.filter(s => age(s.id) < 0);
+    const song = rand(fresh.length ? fresh : pool.length ? pool : el);
+    return { song, drop: pickFromSong(song), wrap: age(song.id) >= 0 && allPlayed(el) };
+  }
   let r = Math.random(), o = opts[opts.length - 1];
   for (const x of opts) { r -= x.p; if (r < 0) { o = x; break; } }
   const fresh = o.songs.filter(s => age(s.id) < 0);
   let song;
-  if (fresh.length) { const roomy = fresh.filter(s => dropsFor(s, o.it).good); song = rand(roomy.length ? roomy : fresh); }
+  if (fresh.length) { const roomy = fresh.filter(s => dropsFor(s, o.it).full.length); song = rand(roomy.length ? roomy : fresh); }
   else song = o.songs.reduce((a, s) => (age(s.id) < age(a.id) ? s : a));
   return { song, drop: pickFromSong(song, o.it), wrap: age(song.id) >= 0 && allPlayed(el) };
 }

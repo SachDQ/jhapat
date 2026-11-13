@@ -8,7 +8,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Mukta:wght@400;600;700&family=Yatra+One&display=swap">
 <style>
 /* Layout: desk tool. Left column holds the video, uploads and the selected-word tools (sticky); right column is the lyric list.
    Stacks to one column on phones with the video pinned on top. Same palette and type as the party player. */
@@ -49,19 +49,15 @@ code,.mono{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular
 
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:calc(12px + env(safe-area-inset-top,0px)) 10px}
 .brand{display:flex;align-items:baseline;gap:8px;text-decoration:none;color:var(--ink)}
-.brand .word{font:800 26px/1 var(--display)}
-.brand .dev{font:600 17px/1 var(--display);color:var(--gold)}
+.brand .word{font:400 27px/1 "Yatra One", var(--display)} /* the party player's mark (Tihar Night) */
+.brand .dev{font:400 19px/1 "Yatra One", var(--display);color:var(--gold)}
 .brand .tag{font:700 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-left:4px}
 nav.tabs{display:flex;background:var(--raise);border-radius:999px;padding:3px;gap:2px}
 nav.tabs button{border:0;background:transparent;color:var(--muted);font:700 14.5px/1 var(--body);padding:9px 13px;border-radius:999px;cursor:pointer}
 nav.tabs button[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 .who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
-.dhaka{height:7px;background:
-  linear-gradient(135deg,var(--red) 25%,transparent 25%) -7px 0/14px 14px,
-  linear-gradient(225deg,var(--red) 25%,transparent 25%) -7px 0/14px 14px,
-  linear-gradient(315deg,var(--ink) 25%,transparent 25%) 0 0/14px 14px,
-  linear-gradient(45deg,var(--ink) 25%,transparent 25%) 0 0/14px 14px,
-  var(--gold-fill)}
+.garland{height:16px;background-image:radial-gradient(circle,#FF8A00 0 5.5px,transparent 6.5px),radial-gradient(circle,#FFC233 0 3px,transparent 4px);
+  background-size:16px 16px,16px 16px;background-position:0 0,8px 0;background-repeat:repeat-x} /* the player's marigold garland */
 
 .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;line-height:1.1}
 .btn:hover{border-color:var(--muted)}
@@ -180,7 +176,7 @@ table.grid th{font:700 12px/1 var(--body);letter-spacing:.06em;text-transform:up
   </nav>
   <div class="who" id="who"></div>
 </header>
-<div class="dhaka" aria-hidden="true"></div>
+<div class="garland" aria-hidden="true"></div>
 <div class="wrap">
   <div class="layout solo" id="layout">
     <aside class="side" id="side" hidden>

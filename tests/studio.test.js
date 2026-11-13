@@ -108,10 +108,15 @@ function makeDom(db, opts) {
     ok(d.body.textContent.includes('Link sent'), 'says the link was sent'); }
 
   // signed in but not on the editor list
-  { const db = makeDb(); const { d } = makeDom(db, { signedIn: true, editor: false });
+  { const db = makeDb(), opts = { signedIn: true, editor: false }; const { w, d } = makeDom(db, opts);
     await sleep(50);
     ok(d.body.textContent.includes('Not an editor yet') && d.body.textContent.includes('u1'), 'non-editor sees their account ID and no tools');
-    ok(d.querySelector('#nav').hidden, 'no studio navigation for non-editors'); }
+    ok(d.querySelector('#nav').hidden, 'no studio navigation for non-editors');
+    const recheck = () => d.querySelector('[data-act="recheck"]').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    recheck(); await sleep(30);
+    ok(d.body.textContent.includes('Not an editor yet') && d.querySelector('#toast').textContent.includes('Still not'), 'Check again: still not an editor says so');
+    opts.editor = true; recheck(); await sleep(50); // added to public.editors in the SQL editor meanwhile
+    ok(!d.querySelector('#nav').hidden && d.querySelectorAll('.songrow').length === 1, 'Check again: once added, the studio opens without a reload'); }
 
   // editor
   const db = makeDb(); const { w, d, yt } = makeDom(db, { signedIn: true, editor: true });
@@ -151,6 +156,12 @@ function makeDom(db, opts) {
   // hear, then tap as it's sung: 0.6 s into the line plus the 0.25 s reaction delay
   click('[data-act="hear"][data-arg="2"]');
   ok(Math.abs(yt.seeks.slice(-1)[0] - 15) < 0.01, 'Hear plays from 3 s before the line');
+  yt.t = 16.75; click('[data-act="tapnow"]'); await sleep(30); // during Hear's run-up, while the line before is still playing
+  tags = db.tags.filter(t => t.song_id === 'test-rain').sort((a, b) => a.t - b.t);
+  ok(JSON.stringify(tags.map(t => t.t)) === '[18,26,34]' && tags.every(t => t.source === 'estimate') && d.querySelector('#toast').textContent.includes('Nothing changed'),
+    'a tap before the line starts is refused instead of shifting every repeat: ' + tags.map(t => t.t));
+  yt.t = 31.0; click('[data-act="tapnow"]'); await sleep(30); // the instrumental gap after the second repeat
+  ok(db.tags.filter(t => t.song_id === 'test-rain').every(t => t.source === 'estimate'), 'a tap well after a repeat ends is refused too');
   yt.t = 18.85; click('[data-act="tapnow"]'); await sleep(30);
   tags = db.tags.filter(t => t.song_id === 'test-rain').sort((a, b) => a.t - b.t);
   ok(JSON.stringify(tags.map(t => t.t)) === '[18.6,26.6,34.6]' && tags.every(t => t.source === 'tap'), 'tap times the word and copies the same position to every repeat: ' + tags.map(t => t.t));

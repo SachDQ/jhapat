@@ -237,7 +237,7 @@ function gateHTML() {
     '<form id="signin" class="row"><label class="grow"><span class="small muted">Email</span><input type="email" id="email" autocomplete="email" required></label>' +
     '<button class="btn primary" type="submit">Email me a sign-in link</button></form></div>';
   return '<div class="gate card"><h1>Not an editor yet</h1><p>You’re signed in as <b>' + esc(user.email) + '</b>, but this account can’t change songs yet.</p>' +
-    '<p class="muted small">Account ID for the editor list: <code>' + esc(user.id) + '</code></p><div class="row"><button class="btn" data-act="signout">Sign out</button></div></div>';
+    '<p class="muted small">Account ID for the editor list: <code>' + esc(user.id) + '</code></p><div class="row"><button class="btn primary" data-act="recheck">Check again</button><button class="btn" data-act="signout">Sign out</button></div></div>';
 }
 
 /* ---------- loading ---------- */
@@ -366,11 +366,25 @@ async function retime(t, source, base) {
   if (missing.length) { const { data, error } = await sb.from('tags').insert(missing).select(); if (error) return fail('Couldn’t save the timing', error); cur.tags = cur.tags.concat(data); }
   cur.tags.sort((a, b) => a.t - b.t); assign(); renderSong();
 }
+/* The repeat of line group g that lyric time t falls in: from 1 s before its start to 0.5 s past the next line's start. -1 if none. */
+function repeatAt(t, g) {
+  let best = -1, bd = 1e9;
+  for (const j of g) {
+    const start = cur.lines[j].t, end = cur.lines[j + 1] ? cur.lines[j + 1].t : start + 2 * cur.typical;
+    if (t < start - 1 || t > end + 0.5) continue;
+    const d = Math.abs(t - start); if (d < bd) { bd = d; best = j; }
+  }
+  return best;
+}
 function tapNow() {
   if (!pick) { toast('Pick a highlighted word first.'); return; }
   if (!videoOn()) { toast('Load an upload first.'); return; }
-  const t = now() - LAG - offset(), g = groupOf(pick.line), at = lineAt(t);
-  retime(t, 'tap', g.includes(at) ? at : pick.line); // whichever repeat was playing
+  const t = now() - LAG - offset(), g = groupOf(pick.line), base = repeatAt(t, g);
+  if (base < 0) { // a tap during Hear's run-up or another line would shift every repeat by the same mistake
+    toast('That tap (' + fmt2(t) + ') isn’t during the line at ' + fmt(cur.lines[pick.line].t) + '. Nothing changed. Press Hear, then tap as the word is sung.');
+    return;
+  }
+  retime(t, 'tap', base);
   toast('Timed at ' + fmt2(t) + (g.length > 1 ? ' and copied to the repeats.' : '.'));
 }
 function nudge(d) {
@@ -671,6 +685,11 @@ document.addEventListener('click', async e => {
     case 'go': location.hash = arg ? '#' + arg : '#'; break;
     case 'open': location.hash = '#song:' + encodeURIComponent(arg); break;
     case 'signout': await sb.auth.signOut(); user = null; editor = null; sent = null; location.hash = '#'; render(); break;
+    case 'recheck': { // added to the editor list after signing in: no reload needed
+      const { data, error } = await sb.rpc('is_editor');
+      if (error || data !== true) { toast('Still not on the editor list.'); break; }
+      editor = true; await loadAll(); go(); break;
+    }
     case 'create': await createFromLrc(Number(arg)); break;
     case 'uselrc': await useLyrics(Number(arg)); break;
     case 'word': {

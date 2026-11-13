@@ -236,7 +236,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 27; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 28; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -297,6 +297,9 @@ function seed() {
 }
 /* Older saves get new seed songs, and seed songs the person hasn't tapped, nudged or synced get the latest videos and timings. */
 function upgrade(d) {
+  // settings added later get their defaults on every load, so a phone that saved before them still works
+  const st = d.settings = Object.assign({ minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false }, d.settings || {});
+  if (typeof st.balance !== 'number' || !(st.balance >= 0 && st.balance <= 10)) st.balance = 5;
   if ((d.seedV || 1) >= SEED_V) return d;
   const fresh = seed();
   if (d.source !== 'db') fresh.songs.forEach(s => { // songs from the studio are never mixed with the built-in ones
@@ -309,11 +312,7 @@ function upgrade(d) {
     if (!mine) d.items.push(it);
     else if (it.id === 'paisa' && !/daam/.test(mine.words || '')) mine.words = (mine.words ? mine.words + ', ' : '') + 'daam';
   });
-  const st = d.settings = Object.assign({ minLead: 7, maxLead: 10, autoNext: true, lag: 0.3 }, d.settings || {});
   if ((d.seedV || 1) < 4 && st.minLead === 3 && st.maxLead === 8) { st.minLead = 7; st.maxLead = 10; } // the old default run-up
-  if (st.preload === undefined) st.preload = true;
-  if (st.small === undefined) st.small = false;
-  if (st.balance === undefined) st.balance = 5;
   d.seedV = SEED_V;
   return d;
 }

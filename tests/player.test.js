@@ -463,6 +463,16 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(keys10.some(k => /:maya@16$/.test(k)) && shortOk, 'a Maya 6 s behind Phool still drops, with a shorter run-up that starts after Phool');
   ok(crossed10 === 0, 'no run-up starts before an earlier table word has finished (' + crossed10 + ')');
 
+  // 21. A phone that saved its settings before Item balance existed gets balance 5, not "undefined"
+  const OLD = { v: 1, seedV: 4, source: 'db', chosen: 'party-mix', songs: [], items: [], played: [], lastSong: null,
+    settings: { minLead: 7, maxLead: 10, autoNext: true, lag: 0.3, preload: true, small: false } };
+  const dom11 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.localStorage.setItem('jhapat.v1', JSON.stringify(OLD));
+      win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 14, items: {} }] : B9) }); } });
+  await sleep(80);
+  const st11 = JSON.parse(dom11.window.localStorage.getItem('jhapat.v1')).settings, sum11 = (dom11.window.document.querySelector('.sethead .sum') || {}).textContent || '';
+  ok(st11.balance === 5 && /Balance 5/.test(sum11) && st11.minLead === 7, 'settings saved before Item balance existed load with balance 5: ' + sum11);
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

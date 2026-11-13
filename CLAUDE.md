@@ -23,7 +23,7 @@ Live at https://sachdq.github.io/jhapat/ (GitHub Pages, `main` branch, repo root
 - The free plan pauses after about a week of low activity. `.github/workflows/keepalive.yml` pings it twice a week.
 
 ## Checks
-The jsdom harnesses live outside the repo, in the session scratchpad: `test.js` for the player and `studio.test.js` for the studio. They use fake YouTube, Supabase and LRCLIB stand-ins. Recreate them if missing; they cover drop leads, preload swap, the iPhone path, DB mode, tag grouping, tap/nudge and sync. In a real browser, check through the live site, because YouTube embeds fail on file:// and in app previews (errors 152/153).
+Run `npm install` once, then `npm test` before every push. It runs `tests/player.test.js` and `tests/studio.test.js` in jsdom, with stand-ins for YouTube, Supabase and LRCLIB. They cover drop leads, preload swap, the iPhone path, database mode, tag grouping, tap/nudge, sync, items and playlists. Add a test with each change. In a real browser, check through the live site, because YouTube embeds fail on file:// and in app previews (errors 152/153).
 
 ## Working with Sachin
 He prefers dense, direct answers, and plans or guides delivered as interactive artifacts rather than .md files. Commit messages end with the Claude co-author and session lines given by the harness.

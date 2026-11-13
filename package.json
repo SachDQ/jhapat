@@ -1,0 +1,11 @@
+{
+  "name": "jhapat",
+  "private": true,
+  "description": "Jhapat party player and tagging studio. No build step; this file only holds the test setup.",
+  "scripts": {
+    "test": "node tests/player.test.js && node tests/studio.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "24.1.3"
+  }
+}

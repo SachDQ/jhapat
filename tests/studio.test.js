@@ -31,6 +31,7 @@ function fakeSb(db, opts) {
       eq(c, v) { st.filters.push(r => r[c] === v); return api; },
       in(c, vs) { st.filters.push(r => vs.includes(r[c])); return api; },
       single() { st.single = true; return api; },
+      range(from, to) { st.range = [from, to]; db.ranges = (db.ranges || 0) + 1; return api; },
       insert(rows) { st.op = 'insert'; st.rows = Array.isArray(rows) ? rows : [rows]; return api; },
       update(p) { st.op = 'update'; st.patch = p; return api; },
       delete() { st.op = 'delete'; return api; },
@@ -51,7 +52,7 @@ function fakeSb(db, opts) {
     function run() {
       db.log.push(table + ':' + st.op);
       const T = db[table];
-      if (st.op === 'select') { const rows = T.filter(match).map(embed); return st.single ? (rows[0] ? { data: rows[0], error: null } : { data: null, error: { message: 'not found' } }) : { data: rows, error: null }; }
+      if (st.op === 'select') { let rows = T.filter(match).map(embed); if (st.range) rows = rows.slice(st.range[0], Math.min(st.range[1] + 1, st.range[0] + (db.maxRows || 1000))); return st.single ? (rows[0] ? { data: rows[0], error: null } : { data: null, error: { message: 'not found' } }) : { data: rows, error: null }; }
       if (st.op === 'insert') {
         const added = st.rows.map(r => { const x = { ...r }; if (['tags', 'videos'].includes(table)) x.id = ++db.seq;
           if (table === 'videos') Object.assign(x, { offset_s: 0, synced: false, embeddable: true, duration: null }, r, { id: x.id });
@@ -412,6 +413,10 @@ function makeDom(db, opts) {
   ok(lc2.lines.length === 7 && lc2.lines[0].t === 20 && lc2.lines[6].t === 44 && lt.length === 4 && !lt.some(t => oldEst.includes(t.id)) && lt.find(t => t.item_id === 'chithi').t >= 20,
     'the new times replace the old lines, and the old estimates give way to new ones: ' + lt.map(t => t.item_id + '@' + t.t).join(', '));
   ok(lc2.status === 'auto' && db.videos.find(v => v.song_id === 'long-cut').synced === true, 'the draft goes live as auto on that upload');
+
+  { const db4 = makeDb(); db4.maxRows = 2; for (let k = 0; k < 4; k++) db4.songs.push({ id: 'p' + k, title: 'Page Song ' + k, artist: 'X', status: 'auto', lrclib_id: null, duration: 100, notes: null, lines: null });
+    const { w: w4, d: d4 } = makeDom(db4, { signedIn: true, editor: true }); await sleep(80);
+    ok(d4.querySelectorAll('.songrow').length === 5, 'songs load in pages, so a list longer than one page (Supabase sends 1,000 rows at most) still shows them all: ' + d4.querySelectorAll('.songrow').length); }
 
   { const db3 = makeDb(); for (let k = 0; k < 18; k++) db3.items.push({ id: 'x' + k, name: 'Thing ' + k, dev: '', words: ['thing' + k], note: null, sort: 2 + k });
     const { w: w3, d: d3 } = makeDom(db3, { signedIn: true, editor: true }); await sleep(50);

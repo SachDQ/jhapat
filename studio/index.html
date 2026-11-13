@@ -302,7 +302,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 25; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 26; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -593,15 +593,15 @@ function hear(i) {
 }
 
 /* ---------- Check tags: hear every tag from 3 s before ----------
-   One stop per word, a chorus's repeats counting once: the repeat with the most room before it, which is where the
-   party player drops in. Right marks them all checked; Earlier/Later moves every repeat and plays it again. */
+   One stop per word, a chorus's repeats counting once: the first repeat with room for a 7 s run-up (else the roomiest),
+   which is where the party player drops in. Right marks them all checked; Earlier/Later moves every repeat and plays it again. */
 function checkList() {
   const all = cur.tags.slice().sort((a, b) => a.t - b.t);
-  const room = new Map(all.map((t, k) => [t, k ? t.t - all[k - 1].t : t.t + offset()]));
+  const room = new Map(all.map((t, k) => [t, k ? t.t - all[k - 1].t - 1.2 : t.t + offset()]));
   const repFor = t => (t.rep != null ? t.rep : cur.lines.length ? repOf(lineOf(t)) : null);
   const groups = new Map();
   for (const t of all) { const r = repFor(t), k = r != null ? t.item_id + '|' + r : '#' + t.id; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
-  return [...groups.values()].map(m => ({ members: m, tag: m.reduce((a, t) => (room.get(t) > room.get(a) ? t : a)) })).sort((a, b) => a.tag.t - b.tag.t);
+  return [...groups.values()].map(m => ({ members: m, tag: m.find(t => room.get(t) >= 7) || m.reduce((a, t) => (room.get(t) > room.get(a) ? t : a)) })).sort((a, b) => a.tag.t - b.tag.t);
 }
 function checkStart() {
   if (!videoOn()) { toast('Load an upload first.'); return; }
@@ -650,7 +650,7 @@ function checkHTML() {
     (cur.s.status !== 'checked' ? '<button class="btn primary" data-act="status" data-arg="checked">Mark song checked</button>' : '') + '<button class="btn" data-act="chkstop">Done</button></div></div>';
   const done = g.members.every(t => t.checked);
   return '<div class="selbar check"><div class="row"><span class="big grow">' + esc(itemLabel(g.tag.item_id)) + ' at ' + fmt2(g.tag.t) + '</span><span class="small mono">' + (chk.i + 1) + ' / ' + chk.list.length + '</span></div>' +
-    '<span class="small">Plays from 3 s before' + (g.members.length > 1 ? ', at the roomiest of its ' + g.members.length + ' repeats' : '') + '. The word should start on “now”: earlier than that, press Earlier; later, press Later.' + (done ? ' Already checked.' : '') + '</span>' +
+    '<span class="small">Plays from 3 s before' + (g.members.length > 1 ? ', at repeat ' + (g.members.indexOf(g.tag) + 1) + ' of ' + g.members.length + ', where the game drops in' : '') + '. The word should start on “now”: earlier than that, press Earlier; later, press Later.' + (done ? ' Already checked.' : '') + '</span>' +
     '<div class="countdown" id="cd" aria-hidden="true">3</div>' +
     '<div class="row"><button class="btn primary tapbtn" data-act="chkok">Right <span class="kbd">Enter</span></button><button class="btn" data-act="chkplay">Again <span class="kbd">R</span></button><button class="btn ghost" data-act="chknext">Skip</button></div>' +
     '<div class="row"><button class="btn small" data-act="chknudge" data-arg="-0.1">Earlier 0.1 s <span class="kbd">←</span></button><button class="btn small" data-act="chknudge" data-arg="0.1">Later 0.1 s <span class="kbd">→</span></button>' +

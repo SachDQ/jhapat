@@ -244,14 +244,14 @@ function makeDom(db, opts) {
     'Auto-tag adds the 3 missing words with their repeat groups and leaves the existing tag alone: ' + oldTags.map(t => t.item_id + '@' + t.t + '/' + t.rep).join(' '));
   ok(!d.querySelector('.newbar') && db.songs.find(s => s.id === 'old').status === 'tagged', 'nothing left to tag; a tagged song stays tagged');
 
-  // Check tags: one stop per word, a chorus once at its roomiest repeat, each heard from 3 s before
+  // Check tags: one stop per word, a chorus once at its first repeat with room for the run-up, each heard from 3 s before
   const ch = db.tags.find(t => t.song_id === 'old' && t.item_id === 'chithi'), ch0 = ch.t;
   click('[data-act="chkstart"]'); await sleep(20);
   ok(Math.abs(yt.seeks.slice(-1)[0] - (ch0 - 3)) < 0.01 && d.querySelector('.selbar.check').textContent.includes('1 / 2'), 'Check tags starts 3 s before the first word (चिठी at ' + ch0 + '), 1 of 2 stops');
   click('[data-act="chknudge"][data-arg="-0.1"]'); await sleep(40);
   ok(Math.abs(ch.t - (ch0 - 0.1)) < 0.001 && ch.source === 'nudge' && Math.abs(yt.seeks.slice(-1)[0] - (ch0 - 3.1)) < 0.01, 'Earlier moves it 0.1 s and plays it again from 3 s before');
   click('[data-act="chkok"]'); await sleep(40);
-  ok(ch.checked === true && Math.abs(yt.seeks.slice(-1)[0] - 27) < 0.01, 'Right marks it checked and moves on: the chorus plays from 3 s before its roomiest repeat (0:30)');
+  ok(ch.checked === true && Math.abs(yt.seeks.slice(-1)[0] - 27) < 0.01, 'Right marks it checked and moves on: the chorus plays from 3 s before its first roomy repeat (0:30; the one at 0:18 is too close to चिठी)');
   d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(40);
   ok(db.tags.filter(t => t.song_id === 'old' && t.item_id === 'paani').every(t => t.checked) && d.querySelector('.selbar.check').textContent.includes('All 2 words checked') &&
     !!d.querySelector('.selbar.check [data-act="status"][data-arg="checked"]'), 'Enter marks every repeat checked; at the end it offers Mark song checked');

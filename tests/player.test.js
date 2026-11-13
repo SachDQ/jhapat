@@ -338,7 +338,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(!!d6.querySelector('[data-act="next"]') && d6.querySelector('.plbar').textContent.includes('Nepali Party Mix') && JSON.parse(dom6.window.localStorage.getItem('jhapat.v1')).songs.length === 2,
     'reopened offline: straight to Play with the last playlist and its songs');
 
-  // 17. A repeated line counts once: its word drops in before the repeat with the most room. Emojis show on the items.
+  // 17. A repeated line counts once: its word drops in at the first repeat with room for the run-up. Emojis show on the items.
   const IT7 = [{ id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧' }, { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸' }, { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️' }];
   const chorus = { id: 'ch', title: 'Chorus Song', artist: 'A', status: 'auto', videos: [{ yt: 'chxxxxxxxxx', offset: 0, synced: true }],
     // a chorus sung four times back to back (4.5 s apart, repeat group 5) after a long intro, and one verse word
@@ -364,7 +364,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   }
   ok(seen7.paani.length > 20 && seen7.paani.every(t => t === 40), 'every Paani drop goes before the first chorus, the one with the long intro (' + seen7.paani.length + ' drops)');
   ok(seen7.phool.length > 20, 'the chorus counts once, so the verse word isn’t crowded out: Phool ' + seen7.phool.length + ', Paani ' + seen7.paani.length);
-  ok(seen7.maya.has(30) && seen7.maya.has(90), 'a line sung twice with room before both takes turns between them');
+  ok(seen7.maya.has(30) && !seen7.maya.has(90), 'a line sung twice, with room before both, drops in at the first, so the rest of the song can play on');
   ok(crossed === 0 && d7.querySelector('.reveal').textContent.match(/💧|🌸|❤️/), 'run-ups stay within 7–10 s, and the revealed word has its emoji');
 
 
@@ -401,27 +401,39 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   c8('[data-act="next"]'); await sleep(10);
   ok(!d8.querySelector('.stage').classList.contains('off') && !!d8.querySelector('[data-act="pause"]'), 'Start opens the video box and brings Pause');
 
-  // 19. Items take even turns: Maya is in every song, Chithi in two, yet each gets about a third of the drops
+  // 19. Item balance: Maya is in all 14 songs, Paani in 4, Chithi in 2
   const IT9 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'paani', name: 'Paani', dev: 'पानी' }, { id: 'chithi', name: 'Chithi', dev: 'चिठी' }];
   const S9 = [];
   for (let k = 0; k < 14; k++) { const tg = [['maya', 30], ['maya', 95]]; if (k < 4) tg.push(['paani', 60]); if (k >= 12) tg.push(['chithi', 140]); S9.push(mkSong('e' + k, tg)); }
   const B9 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT9, songs: S9 };
-  const dom9 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-    beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 14, items: {} }] : B9) }); } });
-  await sleep(60);
-  const w9 = dom9.window, d9 = w9.document, c9 = sel => d9.querySelector(sel).dispatchEvent(new w9.MouseEvent('click', { bubbles: true }));
-  for (const id of ['maya', 'paani', 'chithi']) if (d9.querySelector(`[data-act="item"][data-arg="${id}"]`).getAttribute('aria-pressed') !== 'true') c9(`[data-act="item"][data-arg="${id}"]`);
-  const got9 = { maya: 0, paani: 0, chithi: 0 }, last9 = []; let rep9 = 0;
-  for (let k = 0; k < 300; k++) {
-    c9('[data-act="next"]'); await sleep(0);
-    c9('[data-act="reveal"]');
-    const rv = d9.querySelector('.reveal').textContent; got9[/Chithi/.test(rv) ? 'chithi' : /Paani/.test(rv) ? 'paani' : 'maya']++;
-    const t9 = d9.querySelector('.now .title').textContent; if (last9.slice(-3).includes(t9)) rep9++; last9.push(t9);
+  async function run9(clicks, drops) { // clicks: presses of Item balance + (or − when negative) from the default 5
+    const dom9 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+      beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 14, items: {} }] : B9) }); } });
+    await sleep(60);
+    const w9 = dom9.window, d9 = w9.document, c9 = sel => d9.querySelector(sel).dispatchEvent(new w9.MouseEvent('click', { bubbles: true }));
+    for (const id of ['maya', 'paani', 'chithi']) if (d9.querySelector(`[data-act="item"][data-arg="${id}"]`).getAttribute('aria-pressed') !== 'true') c9(`[data-act="item"][data-arg="${id}"]`);
+    c9('[data-act="settings"]');
+    for (let k = 0; k < Math.abs(clicks); k++) c9(`[data-act="balance"][data-arg="${clicks > 0 ? '+' : '-'}"]`);
+    const shown = d9.querySelector('#balance').textContent, odds = (d9.querySelector('.odds') || {}).textContent || '';
+    const got = { maya: 0, paani: 0, chithi: 0 }, last = []; let rep = 0;
+    for (let k = 0; k < drops; k++) {
+      c9('[data-act="next"]'); await sleep(0);
+      c9('[data-act="reveal"]');
+      const rv = d9.querySelector('.reveal').textContent; got[/Chithi/.test(rv) ? 'chithi' : /Paani/.test(rv) ? 'paani' : 'maya']++;
+      const t = d9.querySelector('.now .title').textContent; if (last.slice(-7).includes(t)) rep++; last.push(t);
+    }
+    return { shown, odds, got, rep, st: JSON.parse(w9.localStorage.getItem('jhapat.v1')), summary: d9.querySelector('.sethead').textContent };
   }
-  ok(Object.values(got9).every(n => n >= 65 && n <= 135), 'each item on the table gets about a third of 300 drops, though Maya is in all 14 songs and Chithi in 2: ' + JSON.stringify(got9));
-  ok(rep9 === 0, 'no song comes back within three drops, even when Chithi’s two songs are used up (' + rep9 + ')');
-  const st9 = JSON.parse(w9.localStorage.getItem('jhapat.v1'));
-  ok(new Set(st9.played).size === st9.played.length, 'a song played again moves to the end of the played list instead of being listed twice');
+  const mid = await run9(0, 300), even = await run9(5, 300), songsOnly = await run9(-5, 300);
+  ok(mid.shown === '5' && mid.summary.includes('Balance 5') && /^Next drop: Maya 52% · Paani 27% · Chithi 22%$/.test(mid.odds),
+    'Item balance starts at 5, shows in the summary, and gives the next drop’s odds: ' + mid.odds);
+  ok(mid.got.maya > mid.got.paani && mid.got.paani > mid.got.chithi && mid.got.chithi >= 15 && mid.got.maya <= 240,
+    'at 5, Maya (in every song) gets the most, but Paani and Chithi still get their turns: ' + JSON.stringify(mid.got));
+  ok(even.shown === '10' && even.st.settings.balance === 10 && /Maya 33% · Paani 33% · Chithi 33%/.test(even.odds) && even.got.chithi > songsOnly.got.chithi && even.got.paani > songsOnly.got.paani,
+    'at 10 every item has the same odds; at 0 the drops follow the songs: ' + JSON.stringify(even.got) + ' vs ' + JSON.stringify(songsOnly.got));
+  ok(songsOnly.shown === '0' && /Maya 70% · Paani 20% · Chithi 10%/.test(songsOnly.odds), 'at 0 the odds follow the songs: ' + songsOnly.odds);
+  ok(mid.rep + even.rep + songsOnly.rep === 0, 'no song comes back within 7 drops (half of these 14 songs), even at 10 with Chithi’s two songs (' + [mid.rep, even.rep, songsOnly.rep] + ')');
+  ok(new Set(even.st.played).size === even.st.played.length, 'a song played again moves to the end of the played list instead of being listed twice');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

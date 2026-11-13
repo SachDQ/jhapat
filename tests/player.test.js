@@ -304,6 +304,12 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const cards5 = [...d5.querySelectorAll('[data-act="pickpl"]')];
   ok(cards5.length === 2 && d5.body.textContent.includes('Pick a playlist') && !d5.querySelector('[data-act="next"]'), 'first visit: the playlist list comes first (the empty playlist is left out)');
   ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('Paani 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, item counts and description');
+  { const many = {}; for (let k = 0; k < 11; k++) many['it' + k] = 11 - k; // a playlist with 11 items lists its 8 most common, then "+3 more"
+    const d8 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
+      win.fetch = async (url, o) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [CARDS[0], { ...CARDS[1], items: many }] : B[JSON.parse(o.body).pid]) }); } });
+    await sleep(60);
+    const b8 = [...d8.window.document.querySelectorAll('[data-act="pickpl"][data-arg="love"] .badge')].map(x => x.textContent);
+    ok(b8.length === 10 && b8[1].startsWith('it0 ') && b8[9] === '+3 more', 'a long item list shows the 8 most common and “+3 more”: ' + b8.slice(-2).join(', ')); }
   c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
   ok(st5().playlist.id === 'love' && st5().chosen === true && !!d5.querySelector('[data-act="next"]'), 'picking a playlist loads it and opens the Play screen');
   ok(chips5().join(' ') === 'phool+1 maya+2', 'only the items in that playlist, with how many of its songs have each; Maya, in every song, starts on: ' + chips5().join(' '));

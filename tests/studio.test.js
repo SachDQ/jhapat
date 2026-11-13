@@ -199,6 +199,15 @@ function makeDom(db, opts) {
   ok(db.songs.find(s => s.id === 'old').lines.length === 8 && !!d.querySelector('.lines'), 'lyrics attach to an existing song');
   ok(d.querySelectorAll('.w.tagged').length === 1, 'its existing tag (paani at 0:30) shows on the matching word');
 
+  // untimed lyrics only (invented): shown with item words marked above the tap-along buttons
+  db.songs.push({ id: 'plain', title: 'Plain Song', artist: null, status: 'draft', lrclib_id: 9, duration: 42, notes: null, lines: null,
+    plain_lyrics: 'पानी पर्यो आज\nहावा चल्यो\nपानीमा चिठी बग्यो' });
+  w.location.hash = '#song:plain'; await sleep(80);
+  const marks = [...d.querySelectorAll('#plain mark')].map(m => m.textContent);
+  ok(marks.join(',') === 'पानी,पानीमा,चिठी' && d.querySelector('#plain .dim') && d.querySelector('#plain').textContent.includes('हावा चल्यो'),
+    'untimed lyrics show with item words marked: ' + marks.join(','));
+  ok(d.body.textContent.includes('3 item words on 2 lines') && !!d.querySelector('.tapgrid'), 'it counts them and keeps the tap-along buttons');
+
   // items: edit spellings
   w.location.hash = '#items'; await sleep(20);
   const tr = d.querySelector('tr[data-item="paani"]'); tr.querySelector('[data-f="words"]').value = 'paani, pani, पानी, पानि';

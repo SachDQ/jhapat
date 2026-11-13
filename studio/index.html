@@ -133,6 +133,9 @@ aside.side{position:sticky;top:8px;display:grid;gap:12px;max-height:calc(100vh -
 .tchip.tap{border-color:var(--ok);color:var(--ok)}
 .tchip.picked{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
 .gap{height:10px;border-top:1px dashed var(--line);margin:6px 8px}
+.plain{max-height:40vh;overflow:auto;display:grid;gap:2px;font-size:17px;line-height:1.55;padding-right:4px}
+.plain .dim{color:var(--muted)}
+.plain mark{background:var(--gold-soft);color:var(--ink);border-radius:5px;padding:0 3px;box-shadow:inset 0 -2px 0 var(--gold-fill)}
 
 .results{display:grid;gap:6px}
 .res{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
@@ -602,7 +605,7 @@ function songHTML() {
       (lrc.list ? (lrc.list.length ? '<div class="results">' + lrc.list.map(x => '<div class="res"><span><b>' + esc(x.trackName) + '</b> · ' + esc(x.artistName) + '<br><span class="meta">' + fmt(x.duration || 0).replace(/\.\d$/, '') +
         (s.duration && x.duration ? (Math.abs(x.duration - s.duration) <= 2 ? ' · same length as before' : '') : '') + ' · ' + (x.syncedLyrics ? 'timed' : 'plain only') + '</span></span>' +
         '<button class="btn small primary" data-act="uselrc" data-arg="' + x.id + '">Use these</button></div>').join('') + '</div>' : '<p class="muted">Nothing found. Try fewer words, or tap along below.</p>') : '') + '</div>';
-    h += tapAlongHTML();
+    h += plainHTML() + tapAlongHTML();
     return h;
   }
   // legend + lines
@@ -632,6 +635,23 @@ function songHTML() {
   });
   h += '</div>' + (cur.loose.length ? '<p class="small muted">Tags before the first line: ' + cur.loose.map(t => esc(itemName(t.item_id)) + ' ' + fmt2(t.t)).join(', ') + '</p>' : '') + '</div>';
   return h;
+}
+/* Untimed lyrics (LRCLIB had no timings): shown with the item words marked, to follow while tapping along. */
+function plainHTML() {
+  const txt = cur.s.plain_lyrics; if (!txt) return '';
+  let n = 0, lit = 0;
+  const rows = String(txt).split(/\r?\n/).map(l => {
+    let p = 0, html = '', any = false;
+    for (const tk of tokens(l)) {
+      html += esc(l.slice(p, tk.s)); p = tk.s + tk.x.length;
+      const it = itemFor(tk.x);
+      if (it) { n++; any = true; html += '<mark title="' + esc(itemName(it)) + '">' + esc(tk.x) + '</mark>'; } else html += esc(tk.x);
+    }
+    if (any) lit++;
+    return '<div' + (any ? '' : ' class="dim"') + '>' + (html + esc(l.slice(p)) || '&nbsp;') + '</div>';
+  }).join('');
+  return '<div class="card"><h2>Lyrics, untimed</h2><p class="small muted">' + n + ' item word' + (n === 1 ? '' : 's') + ' on ' + lit + ' line' + (lit === 1 ? '' : 's') +
+    '. Follow along and tap the first one in each line as it’s sung.</p><div class="plain" id="plain">' + rows + '</div></div>';
 }
 function tapAlongHTML() {
   const recent = cur.tags.slice(-8).reverse();

@@ -203,6 +203,15 @@ function makeDom(db, opts) {
   ok(db.songs.find(s => s.id === 'old').lines.length === 8 && !!d.querySelector('.lines'), 'lyrics attach to an existing song');
   ok(d.querySelectorAll('.w.tagged').length === 1, 'its existing tag (paani at 0:30) shows on the matching word');
 
+  // removing an upload asks first (on a phone, Remove sat right next to Sync)
+  const hasOld = () => db.videos.some(v => v.yt === 'AAAAAAAAAAA');
+  click('[data-act="rmvid"]'); await sleep(20);
+  ok(hasOld() && !!d.querySelector('[data-act="rmvidyes"]') && d.querySelector('#sidePanel').textContent.includes('only upload'), 'Remove asks first, and warns when it’s the song’s only upload');
+  click('[data-act="rmvidno"]'); await sleep(20);
+  ok(hasOld() && !d.querySelector('[data-act="rmvidyes"]') && !!d.querySelector('[data-act="rmvid"]'), 'Keep leaves the upload alone');
+  click('[data-act="rmvid"]'); await sleep(20); click('[data-act="rmvidyes"]'); await sleep(30);
+  ok(!hasOld() && d.querySelector('#sidePanel').textContent.includes('No upload yet') && d.querySelector('#toast').textContent.includes('Add another'), 'confirming removes it and says to add another');
+
   // untimed lyrics only (invented): shown with item words marked above the tap-along buttons
   db.songs.push({ id: 'plain', title: 'Plain Song', artist: null, status: 'draft', lrclib_id: 9, duration: 42, notes: null, lines: null,
     plain_lyrics: 'पानी पर्यो आज\nहावा चल्यो\nपानीमा चिठी बग्यो' });

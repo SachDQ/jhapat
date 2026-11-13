@@ -214,7 +214,7 @@ let cur = null;                                 // the open song: { s, videos, t
 let vi = -1;                                    // index in cur.videos of the upload in the player
 let pick = null;                                // { line, w, item } the word being worked on
 let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, list: null };
-let confirmDel = false, sent = null;
+let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 
 /* ---------- sign-in ---------- */
 let checking = null;
@@ -260,7 +260,7 @@ async function openSong(id) {
   if (error) return fail('Couldn’t open that song', error);
   cur = { s: data, videos: (data.videos || []).sort((x, y) => x.rank - y.rank || x.id - y.id), tags: (data.tags || []).sort((x, y) => x.t - y.t) };
   delete cur.s.videos; delete cur.s.tags;
-  prepLines(); pick = null; armed = null; confirmDel = false; tapAlong = [];
+  prepLines(); pick = null; armed = null; confirmDel = false; confirmVid = null; tapAlong = [];
   lrc = { q: [data.title, data.artist].filter(Boolean).join(' '), busy: false, list: null };
   const first = cur.videos.findIndex(v => v.embeddable);
   if (first > -1) loadVideo(first, false); else { vi = -1; }
@@ -572,7 +572,10 @@ function sideHTML() {
       '<button class="btn small" data-act="off" data-arg="' + k + ':-0.25" aria-label="Earlier">−</button><button class="btn small" data-act="off" data-arg="' + k + ':0.25" aria-label="Later">+</button></div>' +
       '<div class="line1">' + (cur.lines.length ? '<button class="btn small" data-act="sync" data-arg="' + k + '">' + (armed && armed.k === k ? 'Tap when the line starts' : 'Sync') + '</button>' : '') +
       (k ? '<button class="btn small ghost" data-act="first" data-arg="' + k + '">Play this one first</button>' : '') +
-      '<button class="btn small ghost danger" data-act="rmvid" data-arg="' + k + '">Remove</button></div></div>';
+      '<span class="grow"></span>' + (confirmVid === x.id // asks first: on a phone, Remove sat right next to Sync
+        ? '<span class="small">' + (cur.videos.length === 1 ? 'This is the only upload, so the party player will skip the song. Remove it?' : 'Remove this upload?') + '</span>' +
+          '<button class="btn small danger" data-act="rmvidyes" data-arg="' + x.id + '">Remove</button><button class="btn small" data-act="rmvidno">Keep</button>'
+        : '<button class="btn small ghost danger" data-act="rmvid" data-arg="' + x.id + '">Remove</button>') + '</div></div>';
   }).join('');
   const syncHint = armed ? '<div class="selbar"><span class="big">Sync: tap when this line starts</span><span class="small">“' + esc(cur.lines[armed.i].x) + '” (' + fmt(cur.lines[armed.i].t) + ' in the lyrics)</span>' +
     '<div class="row"><button class="btn primary tapbtn" data-act="synctap">Line starts now <span class="kbd">T</span></button><button class="btn" data-act="syncstop">Cancel</button></div></div>' : '';
@@ -748,8 +751,13 @@ document.addEventListener('click', async e => {
       if (res.some(r => r.error)) return fail('Couldn’t reorder', res.find(r => r.error).error);
       const loaded = cur.videos[vi]; cur.videos = [v].concat(others); cur.videos.forEach((x, r) => { x.rank = r; }); vi = loaded ? cur.videos.indexOf(loaded) : -1;
       renderSide(); toast('The party player tries this upload first.'); break; }
-    case 'rmvid': { const k = Number(arg), v = cur.videos[k]; const { error } = await sb.from('videos').delete().eq('id', v.id); if (error) return fail('Couldn’t remove it', error);
-      cur.videos.splice(k, 1); if (vi === k) { vi = -1; try { yt.stopVideo(); } catch (x) {} $('#idle').hidden = false; } else if (vi > k) vi--; renderSide(); break; }
+    case 'rmvid': confirmVid = Number(arg); renderSide(); break;
+    case 'rmvidno': confirmVid = null; renderSide(); break;
+    case 'rmvidyes': { const k = cur.videos.findIndex(x => x.id === Number(arg)), v = cur.videos[k]; confirmVid = null;
+      if (!v) { renderSide(); break; }
+      const { error } = await sb.from('videos').delete().eq('id', v.id); if (error) return fail('Couldn’t remove it', error);
+      cur.videos.splice(k, 1); if (vi === k) { vi = -1; try { yt.stopVideo(); } catch (x) {} $('#idle').hidden = false; } else if (vi > k) vi--;
+      renderSide(); toast(cur.videos.length ? 'Upload removed.' : 'Upload removed. Add another so the song plays at parties.'); break; }
     case 'trydrop': tryDrop(); break;
     case 'status': await updateSong({ status: arg }); renderSong(); toast(arg === 'checked' ? 'Marked checked. It’s ready for parties.' : 'Marked as not checked.'); break;
     case 'askdel': confirmDel = true; renderSong(); break;

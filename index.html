@@ -105,6 +105,7 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .chip{display:inline-flex;align-items:baseline;gap:6px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
   border-radius:999px;padding:9px 13px;font:700 15px/1 var(--body);cursor:pointer}
 .chip .d{font-weight:600;color:var(--muted)}
+.chip .em{font-size:18px;line-height:1;align-self:center}
 .chip .n{font:700 12px/1 var(--body);color:var(--muted);font-variant-numeric:tabular-nums;background:var(--raise);border-radius:999px;padding:3px 6px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .chip[aria-pressed="true"] .d{color:inherit;opacity:.75}
@@ -292,6 +293,9 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 const byId = id => S.songs.find(s => s.id === id);
 const itemById = id => S.items.find(i => i.id === id);
 const itemName = id => (itemById(id) || { name: id }).name;
+const EMOJI = { paani: '💧', phool: '🌸', chiya: '☕', paisa: '💰', chithi: '✉️', maya: '❤️', rakshi: '🍶' }; // until the database's own arrive
+const emo = id => { const it = itemById(id); return (it && it.emoji) || EMOJI[id] || ''; };
+const emoHTML = id => emo(id) ? '<span class="em" aria-hidden="true">' + esc(emo(id)) + '</span>' : '';
 const sortTags = s => s.tags.sort((a, b) => a.t - b.t);
 S.songs.forEach(sortTags);
 
@@ -483,19 +487,27 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const onItems = () => new Set(S.items.filter(i => i.on).map(i => i.id));
 const eligible = () => { const on = onItems(); return S.songs.filter(s => !s.broken && s.tags.some(t => on.has(t.item))); };
 
-const MARGIN = 1.2; // quiet kept after the previous table word, so its tail isn't heard at the drop
-/* The run-up is random within the Drop-in range (7–10s by default). Words with an earlier table word
-   closer than that are skipped while the song has roomier ones; in a packed song the drop starts just
-   after the earlier word instead. A long run-up also hides lyric timings that are a second or two off. */
+const MARGIN = 1.2; // quiet kept after the previous table word: a tag marks where its word starts, and singing it takes about a second
+/* The run-up is random within the Drop-in range (7–10s by default) and never reaches back past an earlier table word.
+   Words with an earlier table word closer than that are skipped while the song has roomier ones; in a packed song
+   the drop starts just after the earlier word instead. A repeated line (a chorus) counts once: its word drops in
+   before whichever repeat has the most room, such as the first chorus after an instrumental, so a chorus sung
+   seven times isn't seven times as likely and gets the longest run-up. */
 function pickFromSong(song) {
   const on = onItems(), minL = S.settings.minLead, maxL = S.settings.maxLead, off = song.offset || 0;
   const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
   if (!tags.length) return null;
   // room = how far back the drop can start before this word without passing an earlier table word
   const all = tags.map((t, i) => ({ tag: t, room: i ? t.t - tags[i - 1].t - MARGIN : t.t + off }));
-  const good = all.filter(c => c.room >= minL);
-  let cands = good.length >= 2 ? good : all.filter(c => c.room >= Math.min(minL, 3));
-  if (!cands.length) cands = all;
+  const groups = new Map(); // item + repeat group → its repeats; tags without a group stand alone
+  all.forEach((c, i) => { const k = c.tag.g != null ? c.tag.item + '|' + c.tag.g : '#' + i; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(c); });
+  const one = [...groups.values()].map(m => { // repeats that all have the full run-up take turns; otherwise the roomiest one
+    const full = m.filter(c => c.room >= maxL);
+    return full.length ? full[Math.floor(Math.random() * full.length)] : m.reduce((a, c) => (c.room > a.room ? c : a));
+  });
+  const good = one.filter(c => c.room >= minL);
+  let cands = good.length ? good : one.filter(c => c.room >= Math.min(minL, 3));
+  if (!cands.length) cands = one;
   const its = [...new Set(cands.map(c => c.tag.item))];
   const it = its[Math.floor(Math.random() * its.length)];
   const pool = cands.filter(c => c.tag.item === it);
@@ -600,7 +612,7 @@ function nowHTML() {
     '<div class="meta">' + esc(s.artist || '') + ' · dropped in at ' + fmt(current.start) + (pre && pre.ready && preGood(pre) ? ' · next song ready' : '') + '</div>' +
     (nextTimer ? '<div class="row"><span>Next song in a moment…</span><button class="btn small" data-act="stay">Stay here</button></div>' : '') +
     '<div class="row">' + (revealed
-      ? '<span class="reveal">Word: <b>' + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
+      ? '<span class="reveal">Word: <b>' + (emo(current.tag.item) ? esc(emo(current.tag.item)) + ' ' : '') + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
       : '<button class="btn small" data-act="reveal">Show the word</button>') +
     '<button class="btn small" data-act="replay">Replay the drop</button></div>';
 }
@@ -617,7 +629,7 @@ function renderPicker() {
         '<span class="t">' + esc(c.name) + (loadingList === c.id ? ' <span class="badge">Loading…</span>' : '') + '</span>' +
         (c.description ? '<span class="a">' + esc(c.description) + '</span>' : '') +
         '<span class="row"><span class="badge ok">' + c.songs + ' song' + (c.songs === 1 ? '' : 's') + '</span>' +
-        its.map(k => '<span class="badge">' + esc(itemName(k)) + ' ' + c.items[k] + '</span>').join('') + '</span></button></li>';
+        its.map(k => '<span class="badge">' + (emo(k) ? esc(emo(k)) + ' ' : '') + esc(itemName(k)) + ' ' + c.items[k] + '</span>').join('') + '</span></button></li>';
     }).join('') + '</ul>' +
     (S.chosen ? '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="keeppl">Keep ' + esc((S.playlist || {}).name || 'this playlist') + '</button></div>' : '') +
     '</section>';
@@ -636,7 +648,7 @@ function renderPlay() {
     (fromDb && S.playlist ? '<div class="plbar"><span>Playlist: <b>' + esc(S.playlist.name) + '</b> · ' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span>' +
       (lists().length > 1 ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</div>' : '') +
     '<h2>On the table</h2><p class="hint">Turn on the items you’ve put out. It only drops in before words that are on the table. The number is how many songs have that word tagged.</p>' +
-    '<div class="chips">' + shown.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span>' + esc(it.name) +
+    '<div class="chips">' + shown.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '">' + emoHTML(it.id) + '<span>' + esc(it.name) +
       '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + songsWith(it.id) + '</span></button>').join('') + '</div>' +
     '<p class="pool">' + (el.length ? '<span>' + (S.source === 'db' && S.playlist ? esc(S.playlist.name) + ': ' : '') + '<b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
       : '<span>No tagged song matches these items yet. Tag one in Songs.</span>') +
@@ -694,7 +706,7 @@ function renderSong() {
     '<div class="transport"><button class="btn primary" data-act="tstart">Play from start</button><button class="btn" data-act="ttoggle" data-pausebtn>Pause</button>' +
     '<button class="btn" data-act="tskip" data-arg="-5">−5s</button><button class="btn" data-act="tskip" data-arg="5">+5s</button><span class="clock" id="clock">0:00.0</span></div>' +
     '<p class="hint">Tap an item the moment you hear its word. Every tap saves on its own.</p>' +
-    '<div class="tapgrid">' + S.items.map(it => '<button class="tap" data-act="tap" data-arg="' + esc(it.id) + '" id="tap-' + esc(it.id) + '">' + esc(it.name) +
+    '<div class="tapgrid">' + S.items.map(it => '<button class="tap" data-act="tap" data-arg="' + esc(it.id) + '" id="tap-' + esc(it.id) + '">' + (emo(it.id) ? esc(emo(it.id)) + ' ' : '') + esc(it.name) +
       '<small lang="ne">' + esc(it.dev || '') + '</small></button>').join('') + '</div>' +
     '<div class="row between"><button class="btn small" data-act="undo"' + (lastTap && lastTap.songId === s.id ? '' : ' disabled') + '>Undo last tap</button>' +
     '<div class="stepper"><span class="lbl">Tap delay</span><button class="mini" data-act="lag" data-arg="-" aria-label="Less delay">−</button><output>' + S.settings.lag.toFixed(2) +
@@ -729,7 +741,7 @@ function renderItems() {
     S.items.map(it => {
       const n = S.songs.filter(s => s.tags.some(t => t.item === it.id)).length;
       const tg = S.songs.reduce((a, s) => a + s.tags.filter(t => t.item === it.id).length, 0);
-      return '<li class="itemrow"><div class="ihead"><div class="iname">' + esc(it.name) + ' <span class="d" lang="ne">' + esc(it.dev || '') + '</span></div>' +
+      return '<li class="itemrow"><div class="ihead"><div class="iname">' + (emo(it.id) ? esc(emo(it.id)) + ' ' : '') + esc(it.name) + ' <span class="d" lang="ne">' + esc(it.dev || '') + '</span></div>' +
         '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '">' + (it.on ? 'On the table' : 'Off') + '</button>' +
         '<button class="mini" data-act="delitem" data-arg="' + esc(it.id) + '" aria-label="Delete ' + esc(it.name) + '">✕</button></div>' +
         '<label class="lbl" for="w-' + esc(it.id) + '">Counts as</label><input type="text" id="w-' + esc(it.id) + '" data-words="' + esc(it.id) + '" value="' + esc(it.words || '') + '">' +
@@ -914,13 +926,13 @@ function applyBundle(b) {
   const wasOn = new Map(S.items.map(i => [i.id, i.on]));
   const mem = (S.tables || {})[b.id], playable = b.songs.filter(s => s.videos && s.videos.length);
   const inAll = id => playable.length > 0 && playable.every(s => (s.tags || []).some(t => t[0] === id));
-  S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', words: '', note: i.note || '',
+  S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '',
     on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id)) }));
   S.songs = b.songs.filter(s => s.videos && s.videos.length).map(s => ({
     id: s.id, title: s.title, artist: s.artist || '', vi: 0,
     videos: s.videos.map(v => v.yt), offsets: s.videos.map(v => Number(v.offset) || 0), synced: s.videos.map(v => !!v.synced),
     offset: Number(s.videos[0].offset) || 0, sync: s.videos[0].synced ? 'ok' : 'check',
-    tags: (s.tags || []).map(([item, t]) => ({ item, t: Number(t), src: 'db' })).sort((x, y) => x.t - y.t) }));
+    tags: (s.tags || []).map(([item, t, g]) => ({ item, t: Number(t), g: g == null ? null : Number(g), src: 'db' })).sort((x, y) => x.t - y.t) }));
   S.source = 'db'; S.playlist = { id: b.id, name: b.name }; S.dbAt = Date.now();
   (S.bundles = S.bundles || {})[b.id] = b; // every playlist opened here stays on the phone for parties without signal
   S.played = S.played.filter(id => S.songs.some(s => s.id === id));

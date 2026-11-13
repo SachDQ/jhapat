@@ -6,6 +6,7 @@ create table if not exists public.items (
   id         text primary key check (id ~ '^[a-z0-9-]+$'),
   name       text not null,
   dev        text,                                -- the name in Devanagari
+  emoji      text,                                -- shown on the item's chip, e.g. 💧
   words      text[] not null default '{}',        -- every spelling that counts, roman and Devanagari
   note       text,                                -- e.g. "use an envelope"
   sort       int not null default 0,
@@ -20,7 +21,7 @@ create table if not exists public.songs (
   duration     numeric,                           -- seconds, length of the recording the lyrics were timed to
   lines        jsonb,                             -- timed lyric lines: [{"t": 35.15, "x": "..."}]
   plain_lyrics text,
-  status       text not null default 'draft' check (status in ('draft', 'tagged', 'checked')),
+  status       text not null default 'draft' check (status in ('draft', 'auto', 'tagged', 'checked')), -- auto: tagged automatically from lyrics that match the upload
   notes        text,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
@@ -49,6 +50,7 @@ create table if not exists public.tags (
   t          numeric not null check (t >= 0),     -- seconds on the lyrics' timeline
   line       int,                                 -- index into songs.lines
   word       int,                                 -- word index within that line
+  rep        int,                                 -- first line of its repeated-line group: a chorus word counts once, at its roomiest repeat
   source     text not null default 'estimate' check (source in ('estimate', 'tap', 'nudge', 'word')),
   checked    boolean not null default false,
   created_at timestamptz not null default now()
@@ -78,6 +80,12 @@ create table if not exists public.editors (
   user_id  uuid primary key references auth.users (id) on delete cascade,
   added_at timestamptz not null default now()
 );
+
+-- upgrades for a database made before these columns existed (safe to re-run)
+alter table public.items add column if not exists emoji text;
+alter table public.tags  add column if not exists rep int;
+alter table public.songs drop constraint if exists songs_status_check;
+alter table public.songs add constraint songs_status_check check (status in ('draft', 'auto', 'tagged', 'checked'));
 
 -- keep updated_at current
 create or replace function public.touch() returns trigger language plpgsql set search_path = '' as $$
@@ -143,13 +151,13 @@ create or replace function public.playlist_bundle(pid text) returns jsonb
 language sql stable security invoker set search_path = '' as $$
   select jsonb_build_object(
     'id', p.id, 'name', p.name, 'description', p.description,
-    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note) order by i.sort, i.id), '[]'::jsonb)
+    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note, 'emoji', i.emoji) order by i.sort, i.id), '[]'::jsonb)
               from public.items i),
     'songs', (select coalesce(jsonb_agg(jsonb_build_object(
                 'id', s.id, 'title', s.title, 'artist', s.artist, 'status', s.status,
                 'videos', (select coalesce(jsonb_agg(jsonb_build_object('yt', v.yt, 'offset', v.offset_s, 'synced', v.synced) order by v.rank, v.id), '[]'::jsonb)
                            from public.videos v where v.song_id = s.id and v.embeddable),
-                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t) order by t.t), '[]'::jsonb)
+                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t, t.rep) order by t.t), '[]'::jsonb) -- [item, lyric time, repeat group]
                          from public.tags t where t.song_id = s.id)
               ) order by ps.position, s.title), '[]'::jsonb)
               from public.playlist_songs ps join public.songs s on s.id = ps.song_id

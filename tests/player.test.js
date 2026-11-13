@@ -332,6 +332,35 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(!!d6.querySelector('[data-act="next"]') && d6.querySelector('.plbar').textContent.includes('Nepali Party Mix') && JSON.parse(dom6.window.localStorage.getItem('jhapat.v1')).songs.length === 2,
     'reopened offline: straight to Play with the last playlist and its songs');
 
+  // 17. A repeated line counts once: its word drops in before the repeat with the most room. Emojis show on the items.
+  const IT7 = [{ id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧' }, { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸' }, { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️' }];
+  const chorus = { id: 'ch', title: 'Chorus Song', artist: 'A', status: 'auto', videos: [{ yt: 'chxxxxxxxxx', offset: 0, synced: true }],
+    // a chorus sung four times back to back (4.5 s apart, repeat group 5) after a long intro, and one verse word
+    tags: [['paani', 40, 5], ['paani', 44.5, 5], ['paani', 49, 5], ['paani', 53.5, 5], ['phool', 120, 30]] };
+  const twice = { id: 'tw', title: 'Twice', artist: 'B', status: 'auto', videos: [{ yt: 'twxxxxxxxxx', offset: 0, synced: true }],
+    tags: [['maya', 30, 2], ['maya', 90, 2]] }; // the same line twice, both with plenty of room
+  const B7 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT7, songs: [chorus, twice] };
+  const dom7 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 2, items: {} }] : B7) }); } });
+  await sleep(60);
+  const w7 = dom7.window, d7 = w7.document, c7 = sel => d7.querySelector(sel).dispatchEvent(new w7.MouseEvent('click', { bubbles: true }));
+  ok([...d7.querySelectorAll('[data-act="item"] .em')].map(e => e.textContent).join('') === '💧🌸❤️', 'items show their emoji');
+  const maya7 = d7.querySelector('[data-act="item"][data-arg="maya"]'); if (maya7.getAttribute('aria-pressed') !== 'true') c7('[data-act="item"][data-arg="maya"]');
+  const secs = s => { const m = s.match(/(\d+):(\d+(?:\.\d+)?)/); return +m[1] * 60 + +m[2]; };
+  const seen7 = { paani: [], phool: [], maya: new Set() }; let crossed = 0;
+  for (let k = 0; k < 240; k++) {
+    c7('[data-act="next"]'); await sleep(0);
+    const start = secs(d7.querySelector('.now .meta').textContent.split('dropped in at')[1]);
+    c7('[data-act="reveal"]');
+    const rv = d7.querySelector('.reveal').textContent, at = secs(rv.split(' at ')[1]), item = /Paani/.test(rv) ? 'paani' : /Phool/.test(rv) ? 'phool' : 'maya';
+    if (item === 'maya') seen7.maya.add(at); else seen7[item].push(at);
+    if (item === 'paani' && start < 30 - 0.01) crossed++; // a run-up longer than 10 s, or starting inside an earlier word
+  }
+  ok(seen7.paani.length > 20 && seen7.paani.every(t => t === 40), 'every Paani drop goes before the first chorus, the one with the long intro (' + seen7.paani.length + ' drops)');
+  ok(seen7.phool.length > 20, 'the chorus counts once, so the verse word isn’t crowded out: Phool ' + seen7.phool.length + ', Paani ' + seen7.paani.length);
+  ok(seen7.maya.has(30) && seen7.maya.has(90), 'a line sung twice with room before both takes turns between them');
+  ok(crossed === 0 && d7.querySelector('.reveal').textContent.match(/💧|🌸|❤️/), 'run-ups stay within 7–10 s, and the revealed word has its emoji');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

@@ -40,6 +40,7 @@ function fakeSb(db, opts) {
     const embed = r => {
       const o = { ...r };
       if (table === 'songs') {
+        if (/line0:lines->0/.test(st.sel)) { o.line0 = Array.isArray(r.lines) && r.lines.length ? r.lines[0] : null; delete o.lines; }
         if (/videos\(/.test(st.sel)) o.videos = db.videos.filter(v => v.song_id === r.id).map(v => ({ ...v }));
         if (/tags\(count\)/.test(st.sel)) o.tags = [{ count: db.tags.filter(t => t.song_id === r.id).length }];
         else if (/tags\(/.test(st.sel)) o.tags = db.tags.filter(t => t.song_id === r.id).map(t => ({ ...t }));
@@ -77,14 +78,19 @@ function fakeSb(db, opts) {
 // invented test lyrics (not from any song): a verse with चिठी, a chorus line with पानी three times
 const LRC = ['[00:10.00] यो चिठी आज लेख्छु', '[00:14.00] आकाशमा बादल', '[00:18.00] पानी पर्यो आज', '[00:22.00] हावा चल्यो', '[00:26.00] पानी पर्यो आज', '[00:30.00] ', '[00:34.00] पानी पर्यो आज', '[00:38.00] अन्तिम हरफ'].join('\n');
 function makeDom(db, opts) {
-  const yt = { t: 0, vid: null, st: -1, dur: 42, seeks: [] };
+  const yt = { t: 0, vid: null, st: -1, dur: 42, seeks: [], lens: { DDDDDDDDDDD: 42, EEEEEEEEEEE: 99 } };
   const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/studio/', pretendToBeVisual: true,
     beforeParse(win) {
       win.__fakeSb = fakeSb(db, opts);
       win.scrollTo = () => {}; win.HTMLElement.prototype.scrollIntoView = function () {};
       win.CSS = win.CSS || {}; win.CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
-      win.fetch = async url => ({ json: async () => /lrclib/.test(url) ? [{ id: 555, trackName: 'Test Rain', artistName: 'Test Band', albumName: 'Demo', duration: 42, syncedLyrics: LRC, plainLyrics: 'x' }] : [] });
+      win.fetch = async url => ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
+        : [{ id: 555, trackName: 'Test Rain', artistName: 'Test Band', albumName: 'Demo', duration: 42, syncedLyrics: LRC, plainLyrics: 'x' }] });
       win.YT = { Player: function (id, o) {
+        if (id === 'measure') { // the importer's off-screen player
+          let vid = null; this.loadVideoById = a => { vid = a.videoId; }; this.getDuration = () => yt.lens[vid] || 0; this.getVideoData = () => ({ video_id: vid });
+          this.mute = () => {}; this.stopVideo = () => {}; setTimeout(() => o.events.onReady({}), 0); return;
+        }
         this.cueVideoById = a => { yt.vid = a.videoId; yt.st = 5; };
         this.loadVideoById = a => { yt.vid = a.videoId; yt.st = 1; };
         this.getVideoData = () => ({ video_id: yt.vid }); this.getCurrentTime = () => yt.t; this.getDuration = () => yt.dur;
@@ -201,7 +207,30 @@ function makeDom(db, opts) {
   ok(!!d.querySelector('#lrcForm'), 'a song without lyrics offers the LRCLIB search');
   submit('#lrcForm'); await sleep(30); click('[data-act="uselrc"][data-arg="555"]'); await sleep(60);
   ok(db.songs.find(s => s.id === 'old').lines.length === 8 && !!d.querySelector('.lines'), 'lyrics attach to an existing song');
-  ok(d.querySelectorAll('.w.tagged').length === 1, 'its existing tag (paani at 0:30) shows on the matching word');
+  ok(d.querySelectorAll('.w.auto').length === 1 && d.querySelectorAll('.w.tagged').length === 0, 'its existing tag (paani at 0:30) shows on the matching word, marked as estimated');
+  const t1 = db.tags.find(t => t.id === 1);
+  ok(t1.line === 4 && t1.word === 0 && t1.rep === 2, 'attaching lyrics records that tag’s line, word and repeat group (first line of the chorus): ' + [t1.line, t1.word, t1.rep]);
+  ok(d.querySelector('.newbar') && d.querySelector('.newbar').textContent.includes('3 item words not tagged yet') && d.querySelectorAll('.w:not(.auto):not(.tagged)').length === 1,
+    'untagged item words are marked as new (dashed); the bar counts every repeat');
+  click('[data-act="autotag"]'); await sleep(40);
+  const oldTags = db.tags.filter(t => t.song_id === 'old').sort((a, b) => a.t - b.t);
+  ok(oldTags.length === 4 && oldTags.filter(t => t.id !== 1).every(t => t.source === 'estimate' && t.rep === (t.item_id === 'paani' ? 2 : 0)) && t1.t === 30,
+    'Auto-tag adds the 3 missing words with their repeat groups and leaves the existing tag alone: ' + oldTags.map(t => t.item_id + '@' + t.t + '/' + t.rep).join(' '));
+  ok(!d.querySelector('.newbar') && db.songs.find(s => s.id === 'old').status === 'tagged', 'nothing left to tag; a tagged song stays tagged');
+
+  // Check tags: one stop per word, a chorus once at its roomiest repeat, each heard from 3 s before
+  const ch = db.tags.find(t => t.song_id === 'old' && t.item_id === 'chithi'), ch0 = ch.t;
+  click('[data-act="chkstart"]'); await sleep(20);
+  ok(Math.abs(yt.seeks.slice(-1)[0] - (ch0 - 3)) < 0.01 && d.querySelector('.selbar.check').textContent.includes('1 / 2'), 'Check tags starts 3 s before the first word (चिठी at ' + ch0 + '), 1 of 2 stops');
+  click('[data-act="chknudge"][data-arg="-0.1"]'); await sleep(40);
+  ok(Math.abs(ch.t - (ch0 - 0.1)) < 0.001 && ch.source === 'nudge' && Math.abs(yt.seeks.slice(-1)[0] - (ch0 - 3.1)) < 0.01, 'Earlier moves it 0.1 s and plays it again from 3 s before');
+  click('[data-act="chkok"]'); await sleep(40);
+  ok(ch.checked === true && Math.abs(yt.seeks.slice(-1)[0] - 27) < 0.01, 'Right marks it checked and moves on: the chorus plays from 3 s before its roomiest repeat (0:30)');
+  d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await sleep(40);
+  ok(db.tags.filter(t => t.song_id === 'old' && t.item_id === 'paani').every(t => t.checked) && d.querySelector('.selbar.check').textContent.includes('All 2 words checked') &&
+    !!d.querySelector('.selbar.check [data-act="status"][data-arg="checked"]'), 'Enter marks every repeat checked; at the end it offers Mark song checked');
+  click('[data-act="chkstop"]'); await sleep(10);
+  ok(!d.querySelector('.selbar.check'), 'Done leaves Check tags');
 
   // removing an upload asks first (on a phone, Remove sat right next to Sync)
   const hasOld = () => db.videos.some(v => v.yt === 'AAAAAAAAAAA');
@@ -227,9 +256,47 @@ function makeDom(db, opts) {
   click('[data-act="saveitem"][data-arg="paani"]'); await sleep(20);
   ok(db.items.find(i => i.id === 'paani').words.length === 4, 'item spellings save');
 
+  // an emoji, and a spelling that rules words out
+  tr.querySelector('[data-f="emoji"]').value = '💧'; tr.querySelector('[data-f="words"]').value = 'paani, pani, पानी, -पानीमा';
+  click('[data-act="saveitem"][data-arg="paani"]'); await sleep(20);
+  ok(db.items.find(i => i.id === 'paani').emoji === '💧', 'an item’s emoji saves');
+  w.location.hash = '#song:plain'; await sleep(80);
+  ok([...d.querySelectorAll('#plain mark')].map(m => m.textContent).join(',') === 'पानी,चिठी' && d.querySelector('.tapgrid').textContent.includes('💧 Paani'),
+    '“-पानीमा” stops पानीमा counting; the emoji shows on the item');
+
   // playlists page lists both songs in order
   w.location.hash = '#playlists'; await sleep(20);
   ok(d.querySelectorAll('[data-plid="party-mix"] .songs .row').length === 2, 'playlist page lists its songs');
+
+  // add many songs: lengths measured, lyrics of the same length picked, auto-tagged
+  w.location.hash = '#import'; await sleep(20);
+  const ta = d.querySelector('#impText');
+  ta.value = ['Rain Again - Band A | https://youtu.be/DDDDDDDDDDD', 'Long Cut - Band B | EEEEEEEEEEE', 'Nothing Song - Band C', 'Old Song - Someone | FFFFFFFFFFF | 3:20'].join('\n');
+  ta.dispatchEvent(new w.Event('input', { bubbles: true }));
+  const pl = d.querySelector('#impPl'); pl.value = 'party-mix'; pl.dispatchEvent(new w.Event('change', { bubbles: true }));
+  click('[data-act="impfind"]'); await sleep(1600);
+  const rowsT = [...d.querySelectorAll('.res.imp')].map(r => r.textContent);
+  ok(rowsT.length === 4 && rowsT[0].includes('0:42') && rowsT[0].includes('same length') && rowsT[0].includes('goes live as auto'), 'a measured upload with lyrics of the same length will go live as auto');
+  ok(rowsT[1].includes('1:39') && rowsT[1].includes('differ by 57 s'), 'one whose lengths differ comes in as a draft to sync');
+  ok(rowsT[2].includes('Not on LRCLIB') && rowsT[2].includes('tap-along'), 'one not on LRCLIB comes in as a draft for tap-along: ' + rowsT[2]);
+  ok(rowsT[3].includes('Already in the studio'), 'one already in the studio is skipped');
+  click('[data-act="impadd"]'); await sleep(200);
+  const ra = db.songs.find(s => s.id === 'rain-again'), rv = db.videos.find(v => v.song_id === 'rain-again'), rt = db.tags.filter(t => t.song_id === 'rain-again');
+  ok(ra && ra.status === 'auto' && ra.lrclib_id === 555 && rv.synced === true && rv.duration === 42, 'added: lyrics attached, upload synced, live as auto');
+  ok(rt.length === 4 && rt.every(t => t.source === 'estimate' && t.rep != null) && rt.filter(t => t.item_id === 'paani').every(t => t.rep === 2), 'every item word tagged, the chorus as one repeat group');
+  const lc = db.songs.find(s => s.id === 'long-cut'), ns = db.songs.find(s => s.id === 'nothing-song');
+  ok(lc.status === 'draft' && db.videos.find(v => v.song_id === 'long-cut').synced === false && ns.status === 'draft' && !db.videos.some(v => v.song_id === 'nothing-song'), 'the others are drafts');
+  ok(['rain-again', 'long-cut', 'nothing-song'].every(id => db.playlist_songs.some(x => x.playlist_id === 'party-mix' && x.song_id === id)) && db.songs.filter(s => s.id.startsWith('old')).length === 1,
+    'all three join the chosen playlist; nothing is duplicated');
+
+  // Auto-tag all songs (Items page): only words without a tag; existing tags stay put
+  const before = db.tags.length, kept = JSON.stringify(db.tags.map(t => [t.id, t.t]));
+  w.location.hash = '#items'; await sleep(20);
+  click('[data-act="autoall"]'); await sleep(300);
+  const newOnes = db.tags.slice(before);
+  ok(newOnes.length === 1 && newOnes[0].song_id === 'test-rain' && newOnes[0].item_id === 'chithi' && newOnes[0].rep === 0 && d.querySelector('#autoAllMsg').textContent.includes('Done'),
+    'Auto-tag all songs adds only the word nobody tagged (test-rain’s चिठी): ' + newOnes.map(t => t.song_id + ':' + t.item_id).join(' '));
+  ok(JSON.stringify(db.tags.slice(0, before).map(t => [t.id, t.t])) === kept, 'and moves no existing tag');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

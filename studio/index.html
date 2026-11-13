@@ -178,6 +178,8 @@ table.grid th{font:700 12px/1 var(--body);letter-spacing:.06em;text-transform:up
 /* page heads, filters and sorting */
 .pagehead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-block:14px 10px}
 .pagehead h1{flex:1 1 auto}
+.pagehead form{flex:0 1 auto;flex-wrap:nowrap}
+.pagehead form input{width:220px;max-width:50vw}
 .count{font:700 13px/1 var(--body);color:var(--muted);background:var(--raise);border-radius:999px;padding:4px 9px;vertical-align:middle;margin-left:6px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .toolbar input[type=search]{flex:1 1 220px;width:auto;min-width:0}
@@ -295,7 +297,7 @@ let pick = null;                                // { line, w, item } the word be
 let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, list: null };
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
-const VERSION = 20; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 21; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };

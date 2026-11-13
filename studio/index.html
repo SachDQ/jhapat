@@ -80,11 +80,22 @@ input[type=text],input[type=email],input[type=search],input[type=url],textarea,s
 
 /* song list */
 .songs{display:grid;gap:6px}
-.songrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;width:100%}
+.songrow{display:grid;grid-template-columns:112px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px 8px 8px;cursor:pointer;text-align:left;width:100%;color:var(--ink)}
 .songrow:hover{border-color:var(--muted)}
-.songrow b{font-size:16.5px}
+.songrow .info{display:grid;gap:3px;min-width:0}
+.songrow .t{font-size:16.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .songrow .meta{font-size:13.5px;color:var(--muted)}
 .flags{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.thumb{width:112px;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:var(--raise);display:grid;place-items:center;flex:none}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb.sm{width:64px;border-radius:6px}
+.thumb.fl{float:left;margin:2px 10px 4px 0}
+.nothumb{font:800 20px/1 var(--display);color:var(--muted)}
+img.broken{visibility:hidden}
+.its{display:flex;gap:5px;flex-wrap:wrap}
+.its .it{display:inline-flex;gap:3px;align-items:center;background:var(--raise);border-radius:999px;padding:0 7px;font-size:13px;line-height:1.6}
+.its .it b{font-size:12px;color:var(--muted)}
+@media (max-width:640px){.songrow{grid-template-columns:84px minmax(0,1fr)}.songrow .thumb{width:84px}.songrow .flags{grid-column:2;justify-content:flex-start}}
 
 /* editor layout */
 .layout{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:20px;align-items:start;padding-top:12px}
@@ -163,12 +174,68 @@ table.grid th{font:700 12px/1 var(--body);letter-spacing:.06em;text-transform:up
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .gate{max-width:440px;margin:40px auto;display:grid;gap:14px}
 .kbd{font:600 12px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 5px;background:var(--surface)}
-@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}.chev{transition:none}}
+/* page heads, filters and sorting */
+.pagehead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-block:14px 10px}
+.pagehead h1{flex:1 1 auto}
+.count{font:700 13px/1 var(--body);color:var(--muted);background:var(--raise);border-radius:999px;padding:4px 9px;vertical-align:middle;margin-left:6px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.toolbar input[type=search]{flex:1 1 220px;width:auto;min-width:0}
+.toolbar select{width:auto;flex:0 1 auto;max-width:100%}
+.segs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.seg{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 11px;font:700 13.5px/1 var(--body);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.seg .n{font-size:12px;color:var(--muted)}
+.seg[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg[aria-pressed="true"] .n{color:inherit;opacity:.75}
+.empty{display:grid;gap:8px;justify-items:start;padding:14px 4px}
+/* cards that fold: the head is a button with a one-line summary */
+.fold{gap:0}
+.foldhead{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:0;cursor:pointer;text-align:left;color:var(--ink);font:inherit}
+.foldhead .ft{font:800 17px/1.15 var(--display)}
+.foldhead .fs{flex:1;min-width:0;font-size:13.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chev{width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 3px 3px auto;flex:none;transition:transform .15s}
+[aria-expanded="true"]>.chev{transform:rotate(225deg);margin:3px 3px 0 auto}
+.foldbody{display:grid;gap:10px;margin-top:12px;min-width:0}
+.foldhead:focus-visible,.seg:focus-visible,.itile:focus-visible{outline:3px solid var(--gold-fill);outline-offset:2px}
+/* items: compact tiles; the one being edited opens above them */
+.itiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.itile{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:9px 11px;cursor:pointer}
+.itile:hover{border-color:var(--muted)}
+.itile.on{border-color:var(--gold-fill);box-shadow:inset 0 0 0 1px var(--gold-fill)}
+.itile .ie{grid-row:span 2;font-size:26px;line-height:1}
+.itile .in{display:flex;gap:6px;align-items:baseline;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.itile .in span{color:var(--muted);font-size:14px}
+.itile .ic{font-size:12.5px;color:var(--muted)}
+.more{margin-top:10px}
+.itemed{margin-bottom:12px;border-color:var(--gold-fill);box-shadow:var(--shadow)}
+.edgrid{display:grid;grid-template-columns:90px minmax(0,1fr) minmax(0,1fr);gap:10px}
+.edgrid label{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--muted);align-content:start}
+.edgrid label.wide{grid-column:1/-1}
+.edgrid input,.edgrid textarea{font-weight:400;color:var(--ink)}
+.edgrid .small{font-weight:400}
+textarea{resize:vertical}
+@media (max-width:640px){.edgrid{grid-template-columns:80px minmax(0,1fr)}.edgrid label:nth-child(3){grid-column:1/-1}}
+/* playlists: folded cards with their covers fanned out */
+.pls{display:grid;gap:10px}
+.plhead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;flex:1;min-width:0}
+.plhead .pt{font:800 19px/1.15 var(--display)}
+.plhead .pd{font-size:13.5px;color:var(--muted)}
+.fan{position:relative;width:96px;height:60px;flex:none}
+.fan .thumb{position:absolute;width:62px;border:2px solid var(--surface);box-shadow:0 3px 8px rgba(0,0,0,.25)}
+.fan .thumb:nth-child(1){left:0;top:20px;transform:rotate(-9deg)}
+.fan .thumb:nth-child(2){left:16px;top:4px;transform:rotate(4deg)}
+.fan .thumb:nth-child(3){left:31px;top:22px;transform:rotate(10deg)}
+.plrow{display:grid;grid-template-columns:22px 64px minmax(0,1fr) auto;gap:10px;align-items:center}
+.addres{display:grid;gap:6px}
+.addres .plrow{grid-template-columns:64px minmax(0,1fr) auto}
+.plbtns{display:flex;gap:2px}
+.ver{font:600 12px/1 var(--mono);color:var(--muted)}
 </style>
 </head>
 <body>
 <header class="top wrap">
-  <a class="brand" href="./"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span></a>
+  <a class="brand" href="./"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
+  <button class="btn small primary" id="update" data-act="update" hidden>New version · Reload</button>
   <nav class="tabs" id="nav" hidden>
     <button data-act="go" data-arg="">Songs</button>
     <button data-act="go" data-arg="items">Items</button>
@@ -228,6 +295,51 @@ let pick = null;                                // { line, w, item } the word be
 let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, list: null };
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
+const VERSION = 20; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+/* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
+const UI_KEY = 'jhapat.studio';
+const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
+  try { return Object.assign(d, JSON.parse(localStorage.getItem(UI_KEY) || '{}')); } catch (e) { return d; } })();
+function saveUi() { try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch (e) {} }
+let show = 'all', plFilter = '';                // song list filters
+let itemEd = null, itemQ = '', itemsAll = false; // items: the one open in the editor ('' = a new one), search, show all
+const plAddQ = {};                              // playlists: what's typed in each one's "Add a song" box
+const isFolded = (k, dflt) => (Object.prototype.hasOwnProperty.call(ui.fold, k) ? !!ui.fold[k] : !!dflt);
+function foldCard(k, title, sum, body, dflt) {
+  const f = isFolded(k, dflt);
+  return '<div class="card fold"><button class="foldhead" data-act="fold" data-arg="' + esc(k) + '" data-dflt="' + (dflt ? 1 : 0) + '" aria-expanded="' + !f + '"><span class="ft">' + title + '</span>' +
+    '<span class="fs">' + sum + '</span><span class="chev" aria-hidden="true"></span></button><div class="foldbody"' + (f ? ' hidden' : '') + '>' + body + '</div></div>';
+}
+const thumbHTML = (yt, cls) => '<span class="thumb' + (cls ? ' ' + cls : '') + '" aria-hidden="true">' +
+  (yt && /^[\w-]{11}$/.test(yt) ? '<img src="https://i.ytimg.com/vi/' + yt + '/mqdefault.jpg" alt="" loading="lazy">' : '<span class="nothumb">♪</span>') + '</span>';
+/* A song-list row: its cover (the first upload that plays), item counts and what still needs doing. */
+function rowOf(x) {
+  const r = { ...x };
+  if (Array.isArray(x.tags)) { r.itemCounts = {}; x.tags.forEach(t => { r.itemCounts[t.item_id] = (r.itemCounts[t.item_id] || 0) + 1; }); r.tagCount = x.tags.length; }
+  delete r.tags; r.itemCounts = r.itemCounts || {}; r.tagCount = r.tagCount || 0;
+  r.videos = (r.videos || []).slice().sort((a, b) => (a.rank || 0) - (b.rank || 0) || a.id - b.id);
+  const play = r.videos.filter(v => v.embeddable !== false);
+  r.thumb = (play[0] || r.videos[0] || {}).yt || null;
+  r.noUpload = !r.videos.length; r.blocked = r.videos.length > 0 && !play.length; r.needsSync = play.length > 0 && !play.some(v => v.synced);
+  return r;
+}
+const needsWork = s => (!s.hasLines && (!s.lrclib_id || !s.tagCount)) || s.noUpload || s.blocked || s.needsSync;
+function syncRow() { // bring the open song's row in the list up to date
+  if (!cur) return; const row = songs.find(x => x.id === cur.s.id); if (!row) return;
+  Object.assign(row, rowOf({ ...row, title: cur.s.title, artist: cur.s.artist, status: cur.s.status, lrclib_id: cur.s.lrclib_id, hasLines: !!(cur.lines && cur.lines.length),
+    videos: cur.videos.map(v => ({ ...v })), tags: cur.tags }));
+}
+/* A newer version on the site (GitHub Pages can serve this page from cache for 10 minutes): offer a reload. */
+let verAt = 0;
+async function checkVersion() {
+  if (!/(^|\.)github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname) || typeof fetch !== 'function' || Date.now() - verAt < 600000) return;
+  verAt = Date.now();
+  try {
+    const r = await fetch('../version.json?t=' + Date.now(), { cache: 'no-store' });
+    const d = r && r.ok ? await r.json() : null, v = d && Number(d.v);
+    if (v > VERSION) { const u = $('#update'); u.dataset.v = v; u.textContent = 'v' + v + ' is out · Reload'; u.hidden = false; }
+  } catch (e) {}
+}
 
 /* ---------- sign-in ---------- */
 let checking = null;
@@ -260,13 +372,12 @@ function gateHTML() {
 async function loadAll() {
   const [a, b, c] = await Promise.all([
     sb.from('items').select('*').order('sort'),
-    sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(count)').order('title'), // line0: has lyrics, without fetching them all
+    sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,created_at,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(item_id)').order('title'), // line0: has lyrics, without fetching them all
     sb.from('playlists').select('id,name,description,sort,is_public,owner,playlist_songs(song_id,position)').order('sort'),
   ]);
   if (a.error || b.error || c.error) return fail('Couldn’t load the studio', a.error || b.error || c.error);
   items = a.data; spell = null; playlists = c.data;
-  songs = b.data.map(s => ({ ...s, hasLines: s.line0 != null, line0: undefined,
-    tagCount: (s.tags && s.tags[0] && s.tags[0].count) || 0, needsSync: (s.videos || []).length > 0 && !(s.videos || []).some(v => v.synced && v.embeddable) }));
+  songs = b.data.map(s => { const r = rowOf({ ...s, hasLines: s.line0 != null }); delete r.line0; return r; });
 }
 async function openSong(id) {
   const { data, error } = await sb.from('songs').select('*,videos(*),tags(*)').eq('id', id).single();
@@ -540,7 +651,7 @@ async function autoAll() {
     if (error) throw error;
     const c = prepLines({ s: data, tags: (data.tags || []).sort((a, b) => a.t - b.t) });
     const fx = placeFixes(c); if (fx.length) { await writeFixes(fx); placed += fx.length; }
-    const n = await autoTag(c); added += n; list[k].tagCount = c.tags.length;
+    const n = await autoTag(c); added += n; Object.assign(list[k], rowOf({ ...list[k], tags: c.tags }));
   }
   msg('Done: ' + added + ' new tags in ' + list.length + ' songs' + (placed ? ', ' + placed + ' placed on their lines' : '') + '.');
   return added;
@@ -686,26 +797,56 @@ async function render() {
   if (route.view === 'song') {
     if (!cur || cur.s.id !== route.id) {
       // the last song's panel would otherwise stay clickable and act on that song until this one opens
-      $('#view').innerHTML = '<p class="muted">Opening…</p>'; $('#sidePanel').innerHTML = ''; cur = null; pick = null; armed = null; chk = null;
+      $('#view').innerHTML = '<p class="muted">Opening…</p>'; $('#sidePanel').innerHTML = ''; syncRow(); cur = null; pick = null; armed = null; chk = null;
       await openSong(route.id); if (!cur || cur.s.id !== route.id) return;
     }
     renderSong(); return;
   }
-  if (cur) { try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; chk = null; }
+  if (cur) { syncRow(); try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; chk = null; }
   $('#view').innerHTML = route.view === 'items' ? itemsHTML() : route.view === 'playlists' ? playlistsHTML() : route.view === 'add' ? addHTML()
     : route.view === 'import' ? importHTML() : songsHTML();
 }
 
+const SORTS = { title: 'A–Z', new: 'Newest first', tags: 'Most tags', status: 'By status' };
+const ORDER = { draft: 0, auto: 1, tagged: 2, checked: 3 };
+const inPlaylist = (p, id) => (p.playlist_songs || []).some(x => x.song_id === id);
+function visibleSongs() {
+  const f = norm(filter), pl = playlists.find(p => p.id === plFilter);
+  const list = songs.filter(s => (!f || norm(s.title + ' ' + (s.artist || '')).includes(f)) &&
+    (show === 'all' || (show === 'todo' ? needsWork(s) : s.status === show)) &&
+    (!plFilter || (plFilter === '-' ? !playlists.some(p => inPlaylist(p, s.id)) : !!pl && inPlaylist(pl, s.id))));
+  const byTitle = (a, b) => a.title.localeCompare(b.title);
+  const by = { title: byTitle, new: (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')) || byTitle(a, b),
+    tags: (a, b) => b.tagCount - a.tagCount || byTitle(a, b), status: (a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9) || byTitle(a, b) };
+  return list.sort(by[ui.sort] || byTitle);
+}
+function flagsHTML(s) {
+  return (!s.hasLines ? (s.lrclib_id ? '<span class="pill draft">Untimed lyrics</span>' : '<span class="pill flag">No lyrics</span>') : '') +
+    (s.noUpload ? '<span class="pill flag">No upload</span>' : s.blocked ? '<span class="pill flag">Blocked</span>' : s.needsSync ? '<span class="pill flag">Check sync</span>' : '');
+}
+function songRowHTML(s) {
+  const top = Object.keys(s.itemCounts || {}).sort((a, b) => s.itemCounts[b] - s.itemCounts[a]);
+  const its = top.slice(0, 5).map(k => '<span class="it" title="' + esc(itemName(k)) + '">' + esc(emoOf(k) || itemName(k)) + '<b>' + s.itemCounts[k] + '</b></span>').join('') +
+    (top.length > 5 ? '<span class="it"><b>+' + (top.length - 5) + '</b></span>' : '');
+  return '<button class="songrow" data-act="open" data-arg="' + esc(s.id) + '">' + thumbHTML(s.thumb) +
+    '<span class="info"><b class="t">' + esc(s.title) + '</b><span class="meta">' + esc(s.artist || 'Unknown artist') + ' · ' + s.tagCount + ' tag' + (s.tagCount === 1 ? '' : 's') + '</span>' +
+    (its ? '<span class="its">' + its + '</span>' : '') + '</span><span class="flags">' + flagsHTML(s) + '<span class="pill ' + s.status + '">' + s.status + '</span></span></button>';
+}
+function songListHTML() {
+  const list = visibleSongs();
+  return list.length ? '<div class="songs">' + list.map(songRowHTML).join('') + '</div>'
+    : '<div class="empty"><p class="muted">No songs match.</p><button class="btn small" data-act="clearf">Show every song</button></div>';
+}
 function songsHTML() {
-  const f = norm(filter);
-  const list = songs.filter(s => !f || norm(s.title + ' ' + (s.artist || '')).includes(f));
-  return '<div class="row" style="padding-block:14px"><h1 class="grow">Songs</h1><a class="btn" href="#add">Add a song</a><a class="btn primary" href="#import">Add many</a></div>' +
-    '<input type="search" id="filter" placeholder="Filter by title or artist" value="' + esc(filter) + '" style="margin-bottom:10px">' +
-    '<div class="songs">' + list.map(s => '<button class="songrow" data-act="open" data-arg="' + esc(s.id) + '"><span><b>' + esc(s.title) + '</b><br><span class="meta">' + esc(s.artist || '') +
-      ' · ' + s.tagCount + ' tag' + (s.tagCount === 1 ? '' : 's') + '</span></span><span class="flags">' +
-      (!s.hasLines ? '<span class="pill flag">No lyrics</span>' : '') + (s.needsSync ? '<span class="pill flag">Check sync</span>' : '') +
-      '<span class="pill ' + s.status + '">' + s.status + '</span></span></button>').join('') + '</div>' +
-    (list.length ? '' : '<p class="muted">No songs match.</p>');
+  const n = { all: songs.length, todo: songs.filter(needsWork).length }; songs.forEach(s => { n[s.status] = (n[s.status] || 0) + 1; });
+  const seg = (k, label) => '<button class="seg" data-act="show" data-arg="' + k + '" aria-pressed="' + (show === k) + '">' + label + ' <span class="n">' + (n[k] || 0) + '</span></button>';
+  return '<div class="pagehead"><h1>Songs<span class="count">' + songs.length + '</span></h1><a class="btn" href="#add">Add a song</a><a class="btn primary" href="#import">Add many</a></div>' +
+    '<div class="toolbar"><input type="search" id="filter" placeholder="Search title or artist" value="' + esc(filter) + '" aria-label="Search songs">' +
+    '<select id="spl" aria-label="Playlist"><option value="">All playlists</option>' + playlists.map(p => '<option value="' + esc(p.id) + '"' + (plFilter === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') +
+    '<option value="-"' + (plFilter === '-' ? ' selected' : '') + '>In no playlist</option></select>' +
+    '<select id="ssort" aria-label="Sort">' + Object.keys(SORTS).map(k => '<option value="' + k + '"' + (ui.sort === k ? ' selected' : '') + '>' + SORTS[k] + '</option>').join('') + '</select></div>' +
+    '<div class="segs" role="group" aria-label="Show">' + seg('all', 'All') + seg('auto', 'Auto') + seg('tagged', 'Tagged') + seg('checked', 'Checked') + seg('draft', 'Drafts') + seg('todo', 'Needs work') + '</div>' +
+    '<div id="songList">' + songListHTML() + '</div>';
 }
 
 function addHTML() {
@@ -745,17 +886,20 @@ function sideHTML() {
     '<button class="btn small ghost danger" data-act="untag">Remove tag</button><button class="btn small ghost" data-act="unpick">Done</button></div></div>' : '';
   const counts = {}; cur.tags.forEach(t => { counts[t.item_id] = (counts[t.item_id] || 0) + 1; });
   const ok = cur.tags.filter(t => t.checked).length;
+  const playing = cur.videos.filter(x => x.embeddable), good = !!cur.videos[0] && cur.videos[0].embeddable && cur.videos[0].synced; // folds itself away while all is well
+  const upSum = !cur.videos.length ? 'None yet' : cur.videos.length + ' · ' + (playing.some(x => x.synced) ? 'synced' : playing.length ? 'not synced' : 'blocked');
+  const inPl = playlists.filter(p => inPlaylist(p, s.id)).map(p => p.name);
   return checkHTML() + syncHint + sel +
-    '<div class="card"><div class="row"><h3 class="grow">Uploads</h3></div><div class="vids">' + (vids || '<p class="muted small">No upload yet. Paste a YouTube link below.</p>') + '</div>' +
-    '<form id="addVid" class="row"><input class="grow" type="url" id="vidLink" placeholder="YouTube link" required><button class="btn small">Add upload</button></form>' +
-    '<a class="small" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(s.title + ' ' + (s.artist || '')) + '">Search YouTube for it</a></div>' +
+    foldCard('uploads', 'Uploads', esc(upSum), '<div class="vids">' + (vids || '<p class="muted small">No upload yet. Paste a YouTube link below.</p>') + '</div>' +
+      '<form id="addVid" class="row"><input class="grow" type="url" id="vidLink" placeholder="YouTube link" required><button class="btn small">Add upload</button></form>' +
+      '<a class="small" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(s.title + ' ' + (s.artist || '')) + '">Search YouTube for it</a>', good) +
     '<div class="card"><h3>Tags</h3><p class="small">' + (cur.tags.length ? Object.keys(counts).map(k => esc(itemLabel(k)) + ' ' + counts[k]).join(' · ') : 'None yet.') + '</p>' +
     (cur.tags.length ? '<p class="small muted">' + ok + ' of ' + cur.tags.length + ' checked by ear</p>' : '') +
     '<div class="row"><button class="btn small primary" data-act="chkstart"' + (cur.tags.length && v ? '' : ' disabled') + '>Check tags</button>' +
     '<button class="btn small" data-act="trydrop"' + (cur.tags.length && v ? '' : ' disabled') + '>Try a drop</button>' +
     (s.status === 'checked' ? '<button class="btn small" data-act="status" data-arg="tagged">Mark as not checked</button>' : '<button class="btn small" data-act="status" data-arg="checked"' + (cur.tags.length ? '' : ' disabled') + '>Mark checked</button>') + '</div></div>' +
-    '<div class="card"><h3>Playlists</h3>' + (playlists.length ? playlists.map(p => '<label class="row small"><input type="checkbox" data-pl="' + esc(p.id) + '"' +
-      ((p.playlist_songs || []).some(x => x.song_id === s.id) ? ' checked' : '') + '> ' + esc(p.name) + '</label>').join('') : '<p class="small muted">No playlists yet.</p>') + '</div>';
+    foldCard('songpl', 'Playlists', esc(inPl.length ? 'In ' + inPl.join(', ') : 'In none'), playlists.length ? playlists.map(p => '<label class="row small"><input type="checkbox" data-pl="' + esc(p.id) + '"' +
+      (inPlaylist(p, s.id) ? ' checked' : '') + '> ' + esc(p.name) + '</label>').join('') : '<p class="small muted">No playlists yet.</p>', true);
 }
 function renderSide() { if (cur) $('#sidePanel').innerHTML = sideHTML(); }
 
@@ -779,19 +923,22 @@ function songHTML() {
   // legend + lines
   const counts = {}; cur.lit.forEach((l, i) => l.forEach(x => { if (!showAll && groupOf(i)[0] !== i) return; counts[x.item] = (counts[x.item] || 0) + 1; }));
   const miss = missingRows(cur), fresh = {}; miss.forEach(r => { fresh[r.item_id] = (fresh[r.item_id] || 0) + 1; });
-  h += '<div class="card"><div class="row"><h2 class="grow">Lyrics</h2><label class="row small"><input type="checkbox" id="showAll"' + (showAll ? ' checked' : '') + '> Show repeats too</label></div>' +
-    '<p class="small muted">Highlighted words match an item. Click one to tag it in every repeat of the line, then <b>Hear</b> and <b>Tap</b> to time it. <span class="kbd">↑</span> <span class="kbd">↓</span> move between lit lines.</p>' +
+  h += '<div class="card"><div class="row"><h2 class="grow">Lyrics</h2><label class="row small"><input type="checkbox" id="onlyLit"' + (ui.onlyLit ? ' checked' : '') + '> Only lines with item words</label>' +
+    '<label class="row small"><input type="checkbox" id="showAll"' + (showAll ? ' checked' : '') + '> Show repeats</label></div>' +
+    '<p class="small muted">Click a lit word to tag it in every repeat, then <b>Hear</b> and <b>Tap</b>. <span class="kbd">↑</span> <span class="kbd">↓</span> move between lit lines.</p>' +
     '<div class="keyrow" aria-hidden="true"><span><span class="wk">word</span> not tagged yet</span><span><span class="wk auto">word</span> estimated</span><span><span class="wk tagged">word</span> timed or checked by ear</span></div>' +
-    (miss.length ? '<div class="newbar"><span><b>' + miss.length + ' item word' + (miss.length === 1 ? '' : 's') + ' not tagged yet</b>, counting every repeat. Auto-tag gives each one a time from its place in the line; Check tags polishes them by ear.</span>' +
+    (miss.length ? '<div class="newbar"><span><b>' + miss.length + ' item word' + (miss.length === 1 ? '' : 's') + ' not tagged yet</b> (every repeat counted). Auto-tag times each one from its place in the line.</span>' +
       '<button class="btn small primary" data-act="autotag">Auto-tag them</button></div>' : '') +
     '<div class="legend">' + items.filter(it => counts[it.id]).map(it => '<span class="chip">' + (it.emoji ? '<span aria-hidden="true">' + esc(it.emoji) + '</span> ' : '') + esc(it.name) + ' <span lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + counts[it.id] + '</span>' +
       (fresh[it.id] ? '<span class="n nn">' + fresh[it.id] + ' new</span>' : '') + '</span>').join('') + '</div>';
   h += '<div class="lines">';
+  let quiet = 0; // lines left out by "Only lines with item words"
   cur.lines.forEach((l, i) => {
     const grp = groupOf(i), first = grp[0] === i;
     if (!showAll && !first) return;
-    if (!l.x) { if (showAll) h += '<div class="gap" title="Instrumental"></div>'; return; }
+    if (!l.x) { if (showAll && !ui.onlyLit) h += '<div class="gap" title="Instrumental"></div>'; return; }
     const lit = cur.lit[i], toks = tokens(l.x), tags = cur.byLine.get(i) || [];
+    if (ui.onlyLit && !lit.length && !tags.length) { quiet++; return; }
     let html = '', p = 0;
     for (const tk of toks) {
       html += esc(l.x.slice(p, tk.s)); p = tk.s + tk.x.length;
@@ -808,7 +955,8 @@ function songHTML() {
     h += '<div class="ln' + (lit.length ? '' : ' dim') + (pick && grp.includes(pick.line) ? ' sel' : '') + '" id="ln' + i + '"><button class="tm" data-act="hear" data-arg="' + i + '" title="Hear from 3 s before">' + fmt(l.t) + '</button>' +
       '<div class="tx">' + html + (chips ? '<div class="tchips">' + chips + '</div>' : '') + '</div><div class="side">' + reps + '</div></div>';
   });
-  h += '</div>' + (cur.loose.length ? '<p class="small muted">Tags before the first line: ' + cur.loose.map(t => esc(itemName(t.item_id)) + ' ' + fmt2(t.t)).join(', ') + '</p>' : '') + '</div>';
+  h += '</div>' + (quiet ? '<p class="small muted">' + quiet + ' line' + (quiet === 1 ? '' : 's') + ' without item words hidden.</p>' : '') +
+    (cur.loose.length ? '<p class="small muted">Tags before the first line: ' + cur.loose.map(t => esc(itemName(t.item_id)) + ' ' + fmt2(t.t)).join(', ') + '</p>' : '') + '</div>';
   return h;
 }
 /* Untimed lyrics (LRCLIB had no timings): shown with the item words marked, to follow while tapping along. */
@@ -841,32 +989,77 @@ function renderSong() {
   window.scrollTo(0, keep);
 }
 
+function itemStats() { // songs and tags per item, from the song list
+  const m = {}; songs.forEach(x => Object.keys(x.itemCounts || {}).forEach(k => { const o = m[k] || (m[k] = { songs: 0, tags: 0 }); o.songs++; o.tags += x.itemCounts[k]; }));
+  return m;
+}
+const ITEM_CAP = 12;
+function itemAreaHTML() {
+  const st = itemStats(), q = norm(itemQ);
+  const used = it => (st[it.id] || {}).songs || 0;
+  const by = { sort: (a, b) => (a.sort ?? 0) - (b.sort ?? 0), name: (a, b) => a.name.localeCompare(b.name), used: (a, b) => used(b) - used(a) || a.name.localeCompare(b.name) };
+  const list = items.filter(it => !q || norm([it.name, it.dev, (it.words || []).join(' '), it.note].join(' ')).includes(q)).sort(by[ui.itemSort] || by.sort);
+  const long = !q && list.length > ITEM_CAP + 3, shown = long && !itemsAll ? list.slice(0, ITEM_CAP) : list;
+  return (list.length ? '<div class="itiles">' + shown.map(it => '<button class="itile' + (itemEd === it.id ? ' on' : '') + '" data-act="edititem" data-arg="' + esc(it.id) + '">' +
+      '<span class="ie" aria-hidden="true">' + esc(it.emoji || '•') + '</span><span class="in"><b>' + esc(it.name) + '</b><span lang="ne">' + esc(it.dev || '') + '</span></span>' +
+      '<span class="ic">' + used(it) + ' song' + (used(it) === 1 ? '' : 's') + '</span></button>').join('') + '</div>' : '<p class="muted">No item matches.</p>') +
+    (long ? '<button class="btn small more" data-act="itemsall">' + (itemsAll ? 'Show fewer' : 'Show all ' + list.length) + '</button>' : '');
+}
+function itemEdHTML() {
+  const it = itemEd ? items.find(i => i.id === itemEd) : { id: '', name: '', words: [] }; if (!it) return '';
+  const st = itemStats()[it.id] || { songs: 0, tags: 0 }, f = (k, v) => ' data-f="' + k + '" value="' + esc(v || '') + '"';
+  return '<form class="card itemed" id="itemEd" data-item="' + esc(it.id) + '"><div class="row"><h2 class="grow">' + (it.id ? esc((it.emoji ? it.emoji + ' ' : '') + it.name) : 'New item') + '</h2>' +
+    (it.id ? '<span class="small muted">' + st.songs + ' song' + (st.songs === 1 ? '' : 's') + ' · ' + st.tags + ' tag' + (st.tags === 1 ? '' : 's') + '</span>' : '') +
+    '<button type="button" class="btn small ghost" data-act="closeitem" aria-label="Close">✕</button></div>' +
+    '<div class="edgrid"><label>Emoji<input type="text"' + f('emoji', it.emoji) + ' placeholder="🙂" style="text-align:center"></label>' +
+    '<label>Name<input type="text"' + f('name', it.name) + ' placeholder="e.g. Rumal" required></label>' +
+    '<label>Devanagari<input type="text"' + f('dev', it.dev) + ' lang="ne" placeholder="e.g. रुमाल"></label>' +
+    '<label class="wide">Spellings that count<textarea data-f="words" rows="2" placeholder="rumal, रुमाल">' + esc((it.words || []).join(', ')) + '</textarea>' +
+    '<span class="small muted">Each matches the start of a lyric word, so पानी also catches पानीमा. Start one with a minus to rule words out: <code>-दामी</code> stops दामी counting as दाम.</span></label>' +
+    '<label class="wide">Put out<input type="text"' + f('note', it.note) + ' placeholder="e.g. a glass of water"></label></div>' +
+    '<div class="row"><button class="btn primary" type="submit">' + (it.id ? 'Save' : 'Add item') + '</button><button type="button" class="btn ghost" data-act="closeitem">Close</button>' +
+    (it.id ? '<span class="small muted">New spelling? Auto-tag all songs tags it everywhere.</span>' : '') + '</div></form>';
+}
 function itemsHTML() {
-  const timed = songs.filter(s => s.hasLines).length;
-  return '<div class="row" style="padding-block:14px"><h1 class="grow">Items</h1></div><p class="muted" style="margin-bottom:10px">Spellings are matched at the start of each lyric word, so पानी also catches पानीमा. Separate them with commas. ' +
-    'Start one with a minus to rule words out: <code>-दामी</code> stops दामी (fancy) counting as दाम (price).</p>' +
-    '<div class="card scrollx"><table class="grid"><thead><tr><th>Emoji</th><th>Name</th><th>Devanagari</th><th>Spellings that count</th><th>Put out</th><th></th></tr></thead><tbody>' +
-    items.map(it => '<tr data-item="' + esc(it.id) + '"><td><input type="text" data-f="emoji" value="' + esc(it.emoji || '') + '" style="width:3.4em;text-align:center" aria-label="Emoji"></td>' +
-      '<td><input type="text" data-f="name" value="' + esc(it.name) + '"></td><td><input type="text" data-f="dev" value="' + esc(it.dev || '') + '" lang="ne"></td>' +
-      '<td style="min-width:260px"><input type="text" data-f="words" value="' + esc((it.words || []).join(', ')) + '"></td><td style="min-width:180px"><input type="text" data-f="note" value="' + esc(it.note || '') + '" placeholder="e.g. a glass of water"></td>' +
-      '<td><button class="btn small" data-act="saveitem" data-arg="' + esc(it.id) + '">Save</button></td></tr>').join('') + '</tbody></table></div>' +
-    '<form id="newItem" class="card row" style="margin-top:12px"><input type="text" id="niEmoji" placeholder="🙂" style="width:3.4em;text-align:center" aria-label="Emoji"><input class="grow" type="text" id="niName" placeholder="New item, e.g. Rumal" required><input class="grow" type="text" id="niDev" placeholder="Devanagari" lang="ne">' +
-      '<input class="grow" type="text" id="niWords" placeholder="Spellings, comma separated"><input class="grow" type="text" id="niNote" placeholder="Put out, e.g. a handkerchief"><button class="btn primary">Add item</button></form>' +
-    '<div class="card" style="margin-top:12px"><h3>Tag new words in every song</h3><p class="small muted">After adding an item or a spelling: every item word without a tag, in all ' + timed + ' songs with timed lyrics, gets an estimated tag. ' +
-      'Tags already there aren’t moved, and drafts stay drafts. Polish them later with Check tags.</p><div class="row"><button class="btn primary" data-act="autoall">Auto-tag all songs</button><span class="small" id="autoAllMsg"></span></div></div>';
+  const timed = songs.filter(x => x.hasLines).length;
+  return '<div class="pagehead"><h1>Items<span class="count">' + items.length + '</span></h1>' +
+    '<button class="btn" data-act="autoall" title="Every item word without a tag, in all ' + timed + ' songs with timed lyrics, gets an estimated tag. Tags already there stay put.">Auto-tag all songs</button>' +
+    '<button class="btn primary" data-act="newitem">New item</button></div>' +
+    '<p class="small" id="autoAllMsg" aria-live="polite"></p>' +
+    (itemEd !== null ? itemEdHTML() : '') +
+    '<div class="toolbar"><input type="search" id="itemQ" placeholder="Search items, spellings or props" value="' + esc(itemQ) + '" aria-label="Search items">' +
+    '<select id="isort" aria-label="Sort items">' + [['sort', 'Usual order'], ['name', 'A–Z'], ['used', 'Most used']].map(([k, l]) => '<option value="' + k + '"' + (ui.itemSort === k ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
+    '<div id="itemArea">' + itemAreaHTML() + '</div>';
 }
 function playlistsHTML() {
-  const byId = id => songs.find(s => s.id === id);
-  return '<div class="row" style="padding-block:14px"><h1 class="grow">Playlists</h1></div>' +
-    playlists.map(p => { const ps = (p.playlist_songs || []).slice().sort((a, b) => a.position - b.position);
-      return '<div class="card" style="margin-bottom:12px" data-plid="' + esc(p.id) + '"><div class="row"><input class="grow" type="text" data-pf="name" value="' + esc(p.name) + '"><button class="btn small" data-act="saveplay" data-arg="' + esc(p.id) + '">Save</button></div>' +
-        '<input type="text" data-pf="description" value="' + esc(p.description || '') + '" placeholder="Description">' +
-        '<p class="small muted">' + ps.length + ' songs. Add or remove songs from each song’s page.</p>' +
-        '<div class="songs">' + ps.map((x, k) => { const s = byId(x.song_id) || { title: x.song_id, status: 'draft' };
-          return '<div class="row small"><span class="mono muted">' + (k + 1) + '</span><span class="grow">' + esc(s.title) + ' <span class="pill ' + s.status + '">' + s.status + '</span></span>' +
-            '<button class="btn small ghost" data-act="mv" data-arg="' + esc(p.id) + ':' + k + ':-1"' + (k ? '' : ' disabled') + ' aria-label="Move up">↑</button>' +
-            '<button class="btn small ghost" data-act="mv" data-arg="' + esc(p.id) + ':' + k + ':1"' + (k < ps.length - 1 ? '' : ' disabled') + ' aria-label="Move down">↓</button></div>'; }).join('') + '</div></div>'; }).join('') +
-    '<form id="newPlay" class="card row"><input class="grow" type="text" id="npName" placeholder="New playlist name" required><button class="btn primary">Create playlist</button></form>';
+  return '<div class="pagehead"><h1>Playlists<span class="count">' + playlists.length + '</span></h1>' +
+    '<form id="newPlay" class="row"><input type="text" id="npName" placeholder="New playlist name" required aria-label="New playlist name"><button class="btn primary">Create</button></form></div>' +
+    '<div class="pls">' + playlists.map(plCardHTML).join('') + '</div>';
+}
+function plCardHTML(p) {
+  const ps = (p.playlist_songs || []).slice().sort((a, b) => a.position - b.position);
+  const rows = ps.map(x => songs.find(q => q.id === x.song_id) || { id: x.song_id, title: x.song_id, status: 'draft', thumb: null });
+  const drafts = rows.filter(x => x.status === 'draft').length, k = 'pl:' + p.id, f = isFolded(k, true);
+  return '<div class="card fold" data-plid="' + esc(p.id) + '"><button class="foldhead" data-act="fold" data-arg="' + esc(k) + '" data-dflt="1" aria-expanded="' + !f + '">' +
+      '<span class="plhead"><span class="fan">' + rows.filter(x => x.thumb).slice(0, 3).map(x => thumbHTML(x.thumb)).join('') + '</span>' +
+      '<span><span class="pt">' + esc(p.name) + '</span>' + (p.is_public === false ? ' <span class="pill draft">hidden</span>' : '') + '<br><span class="pd">' +
+      (p.description ? esc(p.description) + ' · ' : '') + rows.length + ' song' + (rows.length === 1 ? '' : 's') + (drafts ? ' · ' + drafts + ' draft' + (drafts === 1 ? '' : 's') + ' (not played)' : '') + '</span></span></span>' +
+      '<span class="chev" aria-hidden="true"></span></button>' +
+    '<div class="foldbody"' + (f ? ' hidden' : '') + '><div class="row"><input class="grow" type="text" data-pf="name" value="' + esc(p.name) + '" aria-label="Name">' +
+      '<input class="grow" type="text" data-pf="description" value="' + esc(p.description || '') + '" placeholder="Description" aria-label="Description"><button class="btn small" data-act="saveplay" data-arg="' + esc(p.id) + '">Save</button></div>' +
+      '<div class="songs">' + rows.map((x, n) => '<div class="row plrow"><span class="mono muted">' + (n + 1) + '</span>' + thumbHTML(x.thumb, 'sm') +
+        '<span><a href="#song:' + encodeURIComponent(x.id) + '">' + esc(x.title) + '</a> <span class="pill ' + x.status + '">' + x.status + '</span></span><span class="plbtns">' +
+        '<button class="btn small ghost" data-act="mv" data-arg="' + esc(p.id) + ':' + n + ':-1"' + (n ? '' : ' disabled') + ' aria-label="Move up">↑</button>' +
+        '<button class="btn small ghost" data-act="mv" data-arg="' + esc(p.id) + ':' + n + ':1"' + (n < rows.length - 1 ? '' : ' disabled') + ' aria-label="Move down">↓</button>' +
+        '<button class="btn small ghost danger" data-act="plrm" data-arg="' + esc(p.id) + ':' + esc(x.id) + '" aria-label="Take ' + esc(x.title) + ' out of this playlist">✕</button></span></div>').join('') + '</div>' +
+      '<input type="search" data-pladd="' + esc(p.id) + '" placeholder="Add a song: type its title" value="' + esc(plAddQ[p.id] || '') + '" aria-label="Add a song to ' + esc(p.name) + '">' +
+      '<div class="addres" data-plres="' + esc(p.id) + '">' + plAddHTML(p) + '</div></div></div>';
+}
+function plAddHTML(p) {
+  const q = norm(plAddQ[p.id] || ''); if (!q) return '';
+  const hits = songs.filter(x => !inPlaylist(p, x.id) && norm(x.title + ' ' + (x.artist || '')).includes(q)).slice(0, 8);
+  return hits.length ? hits.map(x => '<div class="row plrow">' + thumbHTML(x.thumb, 'sm') + '<span>' + esc(x.title) + ' <span class="small muted">' + esc(x.artist || '') + '</span> <span class="pill ' + x.status + '">' + x.status + '</span></span>' +
+    '<button class="btn small" data-act="pladd" data-arg="' + esc(p.id) + ':' + esc(x.id) + '">Add</button></div>').join('') : '<p class="small muted">No other song matches.</p>';
 }
 
 /* ---------- actions ---------- */
@@ -884,6 +1077,26 @@ document.addEventListener('click', async e => {
   const act = b.dataset.act, arg = b.dataset.arg;
   switch (act) {
     case 'go': location.hash = arg ? '#' + arg : '#'; break;
+    case 'update': location.href = location.pathname + '?v=' + (b.dataset.v || Date.now()) + location.hash; break;
+    case 'fold': { const f = !isFolded(arg, b.dataset.dflt === '1'); ui.fold[arg] = f; saveUi(); // no re-render: typing and scroll stay put
+      b.setAttribute('aria-expanded', String(!f)); if (b.nextElementSibling) b.nextElementSibling.hidden = f; break; }
+    case 'show': show = arg; render(); break;
+    case 'clearf': show = 'all'; plFilter = ''; filter = ''; render(); break;
+    case 'newitem': itemEd = ''; render(); { const n = document.querySelector('#itemEd [data-f="name"]'); if (n) n.focus(); } break;
+    case 'edititem': itemEd = itemEd === arg ? null : arg; render(); { const ed = $('#itemEd'); if (ed) ed.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } break;
+    case 'closeitem': itemEd = null; render(); break;
+    case 'itemsall': itemsAll = !itemsAll; $('#itemArea').innerHTML = itemAreaHTML(); break;
+    case 'pladd': { const [pid, sid] = arg.split(':'), p = playlists.find(x => x.id === pid); if (!p) break;
+      const pos = (p.playlist_songs || []).reduce((m, x) => Math.max(m, x.position + 1), 0);
+      const { error } = await sb.from('playlist_songs').insert({ playlist_id: pid, song_id: sid, position: pos });
+      if (error) return fail('Couldn’t add it', error);
+      (p.playlist_songs = p.playlist_songs || []).push({ song_id: sid, position: pos }); plAddQ[pid] = ''; render();
+      toast('Added ' + ((songs.find(x => x.id === sid) || {}).title || 'it') + ' to ' + p.name + '.'); break; }
+    case 'plrm': { const [pid, sid] = arg.split(':'), p = playlists.find(x => x.id === pid); if (!p) break;
+      const { error } = await sb.from('playlist_songs').delete().eq('playlist_id', pid).eq('song_id', sid);
+      if (error) return fail('Couldn’t take it out', error);
+      p.playlist_songs = (p.playlist_songs || []).filter(x => x.song_id !== sid); render();
+      toast('Took ' + ((songs.find(x => x.id === sid) || {}).title || 'it') + ' out of ' + p.name + '. The song itself is still in the studio.'); break; }
     case 'open': location.hash = '#song:' + encodeURIComponent(arg); break;
     case 'signout': await sb.auth.signOut(); user = null; editor = null; sent = null; location.hash = '#'; render(); break;
     case 'recheck': { // added to the editor list after signing in: no reload needed
@@ -938,8 +1151,7 @@ document.addEventListener('click', async e => {
       try {
         const n = await autoTag(cur), synced = cur.videos.some(v => v.synced && v.embeddable), draft = cur.s.status === 'draft';
         if (draft && n && synced) await updateSong({ status: 'auto' });
-        const row = songs.find(x => x.id === cur.s.id); if (row) row.tagCount = cur.tags.length;
-        renderSong();
+        syncRow(); renderSong();
         toast(!n ? 'Every item word already has a tag.' : 'Tagged ' + n + ' word' + (n === 1 ? '' : 's') + ' automatically' + (draft && synced ? ' and published it as auto' : '') + '. Press Check tags to hear each one.' +
           (draft && !synced ? ' It stays a draft until an upload is synced.' : ''));
       } catch (e) { fail('Couldn’t auto-tag', e); renderSong(); }
@@ -959,7 +1171,6 @@ document.addEventListener('click', async e => {
     case 'nodel': confirmDel = false; renderSong(); break;
     case 'delsong': { const { error } = await sb.from('songs').delete().eq('id', cur.s.id); if (error) return fail('Couldn’t delete it', error);
       songs = songs.filter(s => s.id !== cur.s.id); cur = null; vi = -1; location.hash = '#'; toast('Deleted.'); break; }
-    case 'saveitem': await saveItem(arg); break;
     case 'saveplay': await savePlaylist(arg); break;
     case 'mv': await movePl(arg); break;
   }
@@ -967,6 +1178,10 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', async e => {
   const t = e.target;
   if (t.id === 'showAll') { showAll = t.checked; renderSong(); }
+  if (t.id === 'onlyLit') { ui.onlyLit = t.checked; saveUi(); renderSong(); }
+  if (t.id === 'spl') { plFilter = t.value; $('#songList').innerHTML = songListHTML(); }
+  if (t.id === 'ssort') { ui.sort = t.value; saveUi(); $('#songList').innerHTML = songListHTML(); }
+  if (t.id === 'isort') { ui.itemSort = t.value; saveUi(); $('#itemArea').innerHTML = itemAreaHTML(); }
   if (t.dataset && t.dataset.imp != null && imp.rows && imp.rows[Number(t.dataset.imp)]) { imp.rows[Number(t.dataset.imp)].pick = Number(t.value); renderImport(); }
   if (t.id === 'impPl') imp.pl = t.value;
   if (t.dataset && t.dataset.pl) {
@@ -975,15 +1190,22 @@ document.addEventListener('change', async e => {
       const pos = (p.playlist_songs || []).length;
       const { error } = await sb.from('playlist_songs').insert({ playlist_id: pid, song_id: cur.s.id, position: pos });
       if (error) { t.checked = false; return fail('Couldn’t add it', error); }
-      (p.playlist_songs = p.playlist_songs || []).push({ song_id: cur.s.id, position: pos }); toast('Added to ' + p.name + '.');
+      (p.playlist_songs = p.playlist_songs || []).push({ song_id: cur.s.id, position: pos }); renderSide(); toast('Added to ' + p.name + '.');
     } else {
       const { error } = await sb.from('playlist_songs').delete().eq('playlist_id', pid).eq('song_id', cur.s.id);
       if (error) { t.checked = true; return fail('Couldn’t remove it', error); }
-      p.playlist_songs = (p.playlist_songs || []).filter(x => x.song_id !== cur.s.id); toast('Removed from ' + p.name + '.');
+      p.playlist_songs = (p.playlist_songs || []).filter(x => x.song_id !== cur.s.id); renderSide(); toast('Removed from ' + p.name + '.');
     }
   }
 });
-document.addEventListener('input', e => { if (e.target.id === 'impText') imp.text = e.target.value; if (e.target.id === 'filter') { filter = e.target.value; const pos = e.target.selectionStart; $('#view').innerHTML = songsHTML(); const f = $('#filter'); f.focus(); f.setSelectionRange(pos, pos); } });
+document.addEventListener('input', e => { // search boxes redraw only their list, so typing isn't interrupted
+  const t = e.target;
+  if (t.id === 'impText') imp.text = t.value;
+  if (t.id === 'filter') { filter = t.value; $('#songList').innerHTML = songListHTML(); }
+  if (t.id === 'itemQ') { itemQ = t.value; $('#itemArea').innerHTML = itemAreaHTML(); }
+  if (t.dataset && t.dataset.pladd != null) { const pid = t.dataset.pladd, p = playlists.find(x => x.id === pid), el = document.querySelector('[data-plres="' + CSS.escape(pid) + '"]');
+    plAddQ[pid] = t.value; if (p && el) el.innerHTML = plAddHTML(p); }
+});
 document.addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target;
   if (f.id === 'signin') {
@@ -1001,14 +1223,7 @@ document.addEventListener('submit', async e => {
     if (error) return fail('Couldn’t add the upload', error);
     cur.videos.push(data); loadVideo(cur.videos.length - 1, true); renderSide(); toast('Upload added. Checking its length…');
   }
-  if (f.id === 'newItem') {
-    const name = $('#niName').value.trim(); let id = slug(name); while (items.some(i => i.id === id)) id += '-2';
-    const words = $('#niWords').value.split(',').map(x => x.trim()).filter(Boolean);
-    const { data, error } = await sb.from('items').insert({ id, name, dev: $('#niDev').value.trim() || null, emoji: $('#niEmoji').value.trim() || null, note: $('#niNote').value.trim() || null,
-      words: words.length ? words : [name.toLowerCase()], sort: items.length }).select().single();
-    if (error) return fail('Couldn’t add the item', error);
-    items.push(data); spell = null; render(); toast(name + ' added. Auto-tag all songs to tag its words everywhere.');
-  }
+  if (f.id === 'itemEd') await saveItem(f.dataset.item);
   if (f.id === 'newPlay') {
     const name = $('#npName').value.trim(); let id = slug(name); while (playlists.some(p => p.id === id)) id += '-2';
     const { data, error } = await sb.from('playlists').insert({ id, name, sort: playlists.length }).select().single();
@@ -1107,12 +1322,12 @@ async function importAdd() {
       const v = await sb.from('videos').insert({ song_id: id, yt: r.yt, kind: 'official', rank: 0, duration: typeof r.len === 'number' ? r.len : null, synced: plan.kind === 'auto' }).select().single();
       if (v.error) fail('Couldn’t add the upload for ' + r.title, v.error); else videos.push(v.data);
     }
-    let n = 0;
-    if (lines.length) { try { n = await autoTag(prepLines({ s: { id, lines }, tags: [] })); } catch (e) { fail('Couldn’t tag ' + r.title, e); } }
+    let n = 0, ctx = null;
+    if (lines.length) { try { ctx = prepLines({ s: { id, lines }, tags: [] }); n = await autoTag(ctx); } catch (e) { fail('Couldn’t tag ' + r.title, e); } }
     if (plan.kind === 'auto' && n) { const u = await sb.from('songs').update({ status: 'auto' }).eq('id', id); if (!u.error) song.status = 'auto'; }
     const p = playlists.find(q => q.id === imp.pl);
     if (p) { const pos = (p.playlist_songs || []).length, e = await sb.from('playlist_songs').insert({ playlist_id: p.id, song_id: id, position: pos }); if (!e.error) (p.playlist_songs = p.playlist_songs || []).push({ song_id: id, position: pos }); }
-    songs.push({ ...song, lines: undefined, hasLines: lines.length > 0, tagCount: n, videos, needsSync: videos.length > 0 && !videos.some(v => v.synced) });
+    songs.push(rowOf({ ...song, lines: undefined, plain_lyrics: undefined, created_at: new Date().toISOString(), hasLines: lines.length > 0, videos, tags: ctx ? ctx.tags : [] }));
     r.done = id; r.made = { status: song.status, tags: n }; made++; renderImport();
   }
   songs.sort((q, w) => q.title.localeCompare(w.title));
@@ -1134,7 +1349,7 @@ function importHTML() {
 }
 function impRowHTML(r, k, plan) {
   const len = typeof r.len === 'number' ? r.len : null;
-  const head = '<b>' + esc(r.title) + '</b>' + (r.artist ? ' · ' + esc(r.artist) : '') + '<br><span class="meta">' +
+  const head = (r.yt ? thumbHTML(r.yt, 'sm fl') : '') + '<b>' + esc(r.title) + '</b>' + (r.artist ? ' · ' + esc(r.artist) : '') + '<br><span class="meta">' +
     (r.yt ? 'youtu.be/' + esc(r.yt) + ' · ' + (len ? fmtLen(len) : r.len === 'blocked' ? 'won’t play outside YouTube' : r.cands ? 'length unknown' : 'measuring…') : 'no upload') + '</span>';
   if (r.done) return '<div class="res imp"><span>' + head + '<div class="small okc">Added as ' + esc(r.made.status) + (r.made.tags ? ' with ' + r.made.tags + ' tags' : '') + '.</div></span><a class="btn small" href="#song:' + esc(r.done) + '">Open</a></div>';
   if (r.dupe) return '<div class="res imp"><span>' + head + '<div class="small muted">Already in the studio.</div></span><a class="btn small ghost" href="#song:' + esc(r.dupe.id) + '">Open</a></div>';
@@ -1150,9 +1365,9 @@ function impRowHTML(r, k, plan) {
 }
 async function createSong(row) {
   let id = slug(row.title); while (songs.some(s => s.id === id)) id += '-2';
-  const { data, error } = await sb.from('songs').insert({ id, status: 'draft', ...row }).select('id,title,artist,status,lrclib_id,duration,notes').single();
+  const { data, error } = await sb.from('songs').insert({ id, status: 'draft', ...row }).select('id,title,artist,status,lrclib_id,duration,notes,created_at').single();
   if (error) return fail('Couldn’t add the song', error);
-  songs.push({ ...data, hasLines: !!(row.lines && row.lines.length), tagCount: 0, needsSync: false, videos: [] }); songs.sort((a, b) => a.title.localeCompare(b.title));
+  songs.push(rowOf({ ...data, created_at: data.created_at || new Date().toISOString(), hasLines: !!(row.lines && row.lines.length), videos: [], tags: [] })); songs.sort((a, b) => a.title.localeCompare(b.title));
   lrc = { q: '', busy: false, list: null }; location.hash = '#song:' + encodeURIComponent(id);
   toast('Added. Now paste a YouTube link for it.');
 }
@@ -1179,12 +1394,21 @@ function tryDrop() {
   toast('Dropped in ' + lead.toFixed(1) + ' s before ' + itemName(tg.item_id) + ' (' + fmt2(tg.t + offset()) + ').');
 }
 async function saveItem(id) {
-  const tr = document.querySelector('tr[data-item="' + CSS.escape(id) + '"]'); if (!tr) return;
-  const val = f => tr.querySelector('[data-f="' + f + '"]').value.trim();
-  const patch = { name: val('name'), dev: val('dev') || null, emoji: val('emoji') || null, words: val('words').split(',').map(x => x.trim()).filter(Boolean), note: val('note') || null };
+  const f = $('#itemEd'); if (!f) return;
+  const val = k => f.querySelector('[data-f="' + k + '"]').value.trim();
+  const words = val('words').split(/[,\n]/).map(x => x.trim()).filter(Boolean);
+  const patch = { name: val('name'), dev: val('dev') || null, emoji: val('emoji') || null, words, note: val('note') || null };
+  if (!patch.name) { toast('Give the item a name.'); return; }
+  if (!id) {
+    let nid = slug(patch.name); while (items.some(i => i.id === nid)) nid += '-2';
+    const { data, error } = await sb.from('items').insert({ id: nid, ...patch, words: words.length ? words : [patch.name.toLowerCase()], sort: items.length }).select().single();
+    if (error) return fail('Couldn’t add the item', error);
+    items.push(data); spell = null; itemEd = data.id; render(); toast(patch.name + ' added. Auto-tag all songs to tag its words everywhere.');
+    return;
+  }
   const { error } = await sb.from('items').update(patch).eq('id', id);
   if (error) return fail('Couldn’t save', error);
-  Object.assign(items.find(i => i.id === id), patch); spell = null; toast('Saved ' + patch.name + '.');
+  Object.assign(items.find(i => i.id === id), patch); spell = null; render(); toast('Saved ' + patch.name + '.');
 }
 async function savePlaylist(id) {
   const card = document.querySelector('[data-plid="' + CSS.escape(id) + '"]'); if (!card) return;
@@ -1222,7 +1446,11 @@ document.addEventListener('keydown', e => {
   else if (k === 'ArrowUp') { e.preventDefault(); stepLit(-1); }
   else if (k === 'Escape') { pick = null; armed = null; renderSong(); }
 });
+document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true); // a cover that won't load just disappears
+$('#ver').textContent = 'v' + VERSION;
 go();
+checkVersion();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
 })();
 </script>
 </body>

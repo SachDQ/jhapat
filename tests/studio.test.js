@@ -84,7 +84,7 @@ function makeDom(db, opts) {
       win.__fakeSb = fakeSb(db, opts);
       win.scrollTo = () => {}; win.HTMLElement.prototype.scrollIntoView = function () {};
       win.CSS = win.CSS || {}; win.CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
-      win.fetch = async url => ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
+      win.fetch = async url => /version\.json/.test(url) ? { ok: true, json: async () => ({ v: db.ver || 0 }) } : ({ json: async () => !/lrclib/.test(url) || /Nothing/.test(decodeURIComponent(url)) ? []
         : [{ id: 555, trackName: 'Test Rain', artistName: 'Test Band', albumName: 'Demo', duration: 42, syncedLyrics: LRC, plainLyrics: 'x' }] });
       win.YT = { Player: function (id, o) {
         if (id === 'measure') { // the importer's off-screen player
@@ -130,6 +130,12 @@ function makeDom(db, opts) {
   const submit = sel => d.querySelector(sel).dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
   await sleep(50);
   ok(d.querySelectorAll('.songrow').length === 1 && d.body.textContent.includes('No lyrics'), 'song list shows the old song flagged No lyrics');
+  const VER = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'version.json'), 'utf8')).v;
+  ok(d.querySelector('#ver').textContent === 'v' + VER && d.querySelector('#update').hidden, 'the version shows next to the logo and matches version.json: v' + VER);
+  { const db2 = makeDb(); db2.ver = VER + 1; const { d: d2 } = makeDom(db2, { signedIn: true, editor: true }); await sleep(50);
+    ok(!d2.querySelector('#update').hidden && d2.querySelector('#update').textContent.includes('v' + (VER + 1)), 'a newer version on the site offers a reload'); }
+  ok(d.querySelector('.songrow .thumb img').getAttribute('src') === 'https://i.ytimg.com/vi/AAAAAAAAAAA/mqdefault.jpg' && d.querySelector('.songrow .its').textContent.includes('Paani1'),
+    'a song row shows its upload’s cover and its items with counts');
 
   // add a song from LRCLIB
   w.location.hash = '#add'; await sleep(20);
@@ -142,6 +148,12 @@ function makeDom(db, opts) {
   const words = [...d.querySelectorAll('.w')].map(b => b.textContent);
   ok(words.join(',') === 'चिठी,पानी', 'item words light up once each (repeats folded): ' + words.join(','));
   ok(d.querySelector('.rep') && d.querySelector('.rep').textContent === '×3', 'the repeated line shows ×3');
+  const onlyLit = on => { const el = d.querySelector('#onlyLit'); el.checked = on; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
+  onlyLit(true); await sleep(5);
+  ok(d.querySelectorAll('.ln').length === 2 && d.body.textContent.includes('3 lines without item words hidden') && JSON.parse(w.localStorage.getItem('jhapat.studio')).onlyLit === true,
+    'Only lines with item words hides the other lines, and is remembered: ' + d.querySelectorAll('.ln').length);
+  onlyLit(false); await sleep(5);
+  ok(d.querySelectorAll('.ln').length === 5, 'and back to every line');
 
   // add an upload; same length as the lyrics → marked synced
   d.querySelector('#vidLink').value = 'https://youtu.be/BBBBBBBBBBB'; submit('#addVid'); await sleep(30);
@@ -195,6 +207,12 @@ function makeDom(db, opts) {
   // playlist membership, status
   const box = d.querySelector('[data-pl="party-mix"]'); box.checked = true; box.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(30);
   ok(db.playlist_songs.some(x => x.song_id === 'test-rain' && x.position === 1), 'adds the song to the playlist');
+  ok(d.querySelector('#sidePanel [data-arg="songpl"]').getAttribute('aria-expanded') === 'false' && d.querySelector('#sidePanel [data-arg="songpl"] .fs').textContent === 'In Nepali Party Mix',
+    'the Playlists card is folded and says where the song is');
+  ok(d.querySelector('#sidePanel [data-arg="uploads"]').getAttribute('aria-expanded') === 'false' && d.querySelector('#sidePanel [data-arg="uploads"] .fs').textContent === '1 · synced',
+    'with its upload synced, Uploads folds itself away');
+  click('#sidePanel [data-arg="uploads"]'); await sleep(5);
+  ok(!d.querySelector('#sidePanel [data-arg="uploads"] + .foldbody').hidden && JSON.parse(w.localStorage.getItem('jhapat.studio')).fold.uploads === false, 'opening it is remembered');
   click('[data-act="status"][data-arg="checked"]'); await sleep(30);
   ok(db.songs.find(s => s.id === 'test-rain').status === 'checked', 'Mark checked saves');
 
@@ -250,16 +268,24 @@ function makeDom(db, opts) {
     'untimed lyrics show with item words marked: ' + marks.join(','));
   ok(d.body.textContent.includes('3 item words on 2 lines') && !!d.querySelector('.tapgrid'), 'it counts them and keeps the tap-along buttons');
 
-  // items: edit spellings
+  // items: tiles with how many songs use each; one opens in the editor above them
   w.location.hash = '#items'; await sleep(20);
-  const tr = d.querySelector('tr[data-item="paani"]'); tr.querySelector('[data-f="words"]').value = 'paani, pani, पानी, पानि';
-  click('[data-act="saveitem"][data-arg="paani"]'); await sleep(20);
-  ok(db.items.find(i => i.id === 'paani').words.length === 4, 'item spellings save');
+  ok(d.querySelectorAll('.itile').length === 2 && !d.querySelector('#itemEd') && d.querySelector('[data-act="edititem"][data-arg="paani"]').textContent.includes('2 songs'),
+    'items show as tiles with their song counts, and no editor open');
+  click('[data-act="edititem"][data-arg="paani"]'); await sleep(10);
+  d.querySelector('#itemEd [data-f="words"]').value = 'paani, pani\nपानी, पानि'; submit('#itemEd'); await sleep(20);
+  ok(db.items.find(i => i.id === 'paani').words.length === 4, 'item spellings save (commas or new lines)');
 
   // an emoji, and a spelling that rules words out
-  tr.querySelector('[data-f="emoji"]').value = '💧'; tr.querySelector('[data-f="words"]').value = 'paani, pani, पानी, -पानीमा';
-  click('[data-act="saveitem"][data-arg="paani"]'); await sleep(20);
-  ok(db.items.find(i => i.id === 'paani').emoji === '💧', 'an item’s emoji saves');
+  d.querySelector('#itemEd [data-f="emoji"]').value = '💧'; d.querySelector('#itemEd [data-f="words"]').value = 'paani, pani, पानी, -पानीमा';
+  submit('#itemEd'); await sleep(20);
+  ok(db.items.find(i => i.id === 'paani').emoji === '💧' && d.querySelector('.itile.on').textContent.includes('💧'), 'an item’s emoji saves and shows on its tile');
+  click('[data-act="newitem"]'); await sleep(10);
+  d.querySelector('#itemEd [data-f="name"]').value = 'Rumal'; d.querySelector('#itemEd [data-f="words"]').value = 'rumal, रुमाल'; submit('#itemEd'); await sleep(20);
+  ok(db.items.some(i => i.id === 'rumal' && i.words.length === 2) && d.querySelectorAll('.itile').length === 3, 'New item, at the top of the page, adds one');
+  const iq = d.querySelector('#itemQ'); iq.value = 'रुमाल'; iq.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(5);
+  ok(d.querySelectorAll('.itile').length === 1 && d.querySelector('#itemQ') === iq, 'search finds an item by its spelling, without redrawing the search box');
+  iq.value = ''; iq.dispatchEvent(new w.Event('input', { bubbles: true })); click('[data-act="closeitem"]'); await sleep(5);
   w.location.hash = '#song:plain'; await sleep(80);
   ok([...d.querySelectorAll('#plain mark')].map(m => m.textContent).join(',') === 'पानी,चिठी' && d.querySelector('.tapgrid').textContent.includes('💧 Paani'),
     '“-पानीमा” stops पानीमा counting; the emoji shows on the item');
@@ -267,6 +293,16 @@ function makeDom(db, opts) {
   // playlists page lists both songs in order
   w.location.hash = '#playlists'; await sleep(20);
   ok(d.querySelectorAll('[data-plid="party-mix"] .songs .row').length === 2, 'playlist page lists its songs');
+  ok(d.querySelector('[data-plid="party-mix"] .foldbody').hidden && !!d.querySelector('[data-plid="party-mix"] .fan .thumb img'), 'playlists start folded, with song covers on the card');
+  click('[data-plid="party-mix"] .foldhead'); await sleep(5);
+  ok(!d.querySelector('[data-plid="party-mix"] .foldbody').hidden, 'clicking one opens it');
+  click('[data-act="plrm"][data-arg="party-mix:old"]'); await sleep(20);
+  ok(!db.playlist_songs.some(x => x.playlist_id === 'party-mix' && x.song_id === 'old') && db.songs.some(x => x.id === 'old') && !d.querySelector('[data-plid="party-mix"] .foldbody').hidden,
+    '✕ takes a song out of the playlist; the song stays and the card stays open');
+  const pa = d.querySelector('[data-pladd="party-mix"]'); pa.value = 'old so'; pa.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(5);
+  ok(d.querySelectorAll('[data-plres="party-mix"] [data-act="pladd"]').length === 1, 'typing in Add a song lists matching songs not in it');
+  click('[data-act="pladd"][data-arg="party-mix:old"]'); await sleep(20);
+  ok(db.playlist_songs.some(x => x.playlist_id === 'party-mix' && x.song_id === 'old' && x.position === 2), 'Add puts it back, at the end');
 
   // add many songs: lengths measured, lyrics of the same length picked, auto-tagged
   w.location.hash = '#import'; await sleep(20);
@@ -297,6 +333,35 @@ function makeDom(db, opts) {
   ok(newOnes.length === 1 && newOnes[0].song_id === 'test-rain' && newOnes[0].item_id === 'chithi' && newOnes[0].rep === 0 && d.querySelector('#autoAllMsg').textContent.includes('Done'),
     'Auto-tag all songs adds only the word nobody tagged (test-rain’s चिठी): ' + newOnes.map(t => t.song_id + ':' + t.item_id).join(' '));
   ok(JSON.stringify(db.tags.slice(0, before).map(t => [t.id, t.t])) === kept, 'and moves no existing tag');
+
+  // song list: covers, filters, sort and search
+  w.location.hash = '#'; await sleep(20);
+  const rowsNow = () => [...d.querySelectorAll('.songrow')].map(r => r.dataset.arg).join();
+  ok(d.querySelector('.songrow[data-arg="rain-again"] .thumb img').getAttribute('src') === 'https://i.ytimg.com/vi/DDDDDDDDDDD/mqdefault.jpg', 'rows show their upload’s cover');
+  ok(!d.querySelector('.songrow[data-arg="nothing-song"] img') && d.querySelector('.songrow[data-arg="nothing-song"]').textContent.includes('No upload'), 'a song without an upload gets a plain tile and a No upload flag');
+  click('[data-act="show"][data-arg="draft"]'); await sleep(5);
+  ok(rowsNow() === 'long-cut,nothing-song' && d.querySelector('[data-act="show"][data-arg="draft"]').textContent.includes('2'), 'Drafts shows only the drafts, with a count: ' + rowsNow());
+  click('[data-act="show"][data-arg="all"]'); await sleep(5);
+  const so = d.querySelector('#ssort'); so.value = 'status'; so.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(5);
+  ok(rowsNow() === 'long-cut,nothing-song,rain-again,old,test-rain' && JSON.parse(w.localStorage.getItem('jhapat.studio')).sort === 'status',
+    'By status puts drafts first and checked last, and is remembered: ' + rowsNow());
+  const fi = d.querySelector('#filter'); fi.value = 'rain'; fi.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(5);
+  ok(rowsNow() === 'rain-again,test-rain' && d.querySelector('#filter') === fi, 'search narrows the list without redrawing the search box');
+  fi.value = ''; fi.dispatchEvent(new w.Event('input', { bubbles: true }));
+  const sp = d.querySelector('#spl'); sp.value = '-'; sp.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(5);
+  ok(!d.querySelector('.songrow') && !!d.querySelector('[data-act="clearf"]'), 'In no playlist: every song is in one here, so it says none match');
+  click('[data-act="clearf"]'); await sleep(5);
+  ok(d.querySelectorAll('.songrow').length === 5, 'Show every song clears the filters');
+
+  // a long item list shows twelve, then the rest on request
+  { const db3 = makeDb(); for (let k = 0; k < 18; k++) db3.items.push({ id: 'x' + k, name: 'Thing ' + k, dev: '', words: ['thing' + k], note: null, sort: 2 + k });
+    const { w: w3, d: d3 } = makeDom(db3, { signedIn: true, editor: true }); await sleep(50);
+    w3.location.hash = '#items'; await sleep(20);
+    ok(d3.querySelectorAll('.itile').length === 12 && d3.querySelector('[data-act="itemsall"]').textContent === 'Show all 20', 'twenty items show twelve, then “Show all 20”');
+    d3.querySelector('[data-act="itemsall"]').dispatchEvent(new w3.MouseEvent('click', { bubbles: true })); await sleep(5);
+    ok(d3.querySelectorAll('.itile').length === 20, 'Show all shows every one');
+    const q3 = d3.querySelector('#itemQ'); q3.value = 'Thing 1'; q3.dispatchEvent(new w3.Event('input', { bubbles: true })); await sleep(5);
+    ok(d3.querySelectorAll('.itile').length === 9, 'search looks through all of them: ' + d3.querySelectorAll('.itile').length); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

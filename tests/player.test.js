@@ -271,13 +271,13 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   let fetched = null;
   const dom4 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
     beforeParse(win) { win.localStorage.setItem('jhapat.v1', JSON.stringify(saved));
-      win.fetch = async (url, o) => { fetched = { url, o }; return { ok: true, json: async () => bundle }; }; } });
+      win.fetch = async (url, o) => { if (/playlist_bundle/.test(url)) fetched = { url, o }; return { ok: true, json: async () => bundle }; }; } });
   await sleep(50);
   const D4 = JSON.parse(dom4.window.localStorage.getItem('jhapat.v1')), d4 = dom4.window.document;
   ok(fetched && /rpc\/playlist_bundle$/.test(fetched.url) && JSON.parse(fetched.o.body).pid === 'party-mix' && fetched.o.headers.apikey.startsWith('sb_publishable_'), 'asks the database for the party-mix playlist with the public key');
   ok(D4.source === 'db' && D4.songs.length === 1 && D4.songs[0].id === 'kaha', 'database songs replace the built-in list (songs without an upload are skipped)');
   ok(D4.items.find(i => i.id === 'maya').on === true && D4.items.find(i => i.id === 'rumal').on === false && D4.items.find(i => i.id === 'paani').on === true, 'table choices carry over; new items start off');
-  ok(d4.querySelector('.tabs').hidden && d4.querySelector('.pool').textContent.includes('Nepali Party Mix'), 'tagging tabs step aside and the playlist is named');
+  ok(d4.querySelector('.tabs').hidden && d4.querySelector('.plbar').textContent.includes('Nepali Party Mix'), 'tagging tabs step aside and the playlist is named');
   ok(D4.songs[0].offsets.join(',') === '0,2.5', 'each upload keeps its own offset');
 
   // 16. Playlist picker: pick a playlist → only its items, with counts → play. Items are remembered per playlist; opened playlists work offline.
@@ -366,6 +366,40 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(seen7.phool.length > 20, 'the chorus counts once, so the verse word isn’t crowded out: Phool ' + seen7.phool.length + ', Paani ' + seen7.paani.length);
   ok(seen7.maya.has(30) && seen7.maya.has(90), 'a line sung twice with room before both takes turns between them');
   ok(crossed === 0 && d7.querySelector('.reveal').textContent.match(/💧|🌸|❤️/), 'run-ups stay within 7–10 s, and the revealed word has its emoji');
+
+
+  // 18. Version, folded video, short item list, settings fold, playlist covers
+  const VER = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'version.json'), 'utf8')).v;
+  ok(d.querySelector('#ver').textContent === 'v' + VER, 'the version shows at the bottom and matches version.json: ' + d.querySelector('#ver').textContent);
+  const IT8 = 'paani phool chiya paisa chithi maya rakshi mutu aankha sapana raat haat'.split(' ').map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '' }));
+  const B8 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT8, songs: [mkSong('m1', IT8.map((it, k) => [it.id, 20 + k * 15])), mkSong('m2', [['paani', 30]])] }; // only Paani is in both songs
+  const C8 = [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 1, items: { paani: 1 }, thumbs: ['m1xxxxxxxxx', 'bad id!', 'AAAAAAAAAAA', 'BBBBBBBBBBB', 'CCCCCCCCCCC'] },
+    { id: 'love', name: 'Love Songs', songs: 2, items: { maya: 2 } }];
+  const dom8 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
+    win.fetch = async (url, o) => ({ ok: true, json: async () => (/version\.json/.test(url) ? { v: VER + 1 } : /playlist_cards/.test(url) ? C8 : B8) }); } });
+  await sleep(60);
+  const w8 = dom8.window, d8 = w8.document, c8 = sel => d8.querySelector(sel).dispatchEvent(new w8.MouseEvent('click', { bubbles: true }));
+  ok(!d8.querySelector('#update').hidden && d8.querySelector('#update').textContent.includes('v' + (VER + 1)), 'a newer version on the site offers a reload');
+  const fan = [...d8.querySelectorAll('[data-arg="party-mix"] .fan img')].map(i => i.getAttribute('src'));
+  ok(fan.length === 3 && fan[0] === 'https://i.ytimg.com/vi/m1xxxxxxxxx/mqdefault.jpg' && fan[1].includes('/AAAAAAAAAAA/'), 'a playlist card fans out its first three song covers (a bad id is dropped)');
+  ok(!d8.querySelector('[data-arg="love"]').classList.contains('has-fan'), 'a card without covers stays plain');
+  ok(d8.querySelector('.stage').classList.contains('off') && !d8.body.textContent.includes('Step 1 of 2'), 'the video box stays folded and the list has no step text');
+  c8('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
+  const chips8 = () => [...d8.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg);
+  ok(chips8().length === 8 && d8.querySelector('[data-act="moreitems"]').textContent === '+4 more', 'twelve items show eight, then “+4 more”: ' + chips8().join(' '));
+  c8('[data-act="moreitems"]'); await sleep(10);
+  ok(chips8().length === 12 && d8.querySelector('[data-act="moreitems"]').textContent === 'Fewer', '“+4 more” shows them all');
+  c8('[data-act="item"][data-arg="haat"]'); c8('[data-act="item"][data-arg="haat"]'); c8('[data-act="moreitems"]'); await sleep(10);
+  ok(chips8().length === 9 && chips8().includes('haat') && d8.querySelector('[data-act="moreitems"]').textContent === '+3 more', 'an item tapped while open stays in view when the list folds again');
+  ok(d8.querySelector('.setbody').hidden && d8.querySelector('.sethead').textContent.includes('7–10'), 'settings are folded, with the run-up in the summary');
+  c8('[data-act="settings"]'); await sleep(10);
+  ok(!d8.querySelector('.setbody').hidden && !!d8.querySelector('#autoNext'), 'Settings opens');
+  ok(!d8.querySelector('[data-act="pause"]') && d8.querySelector('.bigrow').classList.contains('solo'), 'before the first song, Start stands alone (no idle Pause)');
+  w8.YT = { Player: function (id, o) { this.loadVideoById = () => {}; this.getPlayerState = () => -1; this.isMuted = () => false; this.getDuration = () => 0; this.getCurrentTime = () => 0;
+    this.getVideoData = () => ({}); this.mute = () => {}; this.stopVideo = () => {}; setTimeout(() => o.events.onReady({}), 0); } };
+  w8.onYouTubeIframeAPIReady(); await sleep(20);
+  c8('[data-act="next"]'); await sleep(10);
+  ok(!d8.querySelector('.stage').classList.contains('off') && !!d8.querySelector('[data-act="pause"]'), 'Start opens the video box and brings Pause');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

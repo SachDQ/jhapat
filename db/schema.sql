@@ -165,7 +165,7 @@ language sql stable security invoker set search_path = '' as $$
   from public.playlists p where p.id = pid;
 $$;
 
--- playlist cards for the picker: song count and how many songs mention each item
+-- playlist cards for the picker: song count, how many songs mention each item, and the first four songs' uploads (for covers)
 create or replace view public.playlist_cards with (security_invoker = true) as
 select p.id, p.name, p.description, p.sort, p.owner, p.is_public,
   (select count(*) from public.playlist_songs ps join public.songs s on s.id = ps.song_id
@@ -174,7 +174,12 @@ select p.id, p.name, p.description, p.sort, p.owner, p.is_public,
      select t.item_id, count(distinct t.song_id) as n
      from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
      join public.tags t on t.song_id = ps.song_id
-     where ps.playlist_id = p.id group by t.item_id) x) as items
+     where ps.playlist_id = p.id group by t.item_id) x) as items,
+  (select coalesce(jsonb_agg(x.yt order by x.position), '[]'::jsonb) from (
+     select ps.position, v.yt
+     from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
+     join lateral (select v.yt from public.videos v where v.song_id = s.id and v.embeddable order by v.rank, v.id limit 1) v on true
+     where ps.playlist_id = p.id order by ps.position limit 4) x) as thumbs
 from public.playlists p;
 
 grant usage on schema public to anon, authenticated;

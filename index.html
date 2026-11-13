@@ -56,6 +56,10 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .ytbox.front{z-index:2}
 .ytbox>*{position:absolute;inset:0;width:100%;height:100%;border:0}
 .stage.small .screen{width:356px;max-width:100%;height:200px;margin-inline:auto}
+.screen{transition:height .3s ease}
+/* the video box stays folded away until the first song plays, so the first screen is the table and Start */
+.stage.off{position:static;padding:0}
+.stage.off .screen{height:0;border-width:0;box-shadow:none}
 .screen .idle{position:absolute;inset:0;z-index:3;background:#000;display:grid;place-items:center;color:var(--muted);font:600 15px/1.4 var(--body);text-align:center;padding:16px;pointer-events:none}
 #tapHint{position:absolute;z-index:4;left:8px;right:8px;top:8px;background:var(--gold-fill);color:var(--gold-ink);font:700 15px/1.3 var(--body);padding:10px 12px;border-radius:12px;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.45)}
 #blocked{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding:18px;background:#120D26;color:var(--ink);font:600 15px/1.4 var(--body);text-align:center}
@@ -99,6 +103,7 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .reveal{font-size:16px}
 .reveal b{color:var(--gold-fill)}
 .bigrow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;margin-top:14px}
+.bigrow.solo{grid-template-columns:minmax(0,1fr)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{display:inline-flex;align-items:baseline;gap:6px;border:1.5px solid var(--line-2);background:transparent;color:var(--ink);
   border-radius:999px;padding:9px 13px;font:700 15px/1 var(--body);cursor:pointer}
@@ -108,6 +113,7 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .chip[aria-pressed="true"] .d{color:inherit;opacity:.7}
 .chip[aria-pressed="true"] .n{background:var(--gold-fill);color:var(--gold-ink)}
+.chip.more{border-style:dashed;color:var(--gold)}
 .pool{margin:14px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .pool b{color:var(--ink)}
 .leadrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
@@ -115,6 +121,33 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .stepper output{min-width:3ch;text-align:center;font:400 23px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--gold-fill)}
 .plbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .plbar span{min-width:0}
+.plbar .pn{font:400 20px/1.15 var(--display);display:block}
+.plbar .ps{color:var(--muted);font-size:14px}
+/* settings: one folded card under the table */
+.set{padding:0}
+.sethead{width:100%;display:flex;align-items:center;gap:10px;border:0;background:none;color:var(--ink);padding:16px 18px;cursor:pointer;text-align:left;font:inherit;border-radius:20px}
+.sethead .h{font:400 21px/1 var(--display)}
+.sethead .sum{color:var(--muted);font-size:14px;flex:1;min-width:0}
+.sethead .chev{width:10px;height:10px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px 0;transition:transform .2s}
+.sethead[aria-expanded="true"] .chev{transform:rotate(225deg);margin:4px 4px 0 0}
+.setbody{padding:0 18px 18px;display:grid;gap:12px}
+.setbody .leadrow{margin:0}
+.setbody .hint{margin:-6px 0 0}
+.sethead:focus-visible{outline:3px solid var(--gold-fill);outline-offset:-3px}
+/* playlist cards: three song covers fanned out like photos on the table */
+.listbtn.has-fan{grid-template-columns:100px minmax(0,1fr);align-items:center;column-gap:14px}
+.listbtn .lb{display:grid;gap:7px;min-width:0}
+.fan{position:relative;width:100px;height:70px}
+.fan img{position:absolute;width:66px;height:37px;object-fit:cover;border-radius:6px;border:2px solid var(--ink);background:var(--raise);box-shadow:0 4px 12px rgba(0,0,0,.45)}
+.fan img:nth-child(1){left:0;top:24px;transform:rotate(-10deg)}
+.fan img:nth-child(2){left:17px;top:6px;transform:rotate(4deg)}
+.fan img:nth-child(3){left:32px;top:28px;transform:rotate(11deg)}
+img.broken{visibility:hidden}
+/* version and update */
+.foot{color:var(--muted);font-size:13px;text-align:center;margin-top:22px;font-variant-numeric:tabular-nums}
+.foot a{color:var(--muted)}
+.update{display:block;margin:10px auto 0;border:1.5px solid var(--gold-fill);background:var(--raise);color:var(--ink);border-radius:999px;padding:8px 14px;font:700 14px/1.2 var(--body);cursor:pointer}
+.update b{color:var(--gold)}
 .lists{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .listbtn{width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:18px;padding:16px;cursor:pointer;display:grid;gap:7px}
 .listbtn .t{font:400 23px/1.15 var(--display)}
@@ -165,7 +198,8 @@ textarea{margin:10px 0 8px;resize:vertical}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:var(--ink);color:var(--bg);
   padding:12px 16px;border-radius:14px;font:600 15px/1.35 var(--body);width:max-content;max-width:min(92vw,560px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
-@media (prefers-reduced-motion: reduce){.tap.hit{animation:none;outline:3px solid var(--gold-fill)} #toast{transition:none} .btn.glow{animation:none}}
+@media (prefers-reduced-motion: reduce){.tap.hit{animation:none;outline:3px solid var(--gold-fill)} #toast{transition:none} .btn.glow{animation:none} .screen,.sethead .chev{transition:none}}
+@media (max-width:360px){.listbtn.has-fan{grid-template-columns:80px minmax(0,1fr)}.fan{transform:scale(.8);transform-origin:left center}}
 @media (max-width:380px){.tabs button{padding:9px 11px}.brand .word{font-size:29px}}
 </style>
 </head>
@@ -181,10 +215,11 @@ textarea{margin:10px 0 8px;resize:vertical}
   </header>
 </div>
 <div class="garland" aria-hidden="true"></div>
-<div class="stage">
+<div class="wrap"><button class="update" id="update" data-act="update" hidden>New version <b></b> is out · Reload</button></div>
+<div class="stage off">
   <div class="wrap">
     <div class="screen">
-      <div class="idle" id="idle">The video shows here once a song starts.</div>
+      <div class="idle" id="idle">Loading the video…</div>
       <div class="ytbox front" id="boxA"><div id="ytA"></div></div>
       <div class="ytbox" id="boxB"><div id="ytB"></div></div>
       <div id="tapHint" hidden></div>
@@ -193,6 +228,7 @@ textarea{margin:10px 0 8px;resize:vertical}
   </div>
 </div>
 <main class="wrap" id="view"></main>
+<footer class="wrap foot"><span id="ver"></span> · <a href="studio/">Studio</a></footer>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -200,6 +236,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
+const VERSION = 20; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -316,7 +353,19 @@ function showBlocked(kind) {
     b.innerHTML = '<b>YouTube can’t play in here</b><span>The Claude app’s preview and downloaded files block YouTube. Open Jhapat from its web link in Safari or Chrome:</span>' +
       '<a href="' + WEB_LINK + '" target="_blank" rel="noopener">' + WEB_LINK.replace(/^https:\/\//, '').replace(/\/$/, '') + '</a>';
   }
-  b.dataset.kind = kind; b.hidden = false; $('#idle').hidden = true;
+  b.dataset.kind = kind; b.hidden = false; $('#idle').hidden = true; openStage();
+}
+function openStage() { document.querySelector('.stage').classList.remove('off'); }
+/* A newer version on the site (GitHub Pages can serve this page from cache for 10 minutes): offer a reload. */
+let verAt = 0;
+async function checkVersion() {
+  if (typeof fetch !== 'function' || !onSite || Date.now() - verAt < 600000) return;
+  verAt = Date.now();
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    const d = r && r.ok ? await r.json() : null, v = d && Number(d.v);
+    if (v > VERSION) { const u = $('#update'); u.dataset.v = v; u.querySelector('b').textContent = 'v' + v; u.hidden = false; }
+  } catch (e) {}
 }
 
 function toast(msg) {
@@ -371,7 +420,7 @@ function state() { try { return ready ? player.getPlayerState() : -1; } catch (e
 function isOn(song) { try { return ready && (player.getVideoData() || {}).video_id === curVid(song); } catch (e) { return false; } }
 
 function playSong(song, start, m) {
-  mode = m;
+  mode = m; openStage();
   clearTimeout(nextTimer); nextTimer = null;
   const go = () => {
     $('#idle').hidden = true;
@@ -568,7 +617,7 @@ function swapIn(drop) {
   try { spare.pauseVideo(); spare.mute(); } catch (e) {}
   $('#boxA').classList.toggle('front', player === P.A);
   $('#boxB').classList.toggle('front', player === P.B);
-  $('#idle').hidden = true;
+  $('#idle').hidden = true; openStage();
   try { player.seekTo(drop.start, true); player.unMute(); player.playVideo(); } catch (e) {}
   watchPlayback(drop.start, true);
 }
@@ -601,8 +650,8 @@ function syncTap() {
 
 /* ---------- rendering ---------- */
 function nowHTML() {
-  if (!current) return '<div class="kicker">Ready</div><div class="title">Put the items out and press Start</div>' +
-    '<div class="meta">It drops into a random song ' + S.settings.minLead + '–' + S.settings.maxLead + ' seconds before one of the words, then lets it play.</div>';
+  if (!current) return '<div class="kicker">Ready</div><div class="title">Put the items out, then Start</div>' +
+    '<div class="meta">It drops in ' + S.settings.minLead + '–' + S.settings.maxLead + ' seconds before one of their words.</div>';
   const s = byId(current.songId);
   if (!s) return '<div class="kicker">Ready</div><div class="title">Press Next song</div>';
   const at = current.tag.t + (s.offset || 0);
@@ -617,22 +666,27 @@ function nowHTML() {
 /* Official playlists to choose from (cached, so the list also shows offline). */
 const lists = () => (S.cards || []).filter(c => c.songs > 0);
 const needPick = () => S.source === 'db' && !S.chosen && !current && lists().length > 1; // never over a song that's playing
+const thumbUrl = id => 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg';
 function renderPicker() {
   const active = S.playlist && S.playlist.id;
-  return '<section class="card"><div class="kicker">Step 1 of 2</div><h2>Pick a playlist</h2>' +
-    '<p class="hint">Each one is a set of songs with their words tagged. Next you turn on the items you’ve put out, then press Start.</p>' +
-    '<ul class="lists">' + lists().map(c => {
+  return '<section class="card"><h2>Pick a playlist</h2><ul class="lists">' + lists().map(c => {
       const its = Object.keys(c.items || {}).filter(k => c.items[k] > 0).sort((a, b) => c.items[b] - c.items[a]);
-      return '<li><button class="listbtn" data-act="pickpl" data-arg="' + esc(c.id) + '" aria-current="' + (S.chosen && c.id === active) + '">' +
-        '<span class="t">' + esc(c.name) + (loadingList === c.id ? ' <span class="badge">Loading…</span>' : '') + '</span>' +
+      const th = (c.thumbs || []).slice(0, 3); // the first songs' covers, fanned out
+      return '<li><button class="listbtn' + (th.length ? ' has-fan' : '') + '" data-act="pickpl" data-arg="' + esc(c.id) + '" aria-current="' + (S.chosen && c.id === active) + '">' +
+        (th.length ? '<span class="fan" aria-hidden="true">' + th.map(id => '<img src="' + thumbUrl(id) + '" alt="" loading="lazy">').join('') + '</span>' : '') +
+        '<span class="lb"><span class="t">' + esc(c.name) + (loadingList === c.id ? ' <span class="badge">Loading…</span>' : '') + '</span>' +
         (c.description ? '<span class="a">' + esc(c.description) + '</span>' : '') +
         '<span class="row"><span class="badge ok">' + c.songs + ' song' + (c.songs === 1 ? '' : 's') + '</span>' +
         its.slice(0, 8).map(k => '<span class="badge">' + (emo(k) ? esc(emo(k)) + ' ' : '') + esc(itemName(k)) + ' ' + c.items[k] + '</span>').join('') +
-        (its.length > 8 ? '<span class="badge">+' + (its.length - 8) + ' more</span>' : '') + '</span></button></li>'; // the 8 most common; the rest show on the Play screen
+        (its.length > 8 ? '<span class="badge">+' + (its.length - 8) + ' more</span>' : '') + '</span></span></button></li>'; // the 8 most common; the rest show on the Play screen
     }).join('') + '</ul>' +
     (S.chosen ? '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="keeppl">Keep ' + esc((S.playlist || {}).name || 'this playlist') + '</button></div>' : '') +
     '</section>';
 }
+/* The table: a long item list shows its first few (and any that are on), with "+N more" for the rest. */
+const CHIP_CAP = 8;
+let moreItems = false, settingsOpen = false;
+const touched = new Set(); // items tapped here stay in view when the list folds, so a chip never vanishes under a finger
 function renderPlay() {
   if (picking || needPick()) return renderPicker();
   const el = eligible();
@@ -640,31 +694,40 @@ function renderPlay() {
   const songsWith = id => S.songs.filter(s => !s.broken && s.tags.some(t => t.item === id)).length;
   const fromDb = S.source === 'db';
   const shown = fromDb ? S.items.filter(it => songsWith(it.id) > 0) : S.items; // a playlist only offers the items its songs have
+  const long = shown.length > CHIP_CAP + 2; // fold only when it would hide more than a couple
+  const vis = long && !moreItems ? shown.filter((it, k) => k < CHIP_CAP || it.on || touched.has(it.id)) : shown;
+  const hidden = shown.length - vis.length;
+  const chip = it => { const n = songsWith(it.id);
+    return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="In ' + n + ' song' + (n === 1 ? '' : 's') + '">' + emoHTML(it.id) +
+      '<span>' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
   return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
-    '<div class="bigrow"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
-    '<button class="btn big" data-act="pause" data-pausebtn' + (current ? '' : ' disabled') + '>Pause</button></div>' +
+    '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
+    (current ? '<button class="btn big" data-act="pause" data-pausebtn>Pause</button>' : '') + '</div>' +
     '<section class="card" id="table">' +
-    (fromDb && S.playlist ? '<div class="plbar"><span>Playlist: <b>' + esc(S.playlist.name) + '</b> · ' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span>' +
+    (fromDb && S.playlist ? '<div class="plbar"><span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span></span>' +
       (lists().length > 1 ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</div>' : '') +
-    '<h2>On the table</h2><p class="hint">Turn on the items you’ve put out. It only drops in before words that are on the table. The number is how many songs have that word tagged.</p>' +
-    '<div class="chips">' + shown.map(it => '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '">' + emoHTML(it.id) + '<span>' + esc(it.name) +
-      '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + songsWith(it.id) + '</span></button>').join('') + '</div>' +
-    '<p class="pool">' + (el.length ? '<span>' + (S.source === 'db' && S.playlist ? esc(S.playlist.name) + ': ' : '') + '<b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> left before a repeat</span>'
-      : '<span>No tagged song matches these items yet. Tag one in Songs.</span>') +
-    (S.played.length ? '<button class="btn ghost small" data-act="reset">Start the list over</button>' : '') + '</p></section>' +
-    '<section class="card"><h2>Drop-in timing</h2><p class="hint">How far before the word the song starts. Each drop picks a random point in this range, so nobody can count it in. If another table word comes sooner, it picks a word with more room or starts just after that one.</p>' +
-    '<div class="leadrow"><div class="stepper"><button class="mini" data-act="lead" data-arg="min-" aria-label="Shorter minimum">−</button><output>' + S.settings.minLead + '</output>' +
-    '<button class="mini" data-act="lead" data-arg="min+" aria-label="Longer minimum">+</button></div><span>to</span>' +
-    '<div class="stepper"><button class="mini" data-act="lead" data-arg="max-" aria-label="Shorter maximum">−</button><output>' + S.settings.maxLead + '</output>' +
-    '<button class="mini" data-act="lead" data-arg="max+" aria-label="Longer maximum">+</button></div><span>seconds</span></div>' +
-    '<label class="switch"><input type="checkbox" id="autoNext"' + (S.settings.autoNext ? ' checked' : '') + '> Roll into the next song when one ends</label></section>' +
-    '<section class="card"><h2>Video</h2>' +
-    '<label class="switch"><input type="checkbox" id="preload"' + (S.settings.preload && canPreload ? ' checked' : '') + (canPreload ? '' : ' disabled') + '> Get the next song ready while this one plays</label>' +
-    '<p class="hint">' + (canPreload ? 'Next starts straight away instead of loading. Uses a little more data.'
-      : 'Not on iPhone, iPad or Safari: they only play sound in a video you’ve tapped, so the next song can’t wait behind this one.') + '</p>' +
-    '<label class="switch"><input type="checkbox" id="small"' + (S.settings.small ? ' checked' : '') + '> Small video</label>' +
-    '<p class="hint">YouTube sends a lower-quality picture to a small player, so songs start sooner on laptops and tablets. Phones already get about this size.</p></section>' +
-    (S.source === 'db' ? '<p class="hint foot">Songs and their tags come from the <a href="studio/">Jhapat studio</a>.</p>' : '');
+    '<h2>On the table</h2><p class="hint">Tap what you’ve put out.</p>' +
+    '<div class="chips">' + vis.map(chip).join('') +
+    (moreItems && long ? '<button class="chip more" data-act="moreitems" aria-expanded="true">Fewer</button>'
+      : hidden ? '<button class="chip more" data-act="moreitems" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div>' +
+    '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> not played yet</span>'
+      : '<span>' + (fromDb ? 'No song here has those words. Turn on more items.' : 'No tagged song matches these items yet. Tag one in Songs.') + '</span>') +
+    (S.played.length ? '<button class="btn ghost small" data-act="reset">Reset</button>' : '') + '</p></section>' +
+    settingsHTML();
+}
+function settingsHTML() {
+  const st = S.settings;
+  const step = (arg, label) => '<button class="mini" data-act="lead" data-arg="' + arg + '" aria-label="' + label + '">' + (arg.endsWith('-') ? '−' : '+') + '</button>';
+  return '<section class="card set"><button class="sethead" data-act="settings" aria-expanded="' + settingsOpen + '"><span class="h">Settings</span>' +
+    '<span class="sum">Drops in ' + st.minLead + '–' + st.maxLead + ' s before the word</span><span class="chev" aria-hidden="true"></span></button>' +
+    '<div class="setbody"' + (settingsOpen ? '' : ' hidden') + '>' +
+    '<div class="leadrow"><div class="stepper">' + step('min-', 'Shorter minimum') + '<output>' + st.minLead + '</output>' + step('min+', 'Longer minimum') + '</div><span>to</span>' +
+    '<div class="stepper">' + step('max-', 'Shorter maximum') + '<output>' + st.maxLead + '</output>' + step('max+', 'Longer maximum') + '</div><span>seconds before the word</span></div>' +
+    '<label class="switch"><input type="checkbox" id="autoNext"' + (st.autoNext ? ' checked' : '') + '> Roll into the next song when one ends</label>' +
+    '<label class="switch"><input type="checkbox" id="preload"' + (st.preload && canPreload ? ' checked' : '') + (canPreload ? '' : ' disabled') + '> Get the next song ready while one plays</label>' +
+    (canPreload ? '' : '<p class="hint small">Not on iPhone, iPad or Safari: they only give sound to a video you’ve tapped.</p>') +
+    '<label class="switch"><input type="checkbox" id="small"' + (st.small ? ' checked' : '') + '> Small video, so songs start sooner on laptops</label>' +
+    '</div></section>';
 }
 function statusOf(s) {
   if (s.broken) return ['bad', 'Video blocked'];
@@ -790,11 +853,14 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'tab': tab = arg; songId = null; syncing = null; render(); break;
     case 'next': nextRound(); break;
+    case 'moreitems': moreItems = !moreItems; render(); break;
+    case 'settings': settingsOpen = !settingsOpen; render(); break;
+    case 'update': location.href = location.pathname + '?v=' + (b.dataset.v || Date.now()) + location.hash; break;
     case 'pause': case 'ttoggle': togglePause(); setTimeout(tick, 120); break;
     case 'reveal': revealed = true; renderNow(); break;
     case 'replay': if (current && byId(current.songId)) { revealed = false; playSong(byId(current.songId), current.start, 'game'); renderNow(); } break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
-    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; rememberTable(); save(); render(); schedulePreload(1200, true); } break; }
+    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true); } break; }
     case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': await pickPlaylist(arg); break;
@@ -954,8 +1020,9 @@ async function loadDb() {
   if (typeof fetch !== 'function') return;
   const pid = (S.source === 'db' && S.playlist && S.playlist.id) || DB.playlist;
   const [cards, b] = await Promise.all([
-    dbGet('playlist_cards?select=id,name,description,songs,items,sort&owner=is.null&is_public=is.true&order=sort,name'), bundleOf(pid)]);
-  if (Array.isArray(cards)) S.cards = cards.map(c => ({ id: c.id, name: c.name, description: c.description || '', songs: Number(c.songs) || 0, items: c.items || {} }));
+    dbGet('playlist_cards?select=*&owner=is.null&is_public=is.true&order=sort,name'), bundleOf(pid)]);
+  if (Array.isArray(cards)) S.cards = cards.map(c => ({ id: c.id, name: c.name, description: c.description || '', songs: Number(c.songs) || 0, items: c.items || {},
+    thumbs: (Array.isArray(c.thumbs) ? c.thumbs : []).filter(x => /^[\w-]{11}$/.test(x)) }));
   if (goodBundle(b)) return applyBundle(b);
   if (pid !== DB.playlist && Array.isArray(cards) && !cards.some(c => c.id === pid)) { // that playlist is gone: back to the party mix
     const d = await bundleOf(DB.playlist); if (goodBundle(d)) return applyBundle(d);
@@ -975,9 +1042,13 @@ async function pickPlaylist(pid) {
   toast(b.name + ': turn on the items you’ve put out, then press Start.');
 }
 
+document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
 applySmall();
+$('#ver').textContent = 'v' + VERSION;
 render();
 loadDb();
+checkVersion();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
 })();
 </script>
 </body>

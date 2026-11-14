@@ -14,31 +14,21 @@
 <style>
 /* Layout: desk tool. Left column holds the video, uploads and the selected-word tools (sticky); right column is the lyric list.
    Stacks to one column on phones with the video pinned on top. Same palette and type as the party player. */
-:root{
-  --bg:#f3f1f8; --surface:#ffffff; --raise:#ebe7f3; --ink:#221a35; --muted:#625a78; --line:#dcd6e7;
-  --gold:#8f5b00; --gold-fill:#ffb000; --gold-ink:#1d1406; --gold-soft:#fff1cc;
-  --red:#c8193f; --red-soft:#f7d7df; --ok:#14774a; --ok-soft:#dcf3e6; --warn:#8a4e00; --warn-soft:#fbecd2;
-  --new:#0b6e7d; --new-soft:#e0f4f6;
-  --shadow:0 1px 2px rgba(34,26,53,.08), 0 6px 18px rgba(34,26,53,.07);
+:root{ /* the night look, same colours as the player (v35) */
+  --bg:#0F0B1E; --surface:#1D1636; --raise:#2A2050; --ink:#FFF4E0; --muted:#B9AED6; --line:#3A2F66;
+  --gold:#FFD25E; --gold-fill:#FFA41B; --gold-ink:#1A1206; --gold-soft:#3A2A10; --bagh:#F26B1D; --spark:#FFD25E; --line-2:#4A3F85;
+  --red:#FF5A6E; --red-soft:#4A2140; --ok:#7EE2A8; --ok-soft:#173A29; --warn:#FFC861; --warn-soft:#3D2C0B;
+  --new:#5FD4E0; --new-soft:#0F3034;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.4);
   --display:"Baloo 2", ui-rounded, system-ui, sans-serif;
   --body:"Mukta", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  color-scheme:light;
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#120e1f; --surface:#1c172d; --raise:#272040; --ink:#f2eef9; --muted:#aaa1c0; --line:#352c4e;
-    --gold:#ffc14d; --gold-fill:#ffb000; --gold-ink:#1d1406; --gold-soft:#3a2c0c;
-    --red:#ff5c7c; --red-soft:#47202d; --ok:#4ade80; --ok-soft:#173a29; --warn:#fbbf24; --warn-soft:#3d2c0b;
-    --new:#5eead4; --new-soft:#0f3034;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
-    color-scheme:dark;
-  }
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{margin:0;background:transparent;color:var(--ink);font:16px/1.45 var(--body);padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 a{color:var(--gold)}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -51,7 +41,7 @@ code,.mono{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular
 
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:calc(12px + env(safe-area-inset-top,0px)) 10px}
 .brand{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink)}
-.brand .mark{height:40px;width:auto;margin:-6px 0 -6px -4px} /* the player's tiger (v33); the studio keeps its light working colours */
+.brand .mark{height:40px;width:auto;margin:-6px 0 -6px -4px} /* the player's tiger; the studio wears the night look too (v35) */
 .brand .word{font:400 27px/1 "Yatra One", var(--display)}
 .brand .dev{font:400 20px/1.2 "Yatra One", var(--display);padding-top:2px;background:repeating-linear-gradient(115deg,#E2560E 0 6px,#C77800 6px 11px,#5A2408 11px 13px);-webkit-background-clip:text;background-clip:text;color:transparent}
 .brand .tag{font:700 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-left:4px}
@@ -251,11 +241,50 @@ textarea{resize:vertical}
 .addres .plrow{grid-template-columns:64px minmax(0,1fr) auto}
 .plbtns{display:flex;gap:2px}
 .ver{font:600 12px/1 var(--mono);color:var(--muted)}
+/* v35: the night look and some fun, as in the player. Off with reduced motion. */
+.lights{height:22px;margin-top:env(safe-area-inset-top,0px);position:relative;overflow:hidden;filter:drop-shadow(0 0 4px rgba(255,210,94,.8));
+  background:radial-gradient(circle at 14px 13px,var(--spark) 0 3.5px,transparent 4.5px) 0 0/28px 22px repeat-x,linear-gradient(var(--line-2),var(--line-2)) 0 7px/100% 1px no-repeat}
+.lights::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 14px 15px,#FF7A3D 0 3.5px,transparent 4.5px) 14px 0/28px 22px repeat-x;animation:twinkle 2.2s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.12}}
+@keyframes prowl{to{background-position:-120px 0}}
+.dhaka{height:16px;position:relative;overflow:hidden;border-block:2px solid var(--gold-fill);background:#1B1336}
+.dhaka::before{content:"";position:absolute;top:0;bottom:0;left:0;width:calc(100% + 64px);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='12'%3E%3Crect width='32' height='12' fill='%231B1336'/%3E%3Cpath d='M8 0l8 6-8 6-8-6z' fill='%23DC143C'/%3E%3Cpath d='M24 0l8 6-8 6-8-6z' fill='%23F26B1D'/%3E%3Cpath d='M8 3l3 3-3 3-3-3z' fill='%23FFD25E'/%3E%3Cpath d='M24 3l3 3-3 3-3-3z' fill='%23FFF4E0'/%3E%3Cpath d='M14 0h4l-2 2.5zM14 12h4l-2-2.5zM-2 0h4l-2 2.5zM30 0h4l-2 2.5zM-2 12h4l-2-2.5zM30 12h4l-2-2.5z' fill='%233D7BFF'/%3E%3C/svg%3E") 0 0/32px 12px repeat-x;animation:weave 5s linear infinite}
+@keyframes weave{to{transform:translateX(-64px)}}
+.floor{position:fixed;left:0;right:0;bottom:0;height:360px;z-index:-1;pointer-events:none;overflow:hidden;perspective:200px;opacity:.7}
+.floor .sun{position:absolute;left:50%;top:6px;width:150px;height:150px;margin-left:-75px;border-radius:50%;background:linear-gradient(#FFD25E,#F26B1D 55%,#DC143C);
+  box-shadow:0 0 80px rgba(242,107,29,.55);-webkit-mask-image:repeating-linear-gradient(#000 0 11px,transparent 11px 14px);mask-image:repeating-linear-gradient(#000 0 11px,transparent 11px 14px)}
+.floor i{position:absolute;inset:0;transform:rotateX(35deg);background:var(--bg)}
+.floor i::before{content:"";position:absolute;top:-60px;bottom:0;left:-30%;right:-30%;animation:run 1.6s linear infinite;
+  background:linear-gradient(rgba(242,107,29,.55) 2px,transparent 2px) 0 0/60px 60px,linear-gradient(90deg,rgba(242,107,29,.45) 2px,transparent 2px) 0 0/60px 60px;
+  -webkit-mask-image:linear-gradient(transparent,#000 45%);mask-image:linear-gradient(transparent,#000 45%)}
+@keyframes run{to{transform:translateY(60px)}}
+.floor::after{content:"";position:absolute;left:0;right:0;top:16px;height:72px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 72' preserveAspectRatio='none'%3E%3Cpath d='M0 72V50l40-16 30 12 50-34 30 18 25-8 40 26 45-22 30 12 40-30 40 26 30-6 45 24 45-28 30 12 40-6 40 20v22z' fill='%23241B47'/%3E%3Cpath d='M106 21.5 120 12l14 8.4-6-1.4-5 4-6-3-5 3zM316 18.5 330 8l14 9.1-6-1.1-5 4-6-4-6 4zM480 30.2l10-6.2 10 4h-5l-4 3-5-2z' fill='%23FFF4E0' fill-opacity='.9'/%3E%3C/svg%3E") center bottom/600px 72px repeat-x}
+.burst{position:fixed;z-index:30;pointer-events:none;width:0;height:0}
+.burst span{position:absolute;left:0;top:0;font-size:var(--s,22px);line-height:1;transform:translate(-50%,-50%);animation:fly var(--t,1s) cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes fly{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}70%{opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy) + 40px)) rotate(var(--r)) scale(1.1);opacity:0}}
+@keyframes bob{50%{transform:translateY(-3px) rotate(-3deg)}}
+@keyframes shine{0%,55%{background-position:100% 0}100%{background-position:0 0}}
+.brand .mark{animation:bob 3.4s ease-in-out infinite;filter:drop-shadow(0 0 8px rgba(242,107,29,.5))}
+.brand .word{background:linear-gradient(100deg,var(--ink) 42%,#FFD25E 50%,var(--ink) 58%) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 6s ease-in-out infinite}
+.brand .dev{background:repeating-linear-gradient(115deg,#F26B1D 0 6px,#FFA41B 6px 11px,#4A1E06 11px 13px);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:prowl 14s linear infinite}
+.lights{margin-top:0}
+.dhaka{margin-bottom:6px}
+nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg);box-shadow:0 4px 14px rgba(255,164,27,.25)}
+.btn.primary{background:radial-gradient(120% 140% at 50% 115%,#FFD25E,#FFA41B 55%,#F26B1D);border-color:transparent;color:var(--gold-ink)}
+.card{box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.btn,.songrow,.tile{transition:transform .15s ease,box-shadow .2s,border-color .2s,background-color .2s}
+.btn:active{transform:scale(.95)}
+@media (hover:hover){.btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(242,107,29,.22)}.songrow:hover,.tile:hover{transform:translateY(-2px);border-color:var(--gold-fill)}}
+#toast.show{animation:toastpop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes toastpop{0%{transform:translateX(-50%) translateY(20px) scale(.8)}100%{transform:translateX(-50%) translateY(0) scale(1)}}
+@media (prefers-reduced-motion: reduce){.floor i::before,.dhaka::before,.lights::after,.brand .mark,.brand .word,.brand .dev,#toast.show{animation:none}.btn:hover,.btn:active,.songrow:hover,.tile:hover{transform:none}}
 </style>
 </head>
 <body>
+<div class="floor" aria-hidden="true"><b class="sun"></b><i></i></div>
+<div class="lights" aria-hidden="true"></div>
 <header class="top wrap">
-  <a class="brand" href="./"><img class="mark" src="../img/jhapat-mark.webp" width="63" height="40" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
+  <a class="brand" href="./"><img class="mark" src="../img/jhapat-mark.webp" width="55" height="40" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
   <button class="btn small primary" id="update" data-act="update" hidden>New version · Reload</button>
   <nav class="tabs" id="nav" hidden>
     <button data-act="go" data-arg="">Songs</button>
@@ -266,6 +295,7 @@ textarea{resize:vertical}
   </nav>
   <div class="who" id="who"></div>
 </header>
+<div class="dhaka" aria-hidden="true"></div>
 <div class="garland" aria-hidden="true"></div>
 <div class="wrap">
   <div class="layout solo" id="layout">
@@ -306,7 +336,33 @@ const day = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d)
 const slug = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'song';
 const norm = s => String(s || '').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
 let toastTimer = null;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 4200); }
+/* The fun: good news gets a ding and a burst of emoji (the burst is off with reduced motion). */
+const reduced = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+function burst(chars, from, n, t) { // emoji flying out from an element (or the middle of the screen), then gone
+  if (reduced() || !document.body) return;
+  n = n || 12;
+  const r = from && from.getBoundingClientRect ? from.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2.5, width: 0, height: 0 };
+  const box = document.createElement('div'); box.className = 'burst'; box.setAttribute('aria-hidden', 'true');
+  box.style.left = (r.left + r.width / 2) + 'px'; box.style.top = (r.top + r.height / 2) + 'px'; if (t) box.style.setProperty('--t', t + 's');
+  for (let i = 0; i < n; i++) {
+    const sp = document.createElement('span'), a = Math.PI * 2 * i / n + Math.random() * 0.5, d = 50 + Math.random() * (from ? 70 : 170);
+    sp.textContent = chars[i % chars.length];
+    sp.style.setProperty('--dx', Math.round(Math.cos(a) * d) + 'px'); sp.style.setProperty('--dy', Math.round(Math.sin(a) * d - 30) + 'px');
+    sp.style.setProperty('--r', Math.round(Math.random() * 140 - 70) + 'deg'); sp.style.setProperty('--s', Math.round(16 + Math.random() * 14) + 'px');
+    box.appendChild(sp);
+  }
+  document.body.appendChild(box); setTimeout(() => box.remove(), (t || 1) * 1000 + 150);
+}
+let actx = null;
+const audio = () => { try { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; actx = actx || new A(); if (actx.state === 'suspended') actx.resume(); return actx; } catch (e) { return null; } };
+document.addEventListener('pointerdown', audio, { once: true }); // browsers only allow sound after a tap
+function ding() { const c = audio(); if (!c) return; const t0 = c.currentTime + .01;
+  [[880, 0], [1320, .07], [1760, .14]].forEach(([f, d]) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f, t0 + d);
+    g.gain.setValueAtTime(.0001, t0 + d); g.gain.exponentialRampToValueAtTime(.16, t0 + d + .012); g.gain.exponentialRampToValueAtTime(.0001, t0 + d + .32);
+    o.connect(g); g.connect(c.destination); o.start(t0 + d); o.stop(t0 + d + .36); }); }
+const GOOD = /\b(added|saved|checked|fixed|synced|timed|tagged|closed|done|updated|created|renamed)\b|✓/i;
+function cheer(msg) { if (!GOOD.test(msg)) return; ding(); if (!reduced()) burst(['🎉', '✨', '🐯', '🥁'], $('#toast'), 12, 1); }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); cheer(msg); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 4200); }
 function fail(what, error) { console.warn(what, error); toast(what + ': ' + ((error && error.message) || 'something went wrong') + '.'); }
 
 /* ---------- state ---------- */
@@ -321,7 +377,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 35; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 36; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -926,7 +982,7 @@ async function checkLength(v, tries = 0) {
 function onYtErr(e) {
   const v = cur && cur.videos[vi];
   if ([100, 101, 150].includes(e.data) && v) { updateVideo(v, { embeddable: false }).then(renderSide); toast('That upload won’t play outside YouTube. Add a different one.'); }
-  else if (e.data === 152 || e.data === 153) toast('YouTube refused to play here. Open the studio from sachdq.github.io/jhapat/studio.');
+  else if (e.data === 152 || e.data === 153) toast('YouTube refused to play here. Open the studio from jhapat.live/studio.');
   else toast('YouTube couldn’t play that (error ' + e.data + ').');
 }
 function tick() {

@@ -141,6 +141,7 @@ function makeDom(db, opts) {
   await sleep(50);
   ok(d.querySelectorAll('.songrow').length === 1 && d.body.textContent.includes('No lyrics'), 'song list shows the old song flagged No lyrics');
   const VER = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'version.json'), 'utf8')).v;
+  ok(!!d.querySelector('.floor .sun') && !!d.querySelector('.dhaka') && !!d.querySelector('.lights') && /color-scheme:dark/.test(html), 'the studio wears the night look: party lights, the Dhaka band and the grid floor');
   ok(d.querySelector('#ver').textContent === 'v' + VER && d.querySelector('#update').hidden, 'the version shows next to the logo and matches version.json: v' + VER);
   { const db2 = makeDb(); db2.ver = VER + 1; const { d: d2 } = makeDom(db2, { signedIn: true, editor: true }); await sleep(50);
     ok(!d2.querySelector('#update').hidden && d2.querySelector('#update').textContent.includes('v' + (VER + 1)), 'a newer version on the site offers a reload'); }

@@ -29,6 +29,7 @@ function fakeSb(db, opts) {
     const api = {
       select(c) { if (st.op === 'select') st.sel = c || '*'; else st.ret = true; return api; },
       order() { return api; },
+      limit() { return api; },
       eq(c, v) { st.filters.push(r => r[c] === v); return api; },
       in(c, vs) { st.filters.push(r => vs.includes(r[c])); return api; },
       single() { st.single = true; return api; },
@@ -500,6 +501,29 @@ function makeDom(db, opts) {
     ok(d.querySelector('#navReq').textContent === '1' && d.querySelectorAll('.res.req').length === 1, 'and it leaves the open list');
     c('[data-act="reqskip"][data-arg="RRRRRRRRRR2"]'); await sleep(20);
     ok(db.requests.find(r => r.yt === 'RRRRRRRRRR2').done === 'skipped' && d.querySelector('#navReq').hidden && /No open requests/.test(d.body.textContent), 'Skip puts one aside'); }
+
+  // Reports: Open plays the reported word in Check tags on the upload that played; Mark the report fixed closes it
+  { const db = makeDb();
+    db.reports = [
+      { id: 7, song_id: 'old', yt: 'AAAAAAAAAAA', item_id: 'paani', t: 30, lead: 8.2, kind: 'late', note: null, ver: 32, created_at: '2026-11-14T10:00:00Z', fixed_at: null },
+      { id: 5, song_id: 'old', yt: 'AAAAAAAAAAA', item_id: 'paani', t: 30, lead: 9, kind: 'other', note: 'too quiet', ver: 31, created_at: '2026-11-13T10:00:00Z', fixed_at: '2026-11-14T09:00:00Z' }];
+    const { w, d, yt } = makeDom(db, { signedIn: true, editor: true });
+    const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await sleep(60);
+    ok(d.querySelector('#navRep').textContent === '1' && !d.querySelector('#navRep').hidden, 'the Reports tab counts the open ones');
+    w.location.hash = '#reports'; await sleep(20);
+    const rows = [...d.querySelectorAll('.res.rep')];
+    ok(rows.length === 1 && rows[0].textContent.includes('Old Song') && rows[0].textContent.includes('Word came late · Paani at 0:30.00 · run-up 8.2 s · v32 · 14 Nov 2026'),
+      'an open report names the song, what was off, the word and its time, the run-up and the version: ' + (rows[0] && rows[0].querySelector('.meta').textContent));
+    c('[data-act="repopen"][data-arg="7"]'); await sleep(80);
+    w.onYouTubeIframeAPIReady(); await sleep(400);
+    const bar = d.querySelector('.selbar.check');
+    ok(w.location.hash === '#song:old' && !!bar && /Reported: Word came late/.test(bar.textContent) && /Paani at 0:30\.00/.test(bar.textContent) && Math.abs(yt.seeks.slice(-1)[0] - 27) < 0.01,
+      'Open goes to the song and plays the word from 3 s before in Check tags, saying what was reported');
+    c('.selbar [data-act="repfix"]'); await sleep(20);
+    ok(!!db.reports.find(r => r.id === 7).fixed_at && d.querySelector('#navRep').hidden && !/Reported:/.test(d.querySelector('.selbar.check').textContent), 'Mark the report fixed closes it and Check tags carries on');
+    w.location.hash = '#reports'; await sleep(20);
+    ok(/No|Nothing reported/.test(d.querySelector('#view').textContent) && /Fixed\s*2/.test(d.querySelector('.segs').textContent), 'the open list is empty and both sit under Fixed'); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

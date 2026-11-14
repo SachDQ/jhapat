@@ -60,6 +60,9 @@ nav.tabs .navn{display:inline-block;margin-left:6px;min-width:18px;padding:3px 6
 .res.req input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold-fill)}
 .res.req .info{min-width:0;overflow-wrap:anywhere}
 .reqbar{margin-bottom:8px}
+.res.rep{grid-template-columns:64px minmax(0,1fr) auto;align-items:center}
+.res.rep .info{min-width:0;overflow-wrap:anywhere}
+.selbar .reported{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:6px 9px}
 .who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
 .garland{height:16px;background-image:radial-gradient(circle,#FF8A00 0 5.5px,transparent 6.5px),radial-gradient(circle,#FFC233 0 3px,transparent 4px);
   background-size:16px 16px,16px 16px;background-position:0 0,8px 0;background-repeat:repeat-x} /* the player's marigold garland */
@@ -256,6 +259,7 @@ textarea{resize:vertical}
     <button data-act="go" data-arg="items">Items</button>
     <button data-act="go" data-arg="playlists">Playlists</button>
     <button data-act="go" data-arg="requests">Requests<span class="navn" id="navReq" hidden></span></button>
+    <button data-act="go" data-arg="reports">Reports<span class="navn" id="navRep" hidden></span></button>
   </nav>
   <div class="who" id="who"></div>
 </header>
@@ -304,7 +308,7 @@ function fail(what, error) { console.warn(what, error); toast(what + ': ' + ((er
 
 /* ---------- state ---------- */
 let user = null, editor = null;                 // editor: null = not checked yet
-let items = [], songs = [], playlists = [], requests = [];
+let items = [], songs = [], playlists = [], requests = [], reports = [];
 let route = { view: 'songs', id: null };
 let filter = '';
 let cur = null;                                 // the open song: { s, videos, tags, lines, groups, lit, byLine, typical }
@@ -314,7 +318,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 31; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 32; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -406,15 +410,17 @@ async function allRows(query, size = 1000) { // Supabase answers at most 1,000 r
   }
 }
 async function loadAll() {
-  const [a, b, c, q] = await Promise.all([
+  const [a, b, c, q, rp] = await Promise.all([
     sb.from('items').select('*').order('sort'),
     allRows(() => sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,created_at,updated_at,tagged_at,checked_at,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(item_id,t,rep)').order('title').order('id')), // line0: has lyrics, without fetching them all
     sb.from('playlists').select('id,name,description,sort,is_public,owner,playlist_songs(song_id,position)').order('sort'),
     sb.from('requests').select('*').order('asks', { ascending: false }),
+    sb.from('reports').select('*').order('created_at', { ascending: false }).limit(1000),
   ]);
   if (a.error || b.error || c.error) return fail('Couldn’t load the studio', a.error || b.error || c.error);
   items = a.data; spell = null; playlists = c.data;
-  requests = q && !q.error && Array.isArray(q.data) ? q.data : []; // the list stays empty if it can't load; songs still work
+  requests = q && !q.error && Array.isArray(q.data) ? q.data : []; // these lists stay empty if they can't load; songs still work
+  reports = rp && !rp.error && Array.isArray(rp.data) ? rp.data : [];
   songs = b.data.map(s => { const r = rowOf({ ...s, hasLines: s.line0 != null }); delete r.line0; return r; });
 }
 async function openSong(id) {
@@ -705,8 +711,10 @@ function checkHTML() {
   const g = chk.list[chk.i];
   if (!g) return '<div class="selbar check"><span class="big">All ' + chk.list.length + ' drop point' + (chk.list.length === 1 ? '' : 's') + ' checked</span><span class="small">Each was heard from 3 s before.</span><div class="row">' +
     (cur.s.status !== 'checked' ? '<button class="btn primary" data-act="status" data-arg="checked">Mark song checked</button>' : '') + '<button class="btn" data-act="chkstop">Done</button></div></div>';
-  const done = g.members.every(t => t.checked);
-  return '<div class="selbar check"><div class="row"><span class="big grow">' + esc(itemLabel(g.tag.item_id)) + ' at ' + fmt2(g.tag.t) + '</span><span class="small mono">' + (chk.i + 1) + ' / ' + chk.list.length + '</span></div>' +
+  const done = g.members.every(t => t.checked), rp = chk.report;
+  return '<div class="selbar check">' + (rp ? '<div class="row reported small"><span class="grow"><b>Reported:</b> ' + esc(REPORT_KINDS[rp.kind] || rp.kind) + (rp.note ? ' · “' + esc(rp.note) + '”' : '') +
+    (rp.lead != null ? ' · run-up ' + Number(rp.lead).toFixed(1) + ' s' : '') + '</span><button class="btn small" data-act="repfix" data-arg="' + rp.id + '">Mark the report fixed</button></div>' : '') +
+    '<div class="row"><span class="big grow">' + esc(itemLabel(g.tag.item_id)) + ' at ' + fmt2(g.tag.t) + '</span><span class="small mono">' + (chk.i + 1) + ' / ' + chk.list.length + '</span></div>' +
     '<span class="small">A drop point: plays from 3 s before' + (g.members.length > 1 ? ' (repeat ' + (g.members.indexOf(g.tag) + 1) + ' of ' + g.members.length + ')' : '') + '. The word should start on “now”: earlier than that, press Earlier; later, press Later.' + (done ? ' Already checked.' : '') + '</span>' +
     '<div class="countdown" id="cd" aria-hidden="true">3</div>' +
     '<div class="row"><button class="btn primary tapbtn" data-act="chkok">Right <span class="kbd">Enter</span></button><button class="btn" data-act="chkplay">Again <span class="kbd">R</span></button><button class="btn ghost" data-act="chknext">Skip</button></div>' +
@@ -941,7 +949,7 @@ const emoOf = id => (items.find(i => i.id === id) || {}).emoji || '';
 const itemLabel = id => (emoOf(id) ? emoOf(id) + ' ' : '') + itemName(id);
 function go() {
   const h = decodeURIComponent(location.hash.slice(1));
-  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add', 'import', 'requests'].includes(h) ? h : 'songs', id: null };
+  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add', 'import', 'requests', 'reports'].includes(h) ? h : 'songs', id: null };
   render();
 }
 window.addEventListener('hashchange', go);
@@ -960,11 +968,13 @@ async function render() {
       $('#view').innerHTML = '<p class="muted">Opening…</p>'; $('#sidePanel').innerHTML = ''; syncRow(); cur = null; pick = null; armed = null; chk = null;
       await openSong(route.id); if (!cur || cur.s.id !== route.id) return;
     }
-    renderSong(); return;
+    renderSong();
+    if (pendingReport && pendingReport.song_id === cur.s.id) { const r = pendingReport; pendingReport = null; reportCheck(r); }
+    return;
   }
   if (cur) { syncRow(); try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; chk = null; }
   $('#view').innerHTML = route.view === 'items' ? itemsHTML() : route.view === 'playlists' ? playlistsHTML() : route.view === 'add' ? addHTML()
-    : route.view === 'import' ? importHTML() : route.view === 'requests' ? requestsHTML() : songsHTML();
+    : route.view === 'import' ? importHTML() : route.view === 'requests' ? requestsHTML() : route.view === 'reports' ? reportsHTML() : songsHTML();
 }
 
 const SORTS = { title: 'A–Z', new: 'Newest first', tagged: 'Last tagged by hand', checked: 'Last checked by ear', tags: 'Most drop points', status: 'By status' };
@@ -1256,6 +1266,10 @@ document.addEventListener('click', async e => {
       b.setAttribute('aria-expanded', String(!f)); if (b.nextElementSibling) b.nextElementSibling.hidden = f; break; }
     case 'show': show = arg; render(); break;
     case 'reqshow': reqShow = arg; render(); break;
+    case 'repshow': repShow = arg; render(); break;
+    case 'repfix': await repFix(arg); break;
+    case 'repopen': { const r = reports.find(x => String(x.id) === String(arg)); if (!r) break;
+      pendingReport = r; if (location.hash === '#song:' + encodeURIComponent(r.song_id) && cur && cur.s.id === r.song_id) { pendingReport = null; reportCheck(r); } else location.hash = '#song:' + encodeURIComponent(r.song_id); break; }
     case 'reqskip': await reqDone(arg, 'skipped'); break;
     case 'reqopen': await reqDone(arg, null); break;
     case 'reqadd': {
@@ -1454,9 +1468,9 @@ function nameMatch(title, channel) {
 const ytIn = () => new Set(songs.flatMap(s => (s.videos || []).map(v => v.yt)));
 const reqState = (r, yts) => (r.done === 'skipped' ? 'skipped' : r.done === 'added' || yts.has(r.yt) ? 'added' : 'open');
 function navCounts() {
-  const el = $('#navReq'); if (!el) return;
-  const yts = ytIn(), n = requests.filter(r => reqState(r, yts) === 'open').length;
-  el.textContent = n; el.hidden = !n;
+  const el = $('#navReq'), er = $('#navRep'); if (!el || !er) return;
+  const yts = ytIn(), n = requests.filter(r => reqState(r, yts) === 'open').length, m = reports.filter(r => !r.fixed_at).length;
+  el.textContent = n; el.hidden = !n; er.textContent = m; er.hidden = !m;
 }
 function reqLine(r) { // an Add many line from the video's title and channel: "Title - Artist | link"; the channel's own name is dropped from the title
   const ch = String(r.channel || '').replace(/\s*-\s*Topic$/i, '').trim();
@@ -1493,6 +1507,53 @@ async function reqDone(yt, done) {
   const { error } = await sb.from('requests').update({ done, done_at: done ? new Date().toISOString() : null }).eq('yt', yt);
   if (error) return fail('Couldn’t save that', error);
   r.done = done; reqPick.delete(yt); navCounts(); $('#view').innerHTML = requestsHTML();
+}
+
+/* ---------- reports: drops someone said were off ----------
+   Newest first. Open plays the reported word from 3 s before in Check tags (on the upload that played), where Right,
+   Earlier and Later work as usual; Mark fixed closes it. */
+const REPORT_KINDS = { soon: 'Word came too soon', late: 'Word came late', word: 'Wrong word', unsung: 'Word not sung', video: 'Video won’t play', other: 'Something else' };
+let repShow = 'open', pendingReport = null;
+function reportsHTML() {
+  const open = reports.filter(r => !r.fixed_at), fixed = reports.filter(r => r.fixed_at), list = repShow === 'open' ? open : fixed;
+  const seg = (k, label, n) => '<button class="seg" data-act="repshow" data-arg="' + k + '" aria-pressed="' + (repShow === k) + '">' + label + ' <span class="n">' + n + '</span></button>';
+  return '<div class="pagehead"><h1>Reports<span class="count">' + open.length + '</span></h1></div>' +
+    '<p class="muted small">Drops someone said were off, from Something off? in the player, newest first. Open plays the word from 3 s before, as in Check tags.</p>' +
+    '<div class="segs" role="group" aria-label="Show">' + seg('open', 'Open', open.length) + seg('fixed', 'Fixed', fixed.length) + '</div>' +
+    (list.length ? '<div class="results">' + list.map(repRowHTML).join('') + '</div>'
+      : '<div class="empty"><p class="muted">' + (repShow === 'open' ? 'Nothing reported. Reports from the player show up here.' : 'None fixed yet.') + '</p></div>');
+}
+function repRowHTML(r) {
+  const s = songs.find(x => x.id === r.song_id), t = Number(r.t);
+  return '<div class="res rep">' + thumbHTML(r.yt || (s && s.thumb), 'sm') + '<span class="info"><b>' + esc(s ? s.title : r.song_id) + '</b>' + (s && s.artist ? ' · ' + esc(s.artist) : '') +
+    '<br><span class="meta">' + esc(REPORT_KINDS[r.kind] || r.kind) + (r.item_id ? ' · ' + esc(itemLabel(r.item_id)) + (isFinite(t) && r.t != null ? ' at ' + fmt2(t) : '') : '') +
+    (r.lead != null ? ' · run-up ' + Number(r.lead).toFixed(1) + ' s' : '') + (r.ver ? ' · v' + r.ver : '') + (day(r.created_at) ? ' · ' + day(r.created_at) : '') + '</span>' +
+    (r.note ? '<br><span class="small">“' + esc(r.note) + '”</span>' : '') + '</span><span class="row">' +
+    (r.fixed_at ? '<span class="pill checked">Fixed' + (day(r.fixed_at) ? ' ' + day(r.fixed_at) : '') + '</span>'
+      : (s ? '<button class="btn small primary" data-act="repopen" data-arg="' + r.id + '">Open</button>' : '') + '<button class="btn small ghost" data-act="repfix" data-arg="' + r.id + '">Mark fixed</button>') + '</span></div>';
+}
+function reportCheck(rep) { // Check tags at the reported word, on the upload that played
+  const k = rep.yt ? cur.videos.findIndex(v => v.yt === rep.yt && v.embeddable) : -1;
+  if (k > -1 && k !== vi) loadVideo(k, false);
+  const t = Number(rep.t), list = checkList();
+  let i = rep.item_id && isFinite(t) ? list.findIndex(g => g.members.some(x => x.item_id === rep.item_id && Math.abs(x.t - t) < 0.3)) : -1;
+  if (i > -1) { const m = list[i].members.find(x => x.item_id === rep.item_id && Math.abs(x.t - t) < 0.3); if (m) list[i].tag = m; } // hear the very repeat that played
+  else { // not a drop point here now (or its timing moved): that item's nearest tag, on its own
+    const tg = cur.tags.filter(x => x.item_id === rep.item_id).sort((a, b) => Math.abs(a.t - t) - Math.abs(b.t - t))[0];
+    if (!tg) { toast('That word isn’t tagged in this song any more. Look over the song, then mark the report fixed.'); chk = null; return; }
+    const g = { members: [tg], tag: tg }; list.push(g); list.sort((a, b) => a.tag.t - b.tag.t); i = list.indexOf(g);
+  }
+  pick = null; armed = null; chk = { list, i, go: false, report: rep };
+  renderSong();
+  const t0 = Date.now(), iv = setInterval(() => { if (!chk || chk.report !== rep) clearInterval(iv); else if (videoOn()) { clearInterval(iv); checkPlay(); } else if (Date.now() - t0 > 8000) clearInterval(iv); }, 250);
+}
+async function repFix(id) {
+  const r = reports.find(x => String(x.id) === String(id)); if (!r) return;
+  const at = new Date().toISOString(), { error } = await sb.from('reports').update({ fixed_at: at }).eq('id', r.id);
+  if (error) return fail('Couldn’t save that', error);
+  r.fixed_at = at; navCounts();
+  if (chk && chk.report === r) { chk.report = null; renderSong(); } else if (route.view === 'reports') $('#view').innerHTML = reportsHTML();
+  toast('Marked fixed.');
 }
 
 /* ---------- add many songs ----------

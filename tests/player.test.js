@@ -89,6 +89,20 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   for (let k = 0; k < 3; k++) { click('[data-act="next"]'); order.push(lastMain().videoId); }
   ok(new Set(order).size === 3, 'three drops in a row hit three different songs');
 
+  // 3b. Replay the drop jumps back to the drop point in the video that's playing: no reload, so the video box doesn't go black
+  const vid3 = front().cur.vid, start3 = front().cur.t, loads3 = mainCalls().length;
+  click('[data-act="reveal"]');
+  front().cur.t = start3 + 25; front().cur.st = 0; front().events.onStateChange({ data: 0, target: front() }); // the song played on and ended
+  const ending3 = d.querySelector('.now').textContent.includes('Next song in a moment');
+  click('[data-act="replay"]');
+  ok(mainCalls().length === loads3 && front().cur.vid === vid3 && front().cur.t === start3 && front().cur.st === 1 && seeks[seeks.length - 1] === start3,
+    'Replay the drop seeks back to the drop point and plays, without loading the video again');
+  ok(ending3 && !!d.querySelector('.now [data-act="reveal"]') && !d.querySelector('.now').textContent.includes('Next song in a moment'),
+    'after the song ended, Replay hides the word again and stops it rolling on to the next song');
+  front().cur.vid = 'XXXXXXXXXXX'; // something else is in the player now
+  click('[data-act="replay"]');
+  ok(mainCalls().length === loads3 + 1 && lastMain().videoId === vid3 && lastMain().startSeconds === start3, 'with another video in the player, Replay loads the song again at the drop point');
+
   // 4. Tagging a new song
   click('[data-act="tab"][data-arg="songs"]');
   ok(d.querySelectorAll('.songbtn').length === 16, 'songs tab lists 16 songs: ' + d.querySelectorAll('.songbtn').length);
@@ -552,7 +566,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     'its songs match by upload (Sasto Mutu), then by name and artist (another upload of Kaha Hola Ghar); a duplicate counts once: ' + JSON.stringify(m23.n));
   ok((m23.missing || []).map(x => x.yt + ':' + x.title).join() === 'v3xxxxxxxxx:Timi ra ma,v5xxxxxxxxx:Naya Geet', 'the same title by another artist isn’t taken for a Jhapat song; those two wait to be asked for');
   const card23 = d23.querySelector('[data-act="pickpl"][data-arg="yt-PLtest1234567"]'), sum23 = (d23.querySelector('.minesum') || {}).textContent;
-  ok(card23 && /Dashain Party/.test(card23.textContent) && /2 songs/.test(card23.textContent) && sum23 === '1 ready · 1 matched by name · 2 not in Jhapat yet · 1 won’t play outside YouTube',
+  ok(card23 && /Dashain Party/.test(card23.textContent) && /2 songs/.test(card23.textContent) && sum23 === '2 in Jhapat (1 matched by name) · 2 not in Jhapat yet · 1 won’t play outside YouTube',
     'its card sits under From YouTube with what matched: ' + sum23);
   ok(d23.querySelectorAll('.miss li').length === 2 && /Naya Geet/.test(d23.querySelector('.miss').textContent), 'the videos not in Jhapat yet are listed with their covers');
   c23('[data-act="ytask"]'); await sleep(30);
@@ -582,6 +596,44 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     'a shared link reads the playlist from YouTube, opens it straight away and tidies the address');
   c23('[data-act="lists"]'); await sleep(10); c23('[data-act="ytdel"]'); await sleep(10);
   ok(!st23().mine.length && st23().playlist.id === 'party-mix', 'Remove takes it off the phone and goes back to the party mix');
+
+  // 24. Something off? under the song: the choice goes to the studio with the song, upload, word, run-up and version; without signal it waits
+  const sent24 = []; let net24 = 'up'; // 'up', 'down' (no answer) or 'refuse' (the database says no)
+  const fetch24 = async (url, o) => {
+    if (/rpc\/report_drop/.test(url)) { if (net24 === 'down') throw new Error('offline'); sent24.push(JSON.parse(o.body).r);
+      return net24 === 'refuse' ? { ok: false, status: 400, json: async () => ({ message: 'no such song' }) } : { ok: true, json: async () => sent24.length }; }
+    return { ok: true, json: async () => (/rpc\/catalog/.test(url) ? JSON.parse(JSON.stringify(cat23)) : {}) }; };
+  const dom26 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.fetch = fetch24; } });
+  await sleep(60);
+  const w26 = dom26.window, d26 = w26.document, st26 = () => JSON.parse(w26.localStorage.getItem('jhapat.v1'));
+  const c26 = sel => { const el = d26.querySelector(sel); if (!el) throw new Error('missing ' + sel); el.dispatchEvent(new w26.MouseEvent('click', { bubbles: true })); };
+  if (d26.querySelector('[data-act="pickpl"]')) { c26('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(10); } // the list comes first (All songs has the asked-for song too)
+  if (d26.querySelector('[data-act="item"][data-arg="maya"]').getAttribute('aria-pressed') !== 'true') c26('[data-act="item"][data-arg="maya"]');
+  ok(!d26.querySelector('[data-act="reportopen"]'), 'before the first song there’s nothing to report');
+  c26('[data-act="next"]'); await sleep(10);
+  c26('[data-act="reportopen"]'); await sleep(5);
+  ok(d26.querySelectorAll('[data-act="report"]').length === 6 && /Word came late/.test(d26.querySelector('.report').textContent), 'Something off? opens six choices');
+  c26('[data-act="report"][data-arg="late"]'); await sleep(20);
+  const r24 = sent24[0] || {}, song24 = cat23.songs.find(x => x.id === r24.song) || { videos: [{}], tags: [] };
+  ok(r24.kind === 'late' && r24.yt === song24.videos[0].yt && song24.tags.some(t => t[0] === r24.item && t[1] === r24.t) && r24.lead >= 7 && r24.lead <= 10 && r24.ver === +d26.querySelector('#ver').textContent.slice(1) && r24.note === null,
+    'Word came late sends the song, its upload, the word and its time, the run-up and the version: ' + JSON.stringify(r24));
+  ok(/Sent to the studio/.test(d26.querySelector('.report').textContent) && !d26.querySelector('[data-act="reportopen"]'), 'and says it was sent, so the same drop isn’t reported twice');
+  c26('[data-act="next"]'); await sleep(10);
+  ok(!!d26.querySelector('[data-act="reportopen"]'), 'the next song can be reported again');
+  c26('[data-act="reportopen"]'); c26('[data-act="report"][data-arg="other"]'); await sleep(5);
+  const form26 = () => d26.querySelector('#reportForm'), submit26 = async v => { d26.querySelector('#reportNote').value = v; form26().dispatchEvent(new w26.Event('submit', { bubbles: true, cancelable: true })); await sleep(20); };
+  await submit26('  ');
+  ok(sent24.length === 1 && /Say what happened/.test(d26.querySelector('#toast').textContent), 'Something else needs a note');
+  net24 = 'down'; await submit26('the video froze');
+  ok(sent24.length === 1 && st26().outbox.length === 1 && st26().outbox[0].note === 'the video froze' && /back online/.test(d26.querySelector('#toast').textContent), 'with no signal the report waits on the phone');
+  net24 = 'up';
+  const dom27 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.fetch = fetch24; win.localStorage.setItem('jhapat.v1', w26.localStorage.getItem('jhapat.v1')); win.localStorage.setItem('jhapat.cat', w26.localStorage.getItem('jhapat.cat')); } });
+  await sleep(80);
+  ok(sent24.length === 2 && sent24[1].kind === 'other' && sent24[1].note === 'the video froze' && JSON.parse(dom27.window.localStorage.getItem('jhapat.v1')).outbox.length === 0,
+    'the next visit that reaches the database sends it');
+  net24 = 'refuse'; c26('[data-act="next"]'); await sleep(10); c26('[data-act="reportopen"]'); c26('[data-act="report"][data-arg="word"]'); await sleep(20);
+  ok(st26().outbox.length === 1 && /couldn’t take that report/.test(d26.querySelector('#toast').textContent), 'a report the database refuses isn’t kept to send again');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

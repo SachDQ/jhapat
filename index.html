@@ -154,6 +154,11 @@ img.broken{visibility:hidden}
 .listbtn .a{color:var(--muted);font-size:15px}
 .listbtn .row{gap:6px}
 .listbtn[aria-current="true"]{border-color:var(--gold-fill);box-shadow:inset 0 0 0 1px var(--gold-fill),var(--glow)}
+.report{margin-top:10px}
+.report.open{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:8px;justify-items:start}
+.report .row{gap:6px}
+.report form{width:100%;flex-wrap:nowrap}
+.report form input{flex:1;min-width:0}
 /* your YouTube playlists: a card like the others, what matched, and the songs to ask for */
 .sub{font:400 20px/1.2 var(--display);margin:20px 0 8px}
 .listbtn:disabled{cursor:default;opacity:.7}
@@ -250,7 +255,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 31; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 32; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -452,6 +457,18 @@ function playSong(song, start, m) {
   if (ready) go();
   else if (!$('#blocked').hidden) toast('YouTube can’t load on this page. Use the web link in the video box.');
   else { queued = go; toast('Loading the YouTube player…'); }
+}
+/* Replay the drop: the song is still in the player, so it only jumps back to the drop point. Loading it again would
+   blank the video box while YouTube fetches it; that only happens when something else is in the player now. */
+function replayDrop() {
+  const song = current && byId(current.songId); if (!song) return;
+  revealed = false;
+  if (isOn(song)) {
+    mode = 'game'; clearTimeout(nextTimer); nextTimer = null; // a song that had ended was about to roll on
+    try { player.seekTo(current.start, true); player.playVideo(); watchPlayback(current.start, false); }
+    catch (e) { playSong(song, current.start, 'game'); }
+  } else playSong(song, current.start, 'game');
+  renderNow();
 }
 /* Phones (iPhone especially) won't start sound until the video itself is tapped once.
    Watch for real, unmuted playback; if it hasn't started after 2s, say so on the video. */
@@ -656,7 +673,7 @@ function nextRound() {
   const plan = takePreloaded() || planRound();
   if (!plan) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
   if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); }
-  current = plan.drop; revealed = false;
+  current = plan.drop; revealed = false; reporting = false;
   S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id;
   if (plan.drop && plan.drop.tag) (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; // next time: its next drop point
   save();
@@ -745,6 +762,34 @@ function nowHTML() {
       : '<button class="btn small" data-act="reveal">Show the word</button>') +
     '<button class="btn small" data-act="replay">Replay the drop</button></div>';
 }
+/* Something off? under the song: what was wrong goes to Studio › Reports with the song, upload, word, run-up and version.
+   With no signal it waits on the phone and goes with the next visit that reaches the database. */
+const REPORT_KINDS = [['soon', 'Word came too soon'], ['late', 'Word came late'], ['word', 'Wrong word'], ['unsung', 'Word not sung'], ['video', 'Video won’t play'], ['other', 'Something else']];
+let reporting = false; // false, true (the choices are open) or 'other' (a note box)
+const dropSig = d => d ? d.songId + '|' + d.tag.item + '|' + d.tag.t : '';
+function reportHTML() {
+  if (!current || !byId(current.songId)) return '';
+  if ((S.reported || []).includes(dropSig(current))) return '<div class="report"><span class="badge ok">Sent to the studio. Thanks!</span></div>';
+  if (!reporting) return '<div class="report"><button class="btn ghost small" data-act="reportopen" aria-expanded="false">Something off?</button></div>';
+  return '<div class="report open" role="group" aria-label="What was off?"><div class="kicker">What was off?</div><div class="row">' +
+    REPORT_KINDS.map(([k, label]) => '<button class="btn small" data-act="report" data-arg="' + k + '"' + (reporting === k ? ' aria-pressed="true"' : '') + '>' + label + '</button>').join('') + '</div>' +
+    (reporting === 'other' ? '<form id="reportForm" class="row"><input type="text" id="reportNote" maxlength="300" placeholder="What happened?" aria-label="What happened?"><button class="btn small primary" type="submit">Send</button></form>' : '') +
+    '<button class="btn ghost small" data-act="reportx">Cancel</button></div>';
+}
+async function sendReport(kind, note) {
+  const song = current && byId(current.songId); if (!song) return;
+  const r = { song: song.id, yt: curVid(song), item: current.tag.item, t: current.tag.t, lead: Math.round(current.lead * 100) / 100, kind, note: note || null, ver: VERSION };
+  S.reported = (S.reported || []).concat(dropSig(current)).slice(-200); reporting = false; save(); render();
+  const res = await dbCall('rpc/report_drop', { r });
+  if (res.ok) toast('Thanks. It’s in the studio for a look.');
+  else if (res.offline) { (S.outbox = S.outbox || []).push(r); save(); toast('Saved. It goes to the studio when the phone is back online.'); }
+  else toast('The studio couldn’t take that report. The song may have changed since.');
+}
+async function flushOutbox() { // reports made without signal; one the database refuses is dropped, so it can't block the rest
+  const keep = [];
+  for (const r of S.outbox || []) { const res = await dbCall('rpc/report_drop', { r }); if (res.offline) keep.push(r); }
+  S.outbox = keep; save();
+}
 /* All songs, then the official playlists: built from the catalog on the phone, so the list also shows offline. */
 const lists = () => (CARDS || []).filter(c => c.songs > 0);
 const needPick = () => S.source === 'db' && !S.chosen && !current && lists().length > 1; // never over a song that's playing
@@ -768,8 +813,9 @@ function renderPicker() {
     '</section>';
 }
 /* Playlists made from YouTube links: each one's card, what matched, and the videos not in Jhapat yet, which can be asked for. */
-const mineSummary = m => [m.n.upload + ' ready', m.n.name ? m.n.name + ' matched by name' : '', m.missing.length ? m.missing.length + ' not in Jhapat yet' : '',
-  m.n.gone ? m.n.gone + ' won’t play outside YouTube' : ''].filter(Boolean).join(' · ');
+const mineSummary = m => { const got = m.n.upload + m.n.name; // "53 in Jhapat (12 matched by name) · 30 not in Jhapat yet"
+  return [got + ' in Jhapat' + (m.n.name ? (m.n.upload ? ' (' + m.n.name + ' matched by name)' : ', matched by name') : ''),
+    m.missing.length ? m.missing.length + ' not in Jhapat yet' : '', m.n.gone ? m.n.gone + ' won’t play outside YouTube' : ''].filter(Boolean).join(' · '); };
 function mineHTML(active) {
   const asked = new Set(S.asked || []);
   const rows = (S.mine || []).map(m => {
@@ -809,7 +855,7 @@ function renderPlay() {
       '<span>' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
   return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
     '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
-    (current ? '<button class="btn big" data-act="pause" data-pausebtn>Pause</button>' : '') + '</div>' +
+    (current ? '<button class="btn big" data-act="pause" data-pausebtn>Pause</button>' : '') + '</div>' + reportHTML() +
     '<section class="card" id="table">' +
     (fromDb && S.playlist ? '<div class="plbar"><span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span></span>' +
       (CAT ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</div>' : '') +
@@ -971,12 +1017,15 @@ document.addEventListener('click', async e => {
     case 'update': location.href = location.pathname + '?v=' + (b.dataset.v || Date.now()) + location.hash; break;
     case 'pause': case 'ttoggle': togglePause(); setTimeout(tick, 120); break;
     case 'reveal': revealed = true; renderNow(); break;
-    case 'replay': if (current && byId(current.songId)) { revealed = false; playSong(byId(current.songId), current.start, 'game'); renderNow(); } break;
+    case 'replay': replayDrop(); break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
     case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true); } break; }
     case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': pickPlaylist(arg); break;
+    case 'reportopen': reporting = true; render(); break;
+    case 'reportx': reporting = false; render(); break;
+    case 'report': if (arg === 'other') { reporting = 'other'; render(); const n = $('#reportNote'); if (n) n.focus(); } else await sendReport(arg); break;
     case 'ytask': { const m = mineOf(arg); if (m) { b.disabled = true; await askFor(m); } break; }
     case 'ytshare': { const m = mineOf(arg); if (m) await shareMine(m); break; }
     case 'ytread': { const m = mineOf(arg); if (m) await readYt(m.list); break; }
@@ -1061,6 +1110,7 @@ document.addEventListener('change', e => {
 document.addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
+  if (f.id === 'reportForm') { const note = (($('#reportNote') || {}).value || '').trim(); if (!note) { toast('Say what happened, then Send.'); return; } await sendReport('other', note); return; }
   if (f.id === 'ytForm') {
     const list = listIdOf(($('#ytLink') || {}).value);
     if (!list) { toast('That isn’t a YouTube playlist link. On the playlist, tap Share, then Copy link.'); return; }
@@ -1154,20 +1204,22 @@ function useList(pid, quiet) {
   const ids = new Set(songs.map(s => s.id)); S.played = S.played.filter(id => ids.has(id));
   save(); if (!quiet) render(); schedulePreload(1200, true);
 }
-async function dbGet(path, body, ms) {
+async function dbCall(path, body, ms) { // { ok, data }, or offline: true when the database didn't answer at all
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = setTimeout(() => ctl && ctl.abort(), ms || 8000);
   try {
     const r = await fetch(DB.rest + path, body
       ? { method: 'POST', signal: ctl ? ctl.signal : undefined, headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       : { signal: ctl ? ctl.signal : undefined, headers: { apikey: DB.key } });
-    return r.ok ? await r.json() : null;
-  } catch (e) { return null; } // offline or blocked: keep what this phone already has
+    return { ok: !!r.ok, data: r.ok ? await r.json() : null };
+  } catch (e) { return { ok: false, data: null, offline: true }; } // offline or blocked: keep what this phone already has
   finally { clearTimeout(timer); }
 }
+const dbGet = async (path, body, ms) => { const r = await dbCall(path, body, ms); return r.ok ? r.data : null; };
 async function loadDb() {
   if (typeof fetch !== 'function') return;
   const c = await dbGet('rpc/catalog', null, 30000); // about 140 KB, so it gets longer than other calls
+  if (goodCat(c) && (S.outbox || []).length) flushOutbox();
   if (!goodCat(c)) { save(); render(); if (CAT && sharedYt) openShared(); return; }
   const txt = JSON.stringify(c);
   if (catSaved && txt === stored(CAT_KEY)) { if (sharedYt) openShared(); return; } // nothing changed since the last visit

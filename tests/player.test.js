@@ -715,6 +715,19 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(osc30 >= 5 && w30.__osc === 0 && d30.querySelector('.now [data-act="sound"]').getAttribute('aria-pressed') === 'false' && d30.querySelector('.now [data-act="sound"]').textContent === '🔇',
     'a drop plays the madal (' + osc30 + ' notes); with sound off, items and Show make none');
 
+  // 26. The intro: a first visit shows how to play and Suju's TikTok; it remembers, and How to play opens it again
+  const dom40 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://jhapat.live/', pretendToBeVisual: true, beforeParse(win) {
+    win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); win.scrollTo = () => {}; } });
+  await sleep(60);
+  const w40 = dom40.window, d40 = w40.document, c40 = sel => d40.querySelector(sel).dispatchEvent(new w40.MouseEvent('click', { bubbles: true }));
+  const tt40 = d40.querySelector('#intro .ttbox iframe');
+  ok(!d40.querySelector('#intro').hidden && !!tt40 && /tiktok\.com\/player\/v1\/7706561958320868638/.test(tt40.src) && /description=0/.test(tt40.src) && /@sujupah/.test(d40.querySelector('#intro').textContent),
+    'a first visit opens the intro with Suju’s TikTok (its description off)');
+  c40('[data-act="introgo"]'); await sleep(10);
+  ok(d40.querySelector('#intro').hidden && !d40.querySelector('#intro iframe') && JSON.parse(w40.localStorage.getItem('jhapat.v1')).introSeen === true, 'Let’s go closes it, stops the video and remembers');
+  c40('.foot [data-act="intro"]'); await sleep(10);
+  ok(!d40.querySelector('#intro').hidden && !!d40.querySelector('#intro iframe'), 'How to play opens it again');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

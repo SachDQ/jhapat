@@ -359,6 +359,27 @@ body.blind #tapHint{z-index:8}
 .drift.popped b{animation:popb .28s ease-out forwards}
 @keyframes popb{to{transform:scale(1.9);opacity:0}}
 @media (prefers-reduced-motion: reduce){.cover img,.cover .eq i{animation:none}.pill:active,.chips .chip:hover{transform:none}}
+/* the intro (v37) */
+.linkbtn{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.intro{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:rgba(15,11,30,.84);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.introcard{width:min(100%,430px);max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;
+  padding:16px 16px 0;text-align:center;box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
+@keyframes introin{from{opacity:0;transform:translateY(24px) scale(.94)}}
+.introlg{height:76px;width:auto;filter:drop-shadow(0 0 10px rgba(242,107,29,.5));animation:bob 3.4s ease-in-out infinite}
+.introcard h2{font:400 34px/1.1 var(--display);margin:2px 0}
+.introcard h2 span{background:repeating-linear-gradient(115deg,#F26B1D 0 7px,#FFA41B 7px 13px,#4A1E06 13px 15px);-webkit-background-clip:text;background-clip:text;color:transparent}
+.introsub{color:var(--muted);margin:0 0 12px;font-weight:600}
+.tt{margin:0 0 12px}
+.ttbox{width:min(100%,230px);aspect-ratio:325/578;margin:0 auto 8px;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--gold-fill),0 12px 34px rgba(242,107,29,.4)}
+.ttbox iframe{width:100%;height:100%;border:0;display:block}
+.tt figcaption{font-size:14px;color:var(--muted)}
+.tt figcaption a{color:var(--gold);font-weight:700}
+.introsteps{list-style:none;margin:0;padding:0;display:grid;gap:7px;text-align:left}
+.introsteps li{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:center;background:var(--raise);border-radius:14px;padding:7px 10px;font-size:15px;line-height:1.3}
+.introsteps b{font-size:21px;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:var(--bg)}
+.introbtns{position:sticky;bottom:0;display:grid;gap:8px;padding:14px 0 16px;background:linear-gradient(rgba(29,22,54,0),var(--surface) 26%)}
+body.introopen{overflow:hidden}
+@media (prefers-reduced-motion: reduce){.introcard,.introlg{animation:none}}
 </style>
 </head>
 <body>
@@ -391,7 +412,23 @@ body.blind #tapHint{z-index:8}
   </div>
 </div>
 <main class="wrap" id="view"></main>
-<footer class="wrap foot"><span id="ver"></span> · <a href="studio/">Studio</a></footer>
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introH" hidden>
+  <div class="introcard">
+    <img class="introlg" src="img/jhapat-mark.webp" width="105" height="76" alt="">
+    <h2 id="introH">Jhapat! <span lang="ne">झपट</span></h2>
+    <p class="introsub">Songs play. A word drops. Grab it first. 🐯</p>
+    <figure class="tt"><div class="ttbox"></div>
+      <figcaption>Where it all started: Suju’s party round 🎶 <a href="https://www.tiktok.com/@sujupah" target="_blank" rel="noopener">@sujupah</a></figcaption></figure>
+    <ol class="introsteps">
+      <li><b aria-hidden="true">🧺</b><span>Put things on the table, then tap the same ones here.</span></li>
+      <li><b aria-hidden="true">▶️</b><span>Start. A song drops in a few seconds before one of their words.</span></li>
+      <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
+      <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
+    </ol>
+    <div class="introbtns"><button class="btn primary big" data-act="introsuju">Play Suju’s round</button><button class="btn big" data-act="introgo">Let’s go</button></div>
+  </div>
+</div>
+<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <a href="studio/">Studio</a></footer>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -399,7 +436,7 @@ body.blind #tapHint{z-index:8}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 36; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 37; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -980,7 +1017,8 @@ function applyBlind() { document.body.classList.toggle('blind', !!S.settings.bli
 const hideName = () => !!S.settings.blind && !revealed;
 function pillsHTML() { // Hide and sound, at the top of the Now card
   return '<span class="pills"><button class="pill hide" data-act="blind" aria-pressed="' + !!S.settings.blind + '" title="Hide the song and video so you can play too">🙈 Hide</button>' +
-    '<button class="pill" data-act="sound" aria-pressed="' + sfxOn() + '" aria-label="Sound effects" title="Sound effects">' + (sfxOn() ? '🔊' : '🔇') + '</button></span>';
+    '<button class="pill" data-act="sound" aria-pressed="' + sfxOn() + '" aria-label="Sound effects" title="Sound effects">' + (sfxOn() ? '🔊' : '🔇') + '</button>' +
+    '<button class="pill" data-act="intro" aria-label="How to play" title="How to play">?</button></span>';
 }
 /* Sounds, made in the browser (no files): a madal on every drop with slot-machine ticks while the reel spins, a ding when an item
    goes on, a sparkle for Show, a pop for every emoji, a madal roll for the cheers. 🔊 in the Now card turns them off. */
@@ -1298,6 +1336,9 @@ document.addEventListener('click', async e => {
     case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': pickPlaylist(arg); break;
+    case 'intro': openIntro(); break;
+    case 'introgo': closeIntro(); break;
+    case 'introsuju': closeIntro(); playSuju(); break;
     case 'reportopen': reporting = true; render(); break;
     case 'reportx': reporting = false; render(); break;
     case 'report': if (arg === 'other') { reporting = 'other'; render(); const n = $('#reportNote'); if (n) n.focus(); } else await sendReport(arg); break;
@@ -1625,6 +1666,29 @@ async function openShared() {
   if (m && songsIn(m).length) { discardPre(); S.chosen = true; picking = false; useList(m.id); }
   else if (m) { picking = true; render(); }
 }
+/* The intro (v37): how to play in four lines, and Suju's TikTok, the party round that gave Sachin the idea. It opens on a phone's
+   first visit and from How to play. TikTok's player loads only while the intro is open, with its description off. */
+const SUJU = 'tiktok-og', TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&autoplay=1&muted=1';
+let wantSuju = false;
+function openIntro() {
+  const el = $('#intro'); if (!el) return;
+  el.querySelector('.ttbox').innerHTML = '<iframe src="' + TIKTOK + '" title="Suju (@sujupah) on TikTok: the Nepali party round that started Jhapat" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share" allowfullscreen></iframe>';
+  el.querySelector('[data-act="introsuju"]').innerHTML = ICON.play + 'Play Suju’s round';
+  el.hidden = false; document.body.classList.add('introopen');
+  setTimeout(() => { const b = el.querySelector('[data-act="introgo"]'); if (b && !el.hidden) b.focus(); }, 60);
+}
+function closeIntro() {
+  const el = $('#intro'); if (!el || el.hidden) return;
+  el.hidden = true; el.querySelector('.ttbox').innerHTML = ''; document.body.classList.remove('introopen'); // the video stops with its frame
+  if (!S.introSeen) { S.introSeen = true; save(); }
+}
+function playSuju() { // Suju's OG Round; on a first visit the catalog may still be on its way, so it opens when it lands
+  if (!CAT || !lists().some(x => x.id === SUJU)) { wantSuju = true; return; }
+  wantSuju = false; tab = 'play'; pickPlaylist(SUJU);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeIntro(); });
+document.addEventListener('click', e => { if (e.target && e.target.id === 'intro') closeIntro(); }); // a tap outside the card
+
 window.addEventListener('hashchange', () => { const l = (location.hash.match(/^#yt=([\w-]{10,64})$/) || [])[1]; if (l && CAT) { sharedYt = l; openShared(); } });
 
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
@@ -1632,7 +1696,8 @@ applySmall(); applyBlind();
 if (CAT) { buildCat(); useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id), true); } // from the phone, before the database answers
 $('#ver').textContent = 'v' + VERSION;
 render();
-loadDb();
+if (!S.introSeen) openIntro();
+loadDb().then(() => { if (wantSuju) playSuju(); });
 checkVersion();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
 })();

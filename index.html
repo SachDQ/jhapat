@@ -236,7 +236,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 28; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 29; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -535,29 +535,49 @@ const onItems = () => new Set(S.items.filter(i => i.on).map(i => i.id));
 const eligible = () => { const on = onItems(); return S.songs.filter(s => !s.broken && s.tags.some(t => on.has(t.item))); };
 
 const MARGIN = 1.2; // quiet kept after the previous table word: a tag marks where its word starts, and singing it takes about a second
+const FULL = 7;     // room for the full run-up; drop points use 7 s whatever the Drop-in range, so they match the studio's red dots
 const SHORT = 4.5;  // the shortest run-up a drop gets; a word sung closer than this behind another table word is left to that word
 /* Drop points. The run-up is random within the Drop-in range (7–10 s by default) and never reaches back past an earlier
-   table word, which would hand the room an earlier word to grab. Each item drops in at its first clean mention: the first
-   of its words with room for the full run-up, else the first with at least 4.5 s (the run-up then takes what there is).
-   A word sung closer than that behind another table word is never a drop point: the earlier word is. So a chorus drops in
-   at its first roomy repeat, and the rest of the song can play on if the room likes it. */
-function dropsFor(song, want) { // the places a drop can go in this song, earliest first, for one item or any table item
-  const on = onItems(), minL = S.settings.minLead, off = song.offset || 0;
+   table word, which would hand the room an earlier word to grab. A line sung more than once counts once: an item's word
+   drops in at the first time its line is sung with room for the full run-up, else the first with at least 4.5 s (the
+   run-up then takes what there is). So the same word twice close together drops at the first one, and of two different
+   table words close together the earlier gets the drop, while the later drops at its line's next roomy repeat if it has
+   one. Every line with room is a drop point, so a song can drop in at several places, near the end too. The studio's red
+   dots are this rule worked out for every mix of items on the table. */
+function dropsFor(song, want) { // this song's drop points with this table, earliest first, for one item or any table item
+  const on = onItems(), off = song.offset || 0;
   const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
   // room = how far back the drop can start before this word without passing an earlier table word
   const all = tags.map((t, i) => ({ tag: t, room: i ? t.t - tags[i - 1].t - MARGIN : t.t + off })).filter(c => !want || c.tag.item === want);
-  const full = all.filter(c => c.room >= minL), short = all.filter(c => c.room < minL && c.room >= SHORT);
-  return { full, short, all, list: full.length ? full : short };
+  const lines = new Map(); // an item's words by repeated-line group; a tap-along tag (no group) stands alone
+  for (const c of all) { const k = c.tag.g != null ? c.tag.item + '|' + c.tag.g : c.tag; if (!lines.has(k)) lines.set(k, []); lines.get(k).push(c); }
+  const list = [];
+  for (const g of lines.values()) { const c = g.find(x => x.room >= FULL) || g.find(x => x.room >= SHORT); if (c) list.push(c); }
+  list.sort((a, b) => a.tag.t - b.tag.t);
+  return { all, list, full: list.filter(c => c.room >= FULL), short: list.filter(c => c.room < FULL) };
 }
+/* Each time a song comes back for an item it drops in at that item's next drop point: the earliest the first time. */
+const dropKey = (song, item) => song.id + '|' + item;
 function pickFromSong(song, want) {
   const minL = S.settings.minLead, maxL = S.settings.maxLead, off = song.offset || 0;
   let d = dropsFor(song, want);
-  if (!d.list.length && want) d = dropsFor(song); // no clean word for that item here: the song's own first clean word
-  const c = d.list[0] || (d.all.length ? d.all.reduce((a, x) => (x.room > a.room ? x : a)) : null); // a packed song: its roomiest word
+  if (!d.list.length && want) d = dropsFor(song); // no clean word for that item here: the song's own drop points
+  let c = null;
+  if (d.list.length) {
+    const item = want && d.list.some(x => x.tag.item === want) ? want : d.list[0].tag.item;
+    const mine = d.list.filter(x => x.tag.item === item), last = (S.dropAt || {})[dropKey(song, item)];
+    c = (typeof last === 'number' && mine.find(x => x.tag.t > last + 0.01)) || mine[0];
+  } else if (d.all.length) c = d.all.reduce((a, x) => (x.room > a.room ? x : a)); // a packed song: its roomiest word
   if (!c) return null;
   const lead = c.room >= minL ? minL + Math.random() * (Math.min(maxL, c.room) - minL) : Math.max(1, c.room);
   const at = c.tag.t + off;
   return { songId: song.id, tag: c.tag, lead, start: Math.max(0, at - lead) };
+}
+/* An item's drop points in a song when it's the only one out (more items out can only take some away). */
+function dropCount(song, id) {
+  const ts = song.tags.filter(t => t.item === id).sort((a, b) => a.t - b.t), seen = new Set();
+  ts.forEach((t, i) => { const room = i ? t.t - ts[i - 1].t - MARGIN : t.t + (song.offset || 0); if (room >= SHORT) seen.add(t.g != null ? t.g : t); });
+  return seen.size;
 }
 /* Choose the next song and drop without changing anything, so it can be planned ahead. The item comes first, then one
    of its songs not played yet. Item balance (Settings, 0–10) sets how evenly the items on the table share the drops:
@@ -605,7 +625,9 @@ function nextRound() {
   if (!plan) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
   if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); }
   current = plan.drop; revealed = false;
-  S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id; save();
+  S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id;
+  if (plan.drop && plan.drop.tag) (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; // next time: its next drop point
+  save();
   recent = recent.filter(x => x !== plan.song.id).concat(plan.song.id).slice(-RECENT);
   if (tab !== 'play') { tab = 'play'; songId = null; }
   if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
@@ -717,16 +739,18 @@ let moreItems = false, settingsOpen = false;
 const touched = new Set(); // items tapped here stay in view when the list folds, so a chip never vanishes under a finger
 function renderPlay() {
   if (picking || needPick()) return renderPicker();
-  const el = eligible();
+  const el = eligible().filter(s => dropsFor(s).list.length); // songs the game can drop into with this table
   const left = el.filter(s => !S.played.includes(s.id)).length;
-  const songsWith = id => S.songs.filter(s => !s.broken && s.tags.some(t => t.item === id)).length;
+  const dropStats = id => { let songs = 0, pts = 0; S.songs.forEach(s => { if (s.broken) return; const n = dropCount(s, id); if (n) { songs++; pts += n; } }); return { songs, pts }; };
+  const stats = new Map(S.items.map(it => [it.id, dropStats(it.id)]));
+  const songsWith = id => stats.get(id).songs; // songs where the item has a drop point, so the count is what can actually play
   const fromDb = S.source === 'db';
   const shown = fromDb ? S.items.filter(it => songsWith(it.id) > 0) : S.items; // a playlist only offers the items its songs have
   const long = shown.length > CHIP_CAP + 2; // fold only when it would hide more than a couple
   const vis = long && !moreItems ? shown.filter((it, k) => k < CHIP_CAP || it.on || touched.has(it.id)) : shown;
   const hidden = shown.length - vis.length;
-  const chip = it => { const n = songsWith(it.id);
-    return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="In ' + n + ' song' + (n === 1 ? '' : 's') + '">' + emoHTML(it.id) +
+  const chip = it => { const n = songsWith(it.id), p = stats.get(it.id).pts;
+    return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="' + n + ' song' + (n === 1 ? '' : 's') + ', ' + p + ' drop point' + (p === 1 ? '' : 's') + '">' + emoHTML(it.id) +
       '<span>' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
   return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
     '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
@@ -1058,6 +1082,10 @@ async function loadDb() {
     dbGet('playlist_cards?select=*&owner=is.null&is_public=is.true&order=sort,name'), bundleOf(pid)]);
   if (Array.isArray(cards)) S.cards = cards.map(c => ({ id: c.id, name: c.name, description: c.description || '', songs: Number(c.songs) || 0, items: c.items || {},
     thumbs: (Array.isArray(c.thumbs) ? c.thumbs : []).filter(x => /^[\w-]{11}$/.test(x)) }));
+  if (Array.isArray(cards) && cards.length) { // a playlist taken out of the studio leaves the phone too
+    const ids = new Set(cards.map(c => c.id));
+    ['bundles', 'tables'].forEach(k => Object.keys(S[k] || {}).forEach(id => { if (!ids.has(id)) delete S[k][id]; }));
+  }
   if (goodBundle(b)) return applyBundle(b);
   if (pid !== DB.playlist && Array.isArray(cards) && !cards.some(c => c.id === pid)) { // that playlist is gone: back to the party mix
     const d = await bundleOf(DB.playlist); if (goodBundle(d)) return applyBundle(d);

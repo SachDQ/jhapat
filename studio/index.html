@@ -95,6 +95,8 @@ img.broken{visibility:hidden}
 .its{display:flex;gap:5px;flex-wrap:wrap}
 .its .it{display:inline-flex;gap:3px;align-items:center;background:var(--raise);border-radius:999px;padding:0 7px;font-size:13px;line-height:1.6}
 .its .it b{font-size:12px;color:var(--muted)}
+.tagsum{margin:0 0 6px;padding-left:1.1em;display:grid;gap:2px}
+.dates b{font-weight:600;color:var(--ink)}
 @media (max-width:640px){.songrow{grid-template-columns:84px minmax(0,1fr)}.songrow .thumb{width:84px}.songrow .flags{grid-column:2;justify-content:flex-start}}
 
 /* editor layout */
@@ -286,6 +288,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const fmt = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
 const fmt2 = t => { if (!isFinite(t) || t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(2); };
 const r2 = x => Math.round(x * 100) / 100;
+const plural = (n, w) => Number(n || 0).toLocaleString('en') + ' ' + w + (n === 1 ? '' : 's');
+const day = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null; };
 const slug = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'song';
 const norm = s => String(s || '').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
 let toastTimer = null;
@@ -304,7 +308,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 28; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 29; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -324,10 +328,17 @@ const thumbHTML = (yt, cls) => '<span class="thumb' + (cls ? ' ' + cls : '') + '
 /* A song-list row: its cover (the first upload that plays), item counts and what still needs doing. */
 function rowOf(x) {
   const r = { ...x };
-  if (Array.isArray(x.tags)) { r.itemCounts = {}; x.tags.forEach(t => { r.itemCounts[t.item_id] = (r.itemCounts[t.item_id] || 0) + 1; }); r.tagCount = x.tags.length; }
-  delete r.tags; r.itemCounts = r.itemCounts || {}; r.tagCount = r.tagCount || 0;
   r.videos = (r.videos || []).slice().sort((a, b) => (a.rank || 0) - (b.rank || 0) || a.id - b.id);
   const play = r.videos.filter(v => v.embeddable !== false);
+  if (Array.isArray(x.tags)) {
+    r.itemCounts = {}; x.tags.forEach(t => { r.itemCounts[t.item_id] = (r.itemCounts[t.item_id] || 0) + 1; }); r.tagCount = x.tags.length;
+    if (x.tags.every(t => t.t != null)) { // drop points too, the way the player finds them (tags carry their repeat group)
+      const dp = dropSet(x.tags, play[0] ? Number(play[0].offset_s) || 0 : 0, t => t.rep);
+      r.dpCounts = dropCounts(dp); r.dpCount = dp.size;
+    }
+  }
+  delete r.tags; r.itemCounts = r.itemCounts || {}; r.tagCount = r.tagCount || 0;
+  if (!r.dpCounts) { r.dpCounts = {}; r.dpCount = 0; }
   r.thumb = (play[0] || r.videos[0] || {}).yt || null;
   r.noUpload = !r.videos.length; r.blocked = r.videos.length > 0 && !play.length; r.needsSync = play.length > 0 && !play.some(v => v.synced);
   return r;
@@ -336,6 +347,7 @@ const needsWork = s => (!s.hasLines && (!s.lrclib_id || !s.tagCount)) || s.noUpl
 function syncRow() { // bring the open song's row in the list up to date
   if (!cur) return; const row = songs.find(x => x.id === cur.s.id); if (!row) return;
   Object.assign(row, rowOf({ ...row, title: cur.s.title, artist: cur.s.artist, status: cur.s.status, lrclib_id: cur.s.lrclib_id, hasLines: !!(cur.lines && cur.lines.length),
+    updated_at: cur.s.updated_at, tagged_at: cur.s.tagged_at, checked_at: cur.s.checked_at,
     videos: cur.videos.map(v => ({ ...v })), tags: cur.tags }));
 }
 /* A newer version on the site (GitHub Pages can serve this page from cache for 10 minutes): offer a reload. */
@@ -390,7 +402,7 @@ async function allRows(query, size = 1000) { // Supabase answers at most 1,000 r
 async function loadAll() {
   const [a, b, c] = await Promise.all([
     sb.from('items').select('*').order('sort'),
-    allRows(() => sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,created_at,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(item_id)').order('title').order('id')), // line0: has lyrics, without fetching them all
+    allRows(() => sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,created_at,updated_at,tagged_at,checked_at,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(item_id,t,rep)').order('title').order('id')), // line0: has lyrics, without fetching them all
     sb.from('playlists').select('id,name,description,sort,is_public,owner,playlist_songs(song_id,position)').order('sort'),
   ]);
   if (a.error || b.error || c.error) return fail('Couldn’t load the studio', a.error || b.error || c.error);
@@ -524,6 +536,11 @@ const tagIn = (i, w) => { for (const j of [i].concat(groupOf(i))) { const tg = t
 async function setStatusTagged() { // tagging by hand: a draft or an auto-tagged song becomes tagged
   if ((cur.s.status === 'draft' || cur.s.status === 'auto') && cur.tags.length) { await updateSong({ status: 'tagged' }); }
 }
+/* The database dates a song itself (a trigger on tags sets tagged_at and checked_at); this keeps the open page in step. */
+function stamp(...keys) {
+  if (!cur) return;
+  const t = new Date().toISOString(); keys.concat('updated_at').forEach(k => { cur.s[k] = t; }); syncRow();
+}
 async function toggleWord(i, w, item) {
   const existing = tagIn(i, w);
   const group = groupOf(i);
@@ -545,6 +562,7 @@ async function toggleWord(i, w, item) {
   if (error) return fail('Couldn’t save the tag', error);
   cur.tags = cur.tags.concat(data).sort((a, b) => a.t - b.t);
   pick = { line: i, w, item };
+  if (anchor) stamp('tagged_at', 'checked_at');
   assign(); await setStatusTagged(); renderSong();
   toast('Tagged ' + itemName(item) + (rows.length > 1 ? ' in all ' + rows.length + ' repeats' : '') + '. Press Hear, then Tap as it’s sung.');
 }
@@ -560,6 +578,7 @@ async function retime(t, source, base) {
   targets.filter(o => o.tg).forEach(({ j, tg }) => Object.assign(tg, { t: time(j), source, checked: true, line: j, word: w, rep: repOf(j) }));
   const missing = targets.filter(o => !o.tg).map(({ j }) => ({ song_id: cur.s.id, item_id: item, t: time(j), line: j, word: w, rep: repOf(j), source, checked: true }));
   if (missing.length) { const { data, error } = await sb.from('tags').insert(missing).select(); if (error) return fail('Couldn’t save the timing', error); cur.tags = cur.tags.concat(data); }
+  stamp('tagged_at', 'checked_at');
   cur.tags.sort((a, b) => a.t - b.t); assign(); await setStatusTagged(); renderSong();
 }
 /* The repeat of line group g that lyric time t falls in: from 1 s before its start to 0.5 s past the next line's start. -1 if none. */
@@ -595,28 +614,38 @@ function hear(i) {
 }
 
 /* ---------- drop points: where the party player can drop in ----------
-   The player drops each item in at its first clean mention: its first word with room for the 7 s run-up after the
-   previous table word (else at least 4.5 s), so the run-up never crosses another item's word. Which words clash depends
-   on what's on the table, so each item has up to two drop points: its first clean mention with nothing else on the
-   table, and its first one with every item on it. Only these need hearing; the other tags stay as estimates that mark
-   where the words are, so no run-up starts across one. */
-function dropPoints(c = cur) {
-  const all = c.tags.slice().sort((a, b) => a.t - b.t), off = offset(), pts = new Set();
-  const first = (list, among) => { const room = t => { const k = among.indexOf(t); return k ? t.t - among[k - 1].t - 1.2 : t.t + off; };
-    return list.find(t => room(t) >= 7) || list.find(t => room(t) >= 4.5); };
-  for (const it of new Set(all.map(t => t.item_id))) {
-    const mine = all.filter(t => t.item_id === it);
-    const alone = first(mine, mine), crowded = first(mine, all);
-    if (alone) pts.add(alone); if (crowded) pts.add(crowded);
+   The player's rule: a line sung more than once counts once, and an item's word drops in at the first time its line is
+   sung with room for the 7 s run-up after the previous table word (else at least 4.5 s), so a run-up never crosses
+   another table word. The same word twice close together drops at the first; of two different words close together,
+   the earlier gets the drop when both are on the table, and the later one drops at its line's next roomy repeat if it
+   has one. Which words clash depends on what's on the table, so the drop points are worked out for every mix of the
+   song's items: they're exactly the words the game can drop into. Only these need hearing; the other tags stay as
+   estimates that mark where the words are, so no run-up starts across one. */
+const repFor = (t, c = cur) => (t.rep != null ? t.rep : c.lines && c.lines.length ? repOf(lineOf(t, c), c) : null);
+function dropSet(tags, off, rep) { // the drop points among these tags; .why holds the other items each one needs out too ([] = none)
+  const all = tags.slice().sort((a, b) => a.t - b.t), pts = new Set(), why = new Map();
+  const room = (among, t) => { const k = among.indexOf(t); return k ? t.t - among[k - 1].t - 1.2 : t.t + off; };
+  const first = (list, among) => list.find(t => room(among, t) >= 7) || list.find(t => room(among, t) >= 4.5);
+  const its = [...new Set(all.map(t => t.item_id))];
+  for (const it of its) {
+    const others = its.filter(x => x !== it).slice(0, 10), lines = new Map();
+    for (const t of all) if (t.item_id === it) { const r = rep(t), k = r != null ? 'r' + r : t; if (!lines.has(k)) lines.set(k, []); lines.get(k).push(t); }
+    for (let mask = 0; mask < (1 << others.length); mask++) { // nothing else out, then every mix of the song's other items
+      const on = new Set([it]); others.forEach((x, i) => { if ((mask >> i) & 1) on.add(x); });
+      const among = all.filter(t => on.has(t.item_id));
+      for (const g of lines.values()) { const p = first(g, among); if (p && !pts.has(p)) { pts.add(p); why.set(p, [...on].filter(x => x !== it)); } }
+    }
   }
+  pts.why = why;
   return pts;
 }
+const dropPoints = (c = cur) => dropSet(c.tags, c === cur ? offset() : 0, t => repFor(t, c));
+const dropCounts = dp => { const n = {}; dp.forEach(t => { n[t.item_id] = (n[t.item_id] || 0) + 1; }); return n; };
 /* ---------- Check tags: hear every drop point from 3 s before ----------
    One stop per drop point, a chorus's repeats counting once. Right marks every repeat checked; Earlier/Later moves every
    repeat and plays it again. */
 function checkList() {
   const all = cur.tags.slice().sort((a, b) => a.t - b.t), dp = dropPoints();
-  const repFor = t => (t.rep != null ? t.rep : cur.lines.length ? repOf(lineOf(t)) : null);
   const groups = new Map();
   for (const t of all) { const r = repFor(t), k = r != null ? t.item_id + '|' + r : '#' + t.id; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
   return [...groups.values()].filter(m => m.some(t => dp.has(t))).map(m => ({ members: m, tag: m.find(t => dp.has(t)) })).sort((a, b) => a.tag.t - b.tag.t);
@@ -646,6 +675,7 @@ async function checkOk() {
     const { error } = await sb.from('tags').update({ checked: true }).in('id', ids);
     if (error) return fail('Couldn’t save', error);
     g.members.forEach(t => { t.checked = true; });
+    stamp('checked_at');
   }
   renderSong(); checkNext();
 }
@@ -658,6 +688,7 @@ async function checkNudge(d) {
     const res = await Promise.all(moved.map(m => sb.from('tags').update({ t: m.to, source: 'nudge', checked: true }).eq('id', m.t.id)));
     const bad = res.find(r => r.error); if (bad) return fail('Couldn’t save the timing', bad.error);
     moved.forEach(m => Object.assign(m.t, { t: m.to, source: 'nudge', checked: true })); cur.tags.sort((a, b) => a.t - b.t); assign();
+    stamp('tagged_at', 'checked_at');
   }
   renderSong(); checkPlay();
 }
@@ -698,6 +729,7 @@ async function tapItem(item) {
   const { data, error } = await sb.from('tags').insert(row).select().single();
   if (error) return fail('Couldn’t save the tap', error);
   cur.tags.push(data); cur.tags.sort((a, b) => a.t - b.t); tapAlong.push(data.id);
+  stamp('tagged_at', 'checked_at');
   await setStatusTagged(); renderSong(); toast(itemName(item) + ' at ' + fmt2(data.t));
 }
 async function delTag(id) {
@@ -926,7 +958,8 @@ async function render() {
     : route.view === 'import' ? importHTML() : songsHTML();
 }
 
-const SORTS = { title: 'A–Z', new: 'Newest first', tags: 'Most tags', status: 'By status' };
+const SORTS = { title: 'A–Z', new: 'Newest first', tagged: 'Last tagged by hand', checked: 'Last checked by ear', tags: 'Most drop points', status: 'By status' };
+const latest = k => (a, b) => String(b[k] || '').localeCompare(String(a[k] || '')); // newest first; never-done ones last
 const ORDER = { draft: 0, auto: 1, tagged: 2, checked: 3 };
 const inPlaylist = (p, id) => (p.playlist_songs || []).some(x => x.song_id === id);
 function visibleSongs() {
@@ -935,20 +968,22 @@ function visibleSongs() {
     (show === 'all' || (show === 'todo' ? needsWork(s) : s.status === show)) &&
     (!plFilter || (plFilter === '-' ? !playlists.some(p => inPlaylist(p, s.id)) : !!pl && inPlaylist(pl, s.id))));
   const byTitle = (a, b) => a.title.localeCompare(b.title);
-  const by = { title: byTitle, new: (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')) || byTitle(a, b),
-    tags: (a, b) => b.tagCount - a.tagCount || byTitle(a, b), status: (a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9) || byTitle(a, b) };
+  const by = { title: byTitle, new: (a, b) => latest('created_at')(a, b) || byTitle(a, b),
+    tagged: (a, b) => latest('tagged_at')(a, b) || byTitle(a, b), checked: (a, b) => latest('checked_at')(a, b) || byTitle(a, b),
+    tags: (a, b) => b.dpCount - a.dpCount || b.tagCount - a.tagCount || byTitle(a, b), status: (a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9) || byTitle(a, b) };
   return list.sort(by[ui.sort] || byTitle);
 }
 function flagsHTML(s) {
   return (!s.hasLines ? (s.lrclib_id ? '<span class="pill draft">Untimed lyrics</span>' : '<span class="pill flag">No lyrics</span>') : '') +
     (s.noUpload ? '<span class="pill flag">No upload</span>' : s.blocked ? '<span class="pill flag">Blocked</span>' : s.needsSync ? '<span class="pill flag">Check sync</span>' : '');
 }
-function songRowHTML(s) {
-  const top = Object.keys(s.itemCounts || {}).sort((a, b) => s.itemCounts[b] - s.itemCounts[a]);
-  const its = top.slice(0, 5).map(k => '<span class="it" title="' + esc(itemName(k)) + '">' + esc(emoOf(k) || itemName(k)) + '<b>' + s.itemCounts[k] + '</b></span>').join('') +
+function songRowHTML(s) { // item counts are drop points, the places the game can drop in; the words are in the hover text
+  const dp = s.dpCounts || {}, words = s.itemCounts || {};
+  const top = Object.keys(words).sort((a, b) => (dp[b] || 0) - (dp[a] || 0) || words[b] - words[a]);
+  const its = top.slice(0, 5).map(k => '<span class="it" title="' + esc(itemName(k)) + ': ' + plural(words[k], 'word') + ', ' + plural(dp[k] || 0, 'drop point') + '">' + esc(emoOf(k) || itemName(k)) + '<b>' + (dp[k] || 0) + '</b></span>').join('') +
     (top.length > 5 ? '<span class="it"><b>+' + (top.length - 5) + '</b></span>' : '');
   return '<button class="songrow" data-act="open" data-arg="' + esc(s.id) + '">' + thumbHTML(s.thumb) +
-    '<span class="info"><b class="t">' + esc(s.title) + '</b><span class="meta">' + esc(s.artist || 'Unknown artist') + ' · ' + s.tagCount + ' tag' + (s.tagCount === 1 ? '' : 's') + '</span>' +
+    '<span class="info"><b class="t">' + esc(s.title) + '</b><span class="meta">' + esc(s.artist || 'Unknown artist') + ' · ' + plural(s.dpCount || 0, 'drop point') + ' · ' + plural(s.tagCount, 'tag') + '</span>' +
     (its ? '<span class="its">' + its + '</span>' : '') + '</span><span class="flags">' + flagsHTML(s) + '<span class="pill ' + s.status + '">' + s.status + '</span></span></button>';
 }
 function songListHTML() {
@@ -1004,7 +1039,8 @@ function sideHTML() {
     '<div class="row"><button class="btn small" data-act="nudge" data-arg="-0.1">−0.1 s <span class="kbd">←</span></button><button class="btn small" data-act="nudge" data-arg="0.1">+0.1 s <span class="kbd">→</span></button><span class="grow"></span>' +
     '<button class="btn small ghost danger" data-act="untag">Remove tag</button><button class="btn small ghost" data-act="unpick">Done</button></div></div>' : '';
   const counts = {}; cur.tags.forEach(t => { counts[t.item_id] = (counts[t.item_id] || 0) + 1; });
-  const ok = cur.tags.filter(t => t.checked).length;
+  const dpNow = dropPoints(), dpn = dropCounts(dpNow), dpOk = [...dpNow].filter(t => t.checked).length;
+  const byDp = Object.keys(counts).sort((a, b) => (dpn[b] || 0) - (dpn[a] || 0) || counts[b] - counts[a]);
   const playing = cur.videos.filter(x => x.embeddable), good = !!cur.videos[0] && cur.videos[0].embeddable && cur.videos[0].synced; // folds itself away while all is well
   const upSum = !cur.videos.length ? 'None yet' : cur.videos.length + ' · ' + (playing.some(x => x.synced) ? 'synced' : playing.length ? 'not synced' : 'blocked');
   const inPl = playlists.filter(p => inPlaylist(p, s.id)).map(p => p.name);
@@ -1012,8 +1048,8 @@ function sideHTML() {
     foldCard('uploads', 'Uploads', esc(upSum), '<div class="vids">' + (vids || '<p class="muted small">No upload yet. Paste a YouTube link below.</p>') + '</div>' +
       '<form id="addVid" class="row"><input class="grow" type="url" id="vidLink" placeholder="YouTube link" required><button class="btn small">Add upload</button></form>' +
       '<a class="small" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=' + encodeURIComponent(s.title + ' ' + (s.artist || '')) + '">Search YouTube for it</a>', good) +
-    '<div class="card"><h3>Tags</h3><p class="small">' + (cur.tags.length ? Object.keys(counts).map(k => esc(itemLabel(k)) + ' ' + counts[k]).join(' · ') : 'None yet.') + '</p>' +
-    (cur.tags.length ? '<p class="small muted">' + ok + ' of ' + cur.tags.length + ' checked by ear</p>' : '') +
+    '<div class="card"><h3>Tags</h3>' + (cur.tags.length ? '<ul class="tagsum small" id="tagSum">' + byDp.map(k => '<li>' + esc(itemLabel(k)) + ': ' + plural(counts[k], 'word') + ' · <b>' + plural(dpn[k] || 0, 'drop point') + '</b></li>').join('') + '</ul>' +
+      '<p class="small muted">' + dpOk + ' of ' + plural(dpNow.size, 'drop point') + ' checked by ear. Only drop points need hearing.</p>' : '<p class="small">None yet.</p>') +
     '<div class="row"><button class="btn small primary" data-act="chkstart"' + (cur.tags.length && v ? '' : ' disabled') + '>Check tags</button>' +
     '<button class="btn small" data-act="trydrop"' + (cur.tags.length && v ? '' : ' disabled') + '>Try a drop</button>' +
     (s.status === 'checked' ? '<button class="btn small" data-act="status" data-arg="tagged">Mark as not checked</button>' : '<button class="btn small" data-act="status" data-arg="checked"' + (cur.tags.length ? '' : ' disabled') + '>Mark checked</button>') + '</div></div>' +
@@ -1028,7 +1064,9 @@ function songHTML() {
     (confirmDel ? '<span class="small">Delete this song and its ' + cur.tags.length + ' tags?</span><button class="btn small danger" data-act="delsong">Delete</button><button class="btn small" data-act="nodel">Keep</button>'
       : '<button class="btn small ghost danger" data-act="askdel">Delete song</button>') + '</div>' +
     '<div class="card"><div class="row"><div class="grow"><h1>' + esc(s.title) + '</h1><p class="muted">' + esc(s.artist || '') + (s.duration ? ' · lyrics timed to a ' + fmt(s.duration).replace(/\.\d$/, '') + ' recording' : '') + '</p></div><span class="pill ' + s.status + '">' + s.status + '</span></div>' +
-    (s.notes ? '<p class="small muted">' + esc(s.notes) + '</p>' : '') + '</div>';
+    (s.notes ? '<p class="small muted">' + esc(s.notes) + '</p>' : '') +
+    '<p class="small muted dates" id="songDates">' + [['Added', s.created_at], ['Changed', s.updated_at], ['Tagged by hand', s.tagged_at], ['Checked by ear', s.checked_at]]
+      .map(([k, v]) => k + ' <b>' + (day(v) || 'not yet') + '</b>').join(' · ') + '</p></div>';
   if (timing && timing.again) return h + plainHTML();
   if (!cur.lines.length) {
     h += '<div class="card"><h2>Timed lyrics</h2><p class="muted">Find this song on LRCLIB so the item words light up with their times.</p>' +
@@ -1054,7 +1092,7 @@ function songHTML() {
     '<div class="legend">' + items.filter(it => counts[it.id]).map(it => '<span class="chip">' + (it.emoji ? '<span aria-hidden="true">' + esc(it.emoji) + '</span> ' : '') + esc(it.name) + ' <span lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + counts[it.id] + '</span>' +
       (fresh[it.id] ? '<span class="n nn">' + fresh[it.id] + ' new</span>' : '') + '</span>').join('') + '</div>';
   h += '<div class="lines">';
-  const dpAt = new Set([...dropPoints()].filter(t => t.line != null).map(t => t.line + ':' + t.word));
+  const dps = dropPoints(), dpAt = new Map([...dps].filter(t => t.line != null).map(t => [t.line + ':' + t.word, dps.why.get(t) || []])); // → the other items it needs out too
   let quiet = 0; // lines left out by "Only lines with item words"
   cur.lines.forEach((l, i) => {
     const grp = groupOf(i), first = grp[0] === i;
@@ -1068,9 +1106,12 @@ function songHTML() {
       const m = lit.find(x => x.w === tk.w);
       if (!m) { html += esc(tk.x); continue; }
       const tg = showAll ? tagOn(i, tk.w) : tagIn(i, tk.w), picked = pick && grp.includes(pick.line) && pick.w === tk.w;
-      const state = !tg ? '' : tg.source === 'estimate' && !tg.checked ? ' auto' : ' tagged', dp = (showAll ? [i] : grp).some(j => dpAt.has(j + ':' + tk.w));
+      const state = !tg ? '' : tg.source === 'estimate' && !tg.checked ? ' auto' : ' tagged';
+      const why = (showAll ? [i] : grp).map(j => dpAt.get(j + ':' + tk.w)).filter(Boolean), dp = why.length > 0;
+      const dpTxt = !dp ? '' : why.some(x => !x.length) ? '. The game drops in here'
+        : '. The game drops in here when ' + why[0].map(itemName).join(' and ') + (why[0].length > 1 ? ' are' : ' is') + ' out too';
       html += '<button class="w' + state + (dp ? ' dp' : '') + (picked ? ' picked' : '') + '" data-act="word" data-arg="' + i + ':' + tk.w + ':' + esc(m.item) + '" title="' + esc(itemLabel(m.item)) +
-        (tg ? ' at ' + fmt2(tg.t) + (state === ' auto' ? ', estimated' : '') : ': not tagged yet, click to tag') + (dp ? '. The game drops in here' : '') + '">' + esc(tk.x) + '</button>';
+        (tg ? ' at ' + fmt2(tg.t) + (state === ' auto' ? ', estimated' : '') : ': not tagged yet, click to tag') + esc(dpTxt) + '">' + esc(tk.x) + '</button>';
     }
     html += esc(l.x.slice(p));
     const chips = tags.filter(o => o.w == null).map(o => '<button class="tchip' + (o.tag.source !== 'estimate' ? ' tap' : '') + '" data-act="deltag" data-arg="' + o.tag.id + '" title="Not on a highlighted word. Click to delete.">' + esc(itemLabel(o.tag.item_id)) + ' ' + fmt2(o.tag.t) + ' ✕</button>').join('');
@@ -1113,8 +1154,8 @@ function renderSong() {
   const c = timing && document.querySelector('#plain .cur'); if (c) c.parentNode.scrollTop = Math.max(0, c.offsetTop - c.parentNode.offsetTop - 60);
 }
 
-function itemStats() { // songs and tags per item, from the song list
-  const m = {}; songs.forEach(x => Object.keys(x.itemCounts || {}).forEach(k => { const o = m[k] || (m[k] = { songs: 0, tags: 0 }); o.songs++; o.tags += x.itemCounts[k]; }));
+function itemStats() { // songs, tags and drop points per item, from the song list
+  const m = {}; songs.forEach(x => Object.keys(x.itemCounts || {}).forEach(k => { const o = m[k] || (m[k] = { songs: 0, tags: 0, dp: 0 }); o.songs++; o.tags += x.itemCounts[k]; o.dp += (x.dpCounts || {})[k] || 0; }));
   return m;
 }
 const ITEM_CAP = 12;
@@ -1126,14 +1167,14 @@ function itemAreaHTML() {
   const long = !q && list.length > ITEM_CAP + 3, shown = long && !itemsAll ? list.slice(0, ITEM_CAP) : list;
   return (list.length ? '<div class="itiles">' + shown.map(it => '<button class="itile' + (itemEd === it.id ? ' on' : '') + '" data-act="edititem" data-arg="' + esc(it.id) + '">' +
       '<span class="ie" aria-hidden="true">' + esc(it.emoji || '•') + '</span><span class="in"><b>' + esc(it.name) + '</b><span lang="ne">' + esc(it.dev || '') + '</span></span>' +
-      '<span class="ic">' + used(it) + ' song' + (used(it) === 1 ? '' : 's') + '</span></button>').join('') + '</div>' : '<p class="muted">No item matches.</p>') +
+      '<span class="ic">' + plural(used(it), 'song') + ' · ' + plural((st[it.id] || {}).dp || 0, 'drop point') + '</span></button>').join('') + '</div>' : '<p class="muted">No item matches.</p>') +
     (long ? '<button class="btn small more" data-act="itemsall">' + (itemsAll ? 'Show fewer' : 'Show all ' + list.length) + '</button>' : '');
 }
 function itemEdHTML() {
   const it = itemEd ? items.find(i => i.id === itemEd) : { id: '', name: '', words: [] }; if (!it) return '';
-  const st = itemStats()[it.id] || { songs: 0, tags: 0 }, f = (k, v) => ' data-f="' + k + '" value="' + esc(v || '') + '"';
+  const st = itemStats()[it.id] || { songs: 0, tags: 0, dp: 0 }, f = (k, v) => ' data-f="' + k + '" value="' + esc(v || '') + '"';
   return '<form class="card itemed" id="itemEd" data-item="' + esc(it.id) + '"><div class="row"><h2 class="grow">' + (it.id ? esc((it.emoji ? it.emoji + ' ' : '') + it.name) : 'New item') + '</h2>' +
-    (it.id ? '<span class="small muted">' + st.songs + ' song' + (st.songs === 1 ? '' : 's') + ' · ' + st.tags + ' tag' + (st.tags === 1 ? '' : 's') + '</span>' : '') +
+    (it.id ? '<span class="small muted">' + plural(st.songs, 'song') + ' · ' + plural(st.tags, 'word') + ' · ' + plural(st.dp, 'drop point') + '</span>' : '') +
     '<button type="button" class="btn small ghost" data-act="closeitem" aria-label="Close">✕</button></div>' +
     '<div class="edgrid"><label>Emoji<input type="text"' + f('emoji', it.emoji) + ' placeholder="🙂" style="text-align:center"></label>' +
     '<label>Name<input type="text"' + f('name', it.name) + ' placeholder="e.g. Rumal" required></label>' +
@@ -1528,13 +1569,15 @@ async function syncTap() {
 }
 function tryDrop() {
   const v = cur.videos[vi]; if (!v || !cur.tags.length) return;
-  const dps = [...dropPoints()], tg = dps.length ? dps[Math.floor(Math.random() * dps.length)] : cur.tags[Math.floor(Math.random() * cur.tags.length)];
-  const prev = cur.tags.filter(t => t.t < tg.t - 0.01).pop();
+  const dps = dropPoints(), list = [...dps], tg = list.length ? list[Math.floor(Math.random() * list.length)] : cur.tags[Math.floor(Math.random() * cur.tags.length)];
+  const table = new Set([tg.item_id].concat(dps.why.get(tg) || [])); // the items out on the table that make it a drop point
+  const prev = cur.tags.filter(t => table.has(t.item_id) && t.t < tg.t - 0.01).pop();
   const room = prev ? tg.t - prev.t - 1.2 : tg.t + offset();
   const lead = room >= 7 ? 7 + Math.random() * (Math.min(10, room) - 7) : Math.max(1, room);
   const at = tg.t + offset() - lead;
   withYt(() => { yt.seekTo(Math.max(0, at), true); yt.playVideo(); });
-  toast('Dropped in ' + lead.toFixed(1) + ' s before ' + itemName(tg.item_id) + ' (' + fmt2(tg.t + offset()) + ').');
+  toast('Dropped in ' + lead.toFixed(1) + ' s before ' + itemName(tg.item_id) + ' (' + fmt2(tg.t + offset()) + ')' +
+    (table.size > 1 ? ', with ' + [...table].filter(x => x !== tg.item_id).map(itemName).join(' and ') + ' out too' : '') + '.');
 }
 async function saveItem(id) {
   const f = $('#itemEd'); if (!f) return;

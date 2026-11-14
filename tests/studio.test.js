@@ -432,6 +432,45 @@ function makeDom(db, opts) {
     const q3 = d3.querySelector('#itemQ'); q3.value = 'Thing 1'; q3.dispatchEvent(new w3.Event('input', { bubbles: true })); await sleep(5);
     ok(d3.querySelectorAll('.itile').length === 9, 'search looks through all of them: ' + d3.querySelectorAll('.itile').length); }
 
+  // Drop points by line: every line with room gets one; the same word close behind itself doesn't; a word close behind
+  // another item drops alone, and its line's roomy repeat is the drop point when that item is out too. Invented lines.
+  { const db5 = makeDb();
+    db5.songs.push({ id: 'dp-song', title: 'Drop Song', artist: 'Test', status: 'auto', lrclib_id: null, duration: 130, notes: null,
+      created_at: '2026-11-13T10:00:00Z', updated_at: '2026-11-13T10:00:00Z', tagged_at: null, checked_at: null,
+      lines: [[10, 'पानी पर्यो'], [14, 'पानी फेरि'], [40, 'बादल चिठी'], [60, 'नयाँ पानी गीत'], [80, 'चिठी आयो'], [84, 'पानी झर्यो'], [110, 'पानी झर्यो'], [120, 'अन्त']].map(([t, x]) => ({ t, x })) });
+    db5.videos.push({ id: 50, song_id: 'dp-song', yt: 'FFFFFFFFFFF', kind: 'official', duration: 130, offset_s: 0, synced: true, embeddable: true, rank: 0 });
+    [[10, 'paani', 0, 0, 0], [14, 'paani', 1, 0, 1], [41, 'chithi', 2, 1, 2], [61, 'paani', 3, 1, 3], [80, 'chithi', 4, 0, 4], [84, 'paani', 5, 0, 5], [110, 'paani', 6, 0, 5]]
+      .forEach(([t, item_id, line, word, rep], k) => db5.tags.push({ id: 500 + k, song_id: 'dp-song', item_id, t, line, word, rep, source: 'estimate', checked: false }));
+    const { w: w5, d: d5, yt: yt5 } = makeDom(db5, { signedIn: true, editor: true }); await sleep(80);
+    const c5 = sel => d5.querySelector(sel).dispatchEvent(new w5.MouseEvent('click', { bubbles: true }));
+    const row5 = d5.querySelector('.songrow[data-arg="dp-song"]');
+    ok(!!row5 && row5.textContent.includes('6 drop points · 7 tags') && [...row5.querySelectorAll('.it b')].map(b => b.textContent).join(',') === '4,2' && /Paani: 5 words, 4 drop points/.test(row5.querySelector('.it').title),
+      'the song list counts drop points, with the words in the hover text: ' + (row5 && row5.querySelector('.meta').textContent));
+    w5.location.hash = '#song:dp-song'; await sleep(80);
+    w5.onYouTubeIframeAPIReady(); await sleep(30); // the fake player is ready: the song's upload cues
+    const dots5 = [...d5.querySelectorAll('.lines .w.dp')].map(b => b.closest('.ln').id + ':' + b.textContent).join(' ');
+    ok(dots5 === 'ln0:पानी ln2:चिठी ln3:पानी ln4:चिठी ln5:पानी', 'every line with room gets a red dot (Paani on three lines), but not the Paani 4 s behind another Paani: ' + dots5);
+    ok(/Paani: 5 words · 4 drop points/.test(d5.querySelector('#tagSum').textContent) && /Chithi: 2 words · 2 drop points/.test(d5.querySelector('#tagSum').textContent) &&
+      d5.querySelector('#sidePanel').textContent.includes('0 of 6 drop points checked by ear'), 'the Tags card gives words and drop points per item: ' + d5.querySelector('#tagSum').textContent);
+    const dates5 = () => d5.querySelector('#songDates').textContent;
+    ok(dates5().includes('Added 13 Nov 2026') && dates5().includes('Tagged by hand not yet') && dates5().includes('Checked by ear not yet'), 'the song shows its dates: ' + dates5());
+    const sa = d5.querySelector('#showAll'); sa.checked = true; sa.dispatchEvent(new w5.Event('change', { bubbles: true })); await sleep(10);
+    const rep6 = d5.querySelector('#ln6 .w.dp'), first5 = d5.querySelector('#ln5 .w.dp');
+    ok(!!rep6 && /drops in here when Chithi is out too/.test(rep6.title) && /drops in here$/.test(first5.title),
+      'the Paani 4 s behind Chithi drops in alone; its line’s repeat is the drop point when Chithi is out too: ' + (rep6 && rep6.title));
+    sa.checked = false; sa.dispatchEvent(new w5.Event('change', { bubbles: true })); await sleep(10);
+    c5('[data-act="chkstart"]'); await sleep(20);
+    ok(d5.querySelector('.selbar.check').textContent.includes('1 / 5') && Math.abs(yt5.seeks.slice(-1)[0] - 7) < 0.01, 'Check tags stops once per line with a drop point (5), the first from 3 s before 0:10');
+    c5('[data-act="chkok"]'); await sleep(40);
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    ok(dates5().includes('Checked by ear ' + today) && d5.querySelector('#sidePanel').textContent.includes('1 of 6 drop points checked by ear'), 'checking one by ear dates the song: ' + dates5());
+    c5('[data-act="chkstop"]'); await sleep(10);
+    w5.location.hash = '#'; await sleep(20);
+    const so5 = d5.querySelector('#ssort'); so5.value = 'checked'; so5.dispatchEvent(new w5.Event('change', { bubbles: true })); await sleep(5);
+    ok(d5.querySelector('.songrow').dataset.arg === 'dp-song', 'Last checked by ear puts it first');
+    w5.location.hash = '#items'; await sleep(20);
+    ok(/2 songs · 5 drop points/.test(d5.querySelector('[data-arg="paani"].itile').textContent), 'item tiles count songs and drop points: ' + d5.querySelector('[data-arg="paani"].itile .ic').textContent); }
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

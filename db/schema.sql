@@ -24,7 +24,9 @@ create table if not exists public.songs (
   status       text not null default 'draft' check (status in ('draft', 'auto', 'tagged', 'checked')), -- auto: tagged automatically from lyrics that match the upload
   notes        text,
   created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
+  updated_at   timestamptz not null default now(),
+  tagged_at    timestamptz,                       -- last time a tag was timed by hand (tap, nudge); kept by a trigger on tags
+  checked_at   timestamptz                        -- last time a tag was checked by ear; kept by a trigger on tags
 );
 
 create table if not exists public.videos (
@@ -86,6 +88,8 @@ alter table public.items add column if not exists emoji text;
 alter table public.tags  add column if not exists rep int;
 alter table public.songs drop constraint if exists songs_status_check;
 alter table public.songs add constraint songs_status_check check (status in ('draft', 'auto', 'tagged', 'checked'));
+alter table public.songs add column if not exists tagged_at timestamptz;   -- added 14 Nov 2026 (v29)
+alter table public.songs add column if not exists checked_at timestamptz;
 
 -- keep updated_at current
 create or replace function public.touch() returns trigger language plpgsql set search_path = '' as $$
@@ -94,6 +98,33 @@ drop trigger if exists songs_touch on public.songs;
 create trigger songs_touch before update on public.songs for each row execute function public.touch();
 drop trigger if exists playlists_touch on public.playlists;
 create trigger playlists_touch before update on public.playlists for each row execute function public.touch();
+
+-- a song's tagged_at and checked_at, from what happens to its tags (estimates made automatically don't count)
+create or replace function public.tags_dated_ins() returns trigger language plpgsql set search_path = '' as $$
+begin
+  update public.songs s set tagged_at = now() where s.id in (select n.song_id from new_rows n where n.source <> 'estimate');
+  update public.songs s set checked_at = now() where s.id in (select n.song_id from new_rows n where n.checked);
+  return null;
+end $$;
+create or replace function public.tags_dated_upd() returns trigger language plpgsql set search_path = '' as $$
+begin
+  update public.songs s set tagged_at = now() where s.id in (select n.song_id from new_rows n join old_rows o on o.id = n.id
+    where n.source <> 'estimate' and (n.t is distinct from o.t or n.source is distinct from o.source));
+  update public.songs s set checked_at = now() where s.id in (select n.song_id from new_rows n join old_rows o on o.id = n.id
+    where n.checked and not o.checked);
+  return null;
+end $$;
+drop trigger if exists tags_dated_ins on public.tags;
+create trigger tags_dated_ins after insert on public.tags referencing new table as new_rows
+  for each statement execute function public.tags_dated_ins();
+drop trigger if exists tags_dated_upd on public.tags;
+create trigger tags_dated_upd after update on public.tags referencing old table as old_rows new table as new_rows
+  for each statement execute function public.tags_dated_upd();
+-- songs tagged or checked before the dates existed: the newest such tag's creation time (only fills empty dates, safe to re-run)
+update public.songs s set tagged_at = x.at from (select song_id, max(created_at) as at from public.tags where source <> 'estimate' group by song_id) x
+  where x.song_id = s.id and s.tagged_at is null;
+update public.songs s set checked_at = x.at from (select song_id, max(created_at) as at from public.tags where checked group by song_id) x
+  where x.song_id = s.id and s.checked_at is null;
 
 -- true when the signed-in account may edit
 create or replace function public.is_editor() returns boolean

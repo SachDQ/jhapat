@@ -17,7 +17,7 @@ function makeDb() {
     tags: [{ id: 1, song_id: 'old', item_id: 'paani', t: 30, line: null, word: null, source: 'estimate', checked: false }],
     playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', description: null, sort: 0, is_public: true, owner: null }],
     playlist_songs: [{ playlist_id: 'party-mix', song_id: 'old', position: 0 }],
-    requests: [], reports: [],
+    requests: [], reports: [], stats: [],
     seq: 100, log: [],
   };
 }
@@ -31,6 +31,7 @@ function fakeSb(db, opts) {
       order() { return api; },
       limit() { return api; },
       eq(c, v) { st.filters.push(r => r[c] === v); return api; },
+      gte(c, v) { st.filters.push(r => r[c] >= v); return api; },
       in(c, vs) { st.filters.push(r => vs.includes(r[c])); return api; },
       single() { st.single = true; return api; },
       range(from, to) { st.range = [from, to]; db.ranges = (db.ranges || 0) + 1; return api; },
@@ -82,13 +83,14 @@ function fakeSb(db, opts) {
 const LRC = ['[00:10.00] यो चिठी आज लेख्छु', '[00:14.00] आकाशमा बादल', '[00:18.00] पानी पर्यो आज', '[00:22.00] हावा चल्यो', '[00:26.00] पानी पर्यो आज', '[00:30.00] ', '[00:34.00] पानी पर्यो आज', '[00:38.00] अन्तिम हरफ'].join('\n');
 function makeDom(db, opts) {
   const yt = { t: 0, vid: null, st: -1, dur: 42, seeks: [], lens: { DDDDDDDDDDD: 42, EEEEEEEEEEE: 99 } };
-  const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/studio/', pretendToBeVisual: true,
+  const dom = new JSDOM(html, { runScripts: 'dangerously', url: opts.url || 'https://sachdq.github.io/jhapat/studio/', pretendToBeVisual: true,
     beforeParse(win) {
       win.__fakeSb = fakeSb(db, opts);
       win.scrollTo = () => {}; win.HTMLElement.prototype.scrollIntoView = function () {};
       win.CSS = win.CSS || {}; win.CSS.escape = s => String(s).replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
       win.__lrcPace = { gap: 0, wait: 5 };
       win.fetch = async url => { if (/lrclib/.test(url)) { db.lrcCalls = (db.lrcCalls || 0) + 1; (db.lrcUrls = db.lrcUrls || []).push(url); }
+        if (/youtube\.com\/oembed/.test(url)) { const v = (decodeURIComponent(url).match(/v=([\w-]{11})/) || [])[1], code = (db.oembed || {})[v] || 200; return { ok: code === 200, status: code, json: async () => ({ title: 'x' }) }; }
         const busy = /lrclib/.test(url) && (db.lrcDown || (/Long Cut/.test(decodeURIComponent(url)) && !db.busyOnce && (db.busyOnce = true)));
         if (busy) return { ok: false, status: 429, json: async () => ({ statusCode: 429, name: 'RateLimitExceeded' }) };
         return realFetch(url); };
@@ -142,6 +144,7 @@ function makeDom(db, opts) {
   ok(d.querySelectorAll('.songrow').length === 1 && d.body.textContent.includes('No lyrics'), 'song list shows the old song flagged No lyrics');
   const VER = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'version.json'), 'utf8')).v;
   ok(!!d.querySelector('.floor .sun') && !!d.querySelector('.dhaka') && !!d.querySelector('.lights') && /color-scheme:dark/.test(html), 'the studio wears the night look: party lights, the Dhaka band and the grid floor');
+  ok(!d.querySelector('.garland') && !/garland|marigold/i.test(html), 'and no marigold garland: Nepali culture, nothing religious');
   ok(d.querySelector('#ver').textContent === 'v' + VER && d.querySelector('#update').hidden, 'the version shows next to the logo and matches version.json: v' + VER);
   { const db2 = makeDb(); db2.ver = VER + 1; const { d: d2 } = makeDom(db2, { signedIn: true, editor: true }); await sleep(50);
     ok(!d2.querySelector('#update').hidden && d2.querySelector('#update').textContent.includes('v' + (VER + 1)), 'a newer version on the site offers a reload'); }
@@ -525,6 +528,57 @@ function makeDom(db, opts) {
     ok(!!db.reports.find(r => r.id === 7).fixed_at && d.querySelector('#navRep').hidden && !/Reported:/.test(d.querySelector('.selbar.check').textContent), 'Mark the report fixed closes it and Check tags carries on');
     w.location.hash = '#reports'; await sleep(20);
     ok(/No|Nothing reported/.test(d.querySelector('#view').textContent) && /Fixed\s*2/.test(d.querySelector('.segs').textContent), 'the open list is empty and both sit under Fixed'); }
+
+  // Uploads that stopped playing (v39): the check asks YouTube about each upload of a public song, lists the dead ones, Turn off takes them out
+  { const db = makeDb();
+    db.songs.push({ id: 'two', title: 'Two Uploads', artist: 'Band', status: 'auto', lrclib_id: null, duration: 200, notes: null, lines: null },
+                  { id: 'hid', title: 'Hidden Draft', artist: 'X', status: 'draft', lrclib_id: null, duration: 200, notes: null, lines: null });
+    db.videos.push({ id: 2, song_id: 'two', yt: 'BBBBBBBBBBB', kind: 'official', duration: 200, offset_s: 0, synced: true, embeddable: true, rank: 0 },
+                   { id: 3, song_id: 'two', yt: 'CCCCCCCCCCC', kind: 'audio', duration: 200, offset_s: 0, synced: true, embeddable: true, rank: 1 },
+                   { id: 4, song_id: 'hid', yt: 'DDDDDDDDDDD', kind: 'official', duration: 200, offset_s: 0, synced: true, embeddable: true, rank: 0 });
+    db.oembed = { AAAAAAAAAAA: 401, BBBBBBBBBBB: 404, DDDDDDDDDDD: 401 };
+    const { w, d } = makeDom(db, { signedIn: true, editor: true });
+    const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await sleep(60); w.location.hash = '#reports'; await sleep(20);
+    ok(!!d.querySelector('[data-act="upcheck"]') && /Uploads that stopped playing/.test(d.body.textContent), 'Reports offers to check every upload');
+    c('[data-act="upcheck"]'); await sleep(80);
+    const dead = [...d.querySelectorAll('.upcheck .res.rep')].map(r => r.textContent);
+    ok(dead.length === 2 && /Old Song/.test(dead.join()) && /embedding off/.test(dead.join()) && /its only upload/.test(dead.join()) && /Private or removed/.test(dead.join()) && /it has another upload/.test(dead.join()) && !/Hidden Draft/.test(dead.join()),
+      'it lists the two dead uploads of public songs, why, and whether the song has another: ' + dead.length);
+    c('.upcheck [data-act="upoff"][data-arg="2"]'); await sleep(20);
+    ok(db.videos.find(v => v.id === 2).embeddable === false && db.videos.find(v => v.id === 1).embeddable === true && d.querySelectorAll('.upcheck .res.rep').length === 1, 'Turn off takes one upload out of the catalog');
+    c('.upcheck [data-act="upoffall"]'); await sleep(20);
+    ok(db.videos.find(v => v.id === 1).embeddable === false && db.videos.find(v => v.id === 3).embeddable === true && /Turned off 2 uploads\. The other 1 upload play/.test(d.querySelector('.upcheck').textContent) && d.querySelectorAll('.upcheck .res.rep').length === 0,
+      'Turn off all takes the rest out, and leaves good uploads alone'); }
+
+  // Stats (v39): anonymous counts from the player, with the change on the days before, a bar a day, and top lists
+  { const db = makeDb(), iso = k => new Date(Date.now() - k * 864e5).toISOString().slice(0, 10);
+    db.stats = [
+      { day: iso(0), ev: 'visit', k: 'Asia/Kathmandu', n: 6 }, { day: iso(0), ev: 'visit', k: 'Australia/Sydney', n: 4 }, { day: iso(1), ev: 'visit', k: 'Asia/Kathmandu', n: 5 },
+      { day: iso(40), ev: 'visit', k: 'Asia/Kathmandu', n: 5 }, // the 30 days before
+      { day: iso(0), ev: 'new', k: 'qr', n: 3 }, { day: iso(0), ev: 'new', k: '', n: 2 },
+      { day: iso(0), ev: 'party', k: 'party-mix', n: 2 }, { day: iso(1), ev: 'party', k: 'all', n: 1 }, { day: iso(0), ev: 'start', k: 'party-mix', n: 3 },
+      { day: iso(0), ev: 'drops', k: 'party-mix', n: 80 }, { day: iso(0), ev: 'song', k: 'old', n: 9 },
+      { day: iso(0), ev: 'share', k: 'qr', n: 4 }, { day: iso(0), ev: 'share', k: 'native', n: 2 }, { day: iso(0), ev: 'hide', k: '', n: 1 }];
+    const { w, d } = makeDom(db, { signedIn: true, editor: true });
+    const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await sleep(60);
+    ok(!!d.querySelector('#nav [data-arg="stats"]'), 'the studio has a Stats tab');
+    w.location.hash = '#stats'; await sleep(40);
+    const k = [...d.querySelectorAll('.kpi')].map(x => x.querySelector('.small').textContent + '=' + x.querySelector('b').textContent);
+    ok(k.join(' ') === 'Phones=15 New phones=5 Nights started=3 Parties=3 Drops=80 Shares=2', 'the numbers for the last 30 days: ' + k.join(' '));
+    ok(/\+200% on the 30 days before/.test(d.querySelector('.kpi').textContent), 'with the change on the 30 days before: ' + d.querySelector('.kpi').textContent);
+    ok(d.querySelectorAll('.bars .bar').length === 30 && d.querySelectorAll('.bars .bar i').length === 2, 'a bar a day, with the parties inside');
+    const t = d.querySelector('.statgrid').textContent;
+    ok(/Nepali Party Mix\s*2/.test(t) && /Old Song/.test(t) && /Asia\/Kathmandu\s*11/.test(t) && /Scanned the QR code\s*3/.test(t) && /Shared from the phone\s*2/.test(t) && /Hide turned on\s*1/.test(t),
+      'top lists: playlists, songs, time zones, how new phones arrived, sharing and features');
+    c('[data-act="statdays"][data-arg="7"]'); await sleep(20);
+    ok(d.querySelectorAll('.bars .bar').length === 7 && [...d.querySelectorAll('.kpi b')][0].textContent === '15', 'the last 7 days, too'); }
+
+  // the version check works on jhapat.live too
+  { const db = makeDb(); db.ver = 999; const { d } = makeDom(db, { signedIn: false, url: 'https://jhapat.live/studio/' });
+    await sleep(60);
+    ok(!d.querySelector('#update').hidden, 'on jhapat.live a newer version offers a reload'); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

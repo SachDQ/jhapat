@@ -8,12 +8,25 @@
 <link rel="apple-touch-icon" href="img/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Jhapat">
-<title>Jhapat</title>
-<meta name="description" content="Party player for the grab-the-word game: pick the items on the table and it drops into a random song a few seconds before one of them is sung.">
+<title>Jhapat (झपट) · the Nepali party song game</title>
+<meta name="description" content="A Nepali party game: put paani, phool, chiya and paisa on the table, play a song, and grab the item the moment its word is sung. Free, no sign-up, nearly 1,000 Nepali songs.">
+<link rel="canonical" href="https://jhapat.live/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Jhapat">
+<meta property="og:url" content="https://jhapat.live/">
+<meta property="og:title" content="Jhapat (झपट) · the Nepali party song game">
+<meta property="og:description" content="Songs play. A word drops. Grab it first! 🐯 Free, no sign-up, nearly 1,000 Nepali songs.">
+<meta property="og:image" content="https://jhapat.live/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Jhapat: a tiger on a madal, and the words Songs play, a word drops, grab it first">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Jhapat","alternateName":"झपट","url":"https://jhapat.live/","applicationCategory":"GameApplication","operatingSystem":"Any","inLanguage":["en","ne"],"isAccessibleForFree":true,"description":"A Nepali party game. Put things like paani, phool, chiya and paisa on the table; Jhapat plays a Nepali song from a few seconds before one of their words is sung, and the first hand on it wins.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Yatra+One&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Yatra+One&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Yatra+One&display=swap"></noscript>
 <style>
 /* Look (v34): a Nepali night party. Raat (night) behind everything, saanjh (dusk) cards, marigold orange for anything you
    press, gold for glow and focus, tiger orange where things move, moonlight text. Party lights along the top, a band of
@@ -363,7 +376,7 @@ body.blind #tapHint{z-index:8}
 .linkbtn{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
 .intro{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:12px;background:rgba(15,11,30,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .introcard{width:min(100%,440px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;
-  padding:14px 14px 0;display:grid;grid-template-areas:"head" "vid" "steps" "btns";gap:12px;text-align:center;
+  padding:14px 14px 0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "vid" "steps" "btns";gap:12px;text-align:center;
   box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
 @keyframes introin{from{opacity:0;transform:translateY(24px) scale(.94)}}
 .ihead{grid-area:head;display:flex;align-items:center;justify-content:center;gap:10px;text-align:left}
@@ -372,7 +385,7 @@ body.blind #tapHint{z-index:8}
 .ihead h2 span{background:repeating-linear-gradient(115deg,#F26B1D 0 7px,#FFA41B 7px 13px,#4A1E06 13px 15px);-webkit-background-clip:text;background-clip:text;color:transparent}
 .introsub{color:var(--muted);margin:2px 0 0;font-weight:600;font-size:14px}
 .tt{grid-area:vid;margin:0}
-.ttbox{height:clamp(320px,calc(100dvh - 210px),680px);aspect-ratio:325/578;max-width:100%;margin:0 auto 6px;border-radius:18px;overflow:hidden;background:#000;
+.ttbox{width:min(100%,calc(clamp(320px,calc(100dvh - 210px),680px) * 325 / 578));aspect-ratio:325/578;margin:0 auto 6px;border-radius:18px;overflow:hidden;background:#000;
   box-shadow:0 0 0 2px var(--gold-fill),0 12px 34px rgba(242,107,29,.4)}
 .ttbox iframe{width:100%;height:100%;border:0;display:block}
 .tt figcaption a{color:var(--gold);font-weight:800;font-size:15px;text-decoration:none}
@@ -381,16 +394,36 @@ body.blind #tapHint{z-index:8}
 .introsteps b{font-size:21px;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:var(--bg)}
 .introbtns{grid-area:btns;position:sticky;bottom:0;display:grid;padding:10px 0 14px;background:linear-gradient(rgba(29,22,54,0),var(--surface) 30%)}
 @media (min-width:760px){
-  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-areas:"vid head" "vid steps" "vid btns";column-gap:24px;row-gap:14px;align-content:center;padding:20px;text-align:left}
+  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto auto 1fr;grid-template-areas:"vid ." "vid head" "vid steps" "vid btns" "vid .";column-gap:24px;row-gap:14px;padding:20px;text-align:left}
   .ihead{justify-content:flex-start}
-  .ttbox{height:min(calc(100dvh - 90px),680px)}
+  .ttbox{width:calc(min(calc(100dvh - 90px),680px) * 325 / 578)}
   .introbtns{position:static;background:none;padding:4px 0 0}
 }
 body.introopen{overflow:hidden}
 @media (prefers-reduced-motion: reduce){.introcard,.introlg{animation:none}}
+/* v39: Share (a QR code friends scan, the phone's share sheet, or a copied link), the footer's promise, picker cards on phones */
+.introbtns{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.sheetcard{width:min(100%,380px);max-height:calc(100dvh - 24px);overflow:auto;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;padding:20px 18px 14px;
+  display:grid;justify-items:center;gap:10px;text-align:center;box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
+.sheetcard h2{font:400 26px/1.1 var(--display);margin:0}
+.sheetcard .introsub{margin:0;max-width:30ch}
+.qr{width:min(240px,62vw);height:auto;aspect-ratio:1;background:#FFF4E0;border-radius:18px;padding:10px;box-shadow:0 0 0 3px var(--gold-fill),0 12px 34px rgba(242,107,29,.4)}
+.qrurl{font:400 25px/1 var(--display);color:var(--gold);letter-spacing:.01em}
+.sheetbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:4px}
+.foot2{margin:6px 0 0;font-size:12.5px;opacity:.8}
+.cover .site{font:400 19px/1 var(--display);color:var(--gold);letter-spacing:.02em}
+@media (max-width:600px){ /* the covers sit beside the name, and the item counts use the card's whole width */
+  .listbtn.has-fan{grid-template-columns:84px minmax(0,1fr);column-gap:12px;row-gap:6px;align-items:start}
+  .listbtn.has-fan .lb{display:contents}
+  .listbtn.has-fan .fan{grid-row:1/3;align-self:center;transform:scale(.84);transform-origin:left center}
+  .listbtn.has-fan .t,.listbtn.has-fan .a{grid-column:2}
+  .listbtn.has-fan .row{grid-column:1/-1}
+}
+@media (prefers-reduced-motion: reduce){.sheetcard{animation:none}}
 </style>
 </head>
 <body>
+<h1 class="sr">Jhapat (झपट): the Nepali party song game</h1>
 <div class="floor" aria-hidden="true"><b class="sun"></b><i></i></div>
 <div class="lights" aria-hidden="true"></div>
 <div class="wrap">
@@ -411,7 +444,7 @@ body.introopen{overflow:hidden}
       <div class="idle" id="idle">Loading the video…</div>
       <div class="ytbox front" id="boxA"><div id="ytA"></div></div>
       <div class="ytbox" id="boxB"><div id="ytB"></div></div>
-      <div class="cover" aria-hidden="true"><img src="img/jhapat-mark.webp" alt="" width="88" height="64" decoding="async"><span class="eq"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="lbl">🙈 Hidden</span></div>
+      <div class="cover" aria-hidden="true"><img src="img/jhapat-mark.webp" alt="" width="88" height="64" decoding="async"><span class="eq"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="lbl">🙈 Hidden</span><span class="site">jhapat.live</span></div>
       <div id="pounce" aria-hidden="true"><svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice"><path d="M30 74 Q78 46 128 12 Q84 50 30 74Z"/><path d="M44 84 Q94 56 142 22 Q98 60 44 84Z"/><path d="M58 92 Q108 66 154 34 Q112 70 58 92Z"/></svg></div>
       <b id="stamp" aria-hidden="true">झपट!</b>
       <div id="tapHint" hidden></div>
@@ -424,17 +457,27 @@ body.introopen{overflow:hidden}
   <div class="introcard">
     <div class="ihead"><img class="introlg" src="img/jhapat-mark.webp" width="77" height="56" alt=""><div><h2 id="introH">Jhapat! <span lang="ne">झपट</span></h2>
       <p class="introsub">Songs play. A word drops. Grab it first. 🐯</p></div></div>
-    <figure class="tt"><div class="ttbox"></div><figcaption><a href="https://www.tiktok.com/@sujupah" target="_blank" rel="noopener">@sujupah</a></figcaption></figure>
+    <figure class="tt"><div class="ttbox"></div><figcaption><a href="https://www.tiktok.com/@suzupah" target="_blank" rel="noopener">@suzupah</a></figcaption></figure>
     <ol class="introsteps">
       <li><b aria-hidden="true">🧺</b><span>Put things on the table, then tap the same ones here.</span></li>
       <li><b aria-hidden="true">▶️</b><span>Start. A song drops in a few seconds before one of their words.</span></li>
       <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
       <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
     </ol>
-    <div class="introbtns"><button class="btn primary big" data-act="introgo">Let’s go</button></div>
+    <div class="introbtns"><button class="btn primary big" data-act="introgo">Let’s go</button><button class="btn big" data-act="share"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Share</button></div>
   </div>
 </div>
-<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <a href="studio/">Studio</a></footer>
+<div class="intro" id="sharebox" role="dialog" aria-modal="true" aria-labelledby="shareH" hidden>
+  <div class="sheetcard">
+    <h2 id="shareH">Bring Jhapat to every party</h2>
+    <p class="introsub">Friends point their camera here to play at their own party.</p>
+    <img class="qr" src="img/qr.svg" width="240" height="240" alt="QR code that opens jhapat.live">
+    <b class="qrurl">jhapat.live</b>
+    <div class="sheetbtns"><button class="btn primary" data-act="sharego"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Share</button><button class="btn" data-act="sharecopy"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
+    <button class="btn ghost small" data-act="shareclose">Close</button>
+  </div>
+</div>
+<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <button class="linkbtn" data-act="share">Share</button><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up, no ads. Jhapat counts drops, never who.</p></footer>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -442,7 +485,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 38; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 39; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -535,6 +578,7 @@ let CAT = null, catSaved = false, CARDS = null, songMap = new Map(); // the cata
 const goodCat = c => !!c && Array.isArray(c.songs) && c.songs.length > 0 && Array.isArray(c.items) && Array.isArray(c.playlists);
 const stored = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 try { const c = JSON.parse(stored(CAT_KEY) || 'null'); if (goodCat(c)) { CAT = c; catSaved = true; } } catch (e) {}
+const hadSave = !!stored(KEY); // a phone's first visit (counted once, anonymously)
 let S = loadState() || seed();
 if (S.source === 'db' && !CAT && !S.songs.length) S = Object.assign(seed(), { settings: S.settings }); // its songs were in a catalog that's gone
 save(); // keep the stored copy in step with any upgrade that just ran
@@ -555,7 +599,7 @@ let mode = null;             // 'game' or 'tag': who loaded the video
 let revealed = false, syncing = null, lastTap = null;
 let picking = false;         // the playlist list is open
 let nextTimer = null, toastTimer = null, watch = null, skipRun = 0;
-const WEB_LINK = 'https://sachdq.github.io/jhapat/';
+const WEB_LINK = 'https://jhapat.live/';
 const onSite = /(^|\.)(github\.io|pages\.dev|jhapat\.live)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
 
 /* Icons: one small drawing and one word on each button, so they read for anyone. */
@@ -682,13 +726,15 @@ function watchPlayback(start, fromSwap) {
     let dur = 0; try { dur = player.getDuration() || 0; } catch (e) {}
     if (mode === 'game' && dur > 0 && start > dur - 1) {
       clearInterval(watch); watch = null; skipRun++;
+      const sg = current && byId(current.songId);
+      if (sg) autoReport(sg, curVid(sg), 'other', 'The drop at ' + fmt(start) + ' is past the end of this upload (' + fmt(dur) + ' long)');
       if (skipRun <= 3) { toast('That drop is past the end of this video, so it skipped to another song.'); nextRound(); }
-      else toast('Several drops were past the end of their videos. Tap-sync those songs in Songs.');
+      else toast(S.source === 'db' ? 'Several drops were past the end of their videos. Press Next for another song.' : 'Several drops were past the end of their videos. Tap-sync those songs in Songs.');
       return;
     }
     if (st === 1 && !seeked) { seeked = true; if (now() < start - 1.5) { try { player.seekTo(start, true); } catch (e) {} } }
     if (st === 1 && !muted) {
-      skipRun = 0; hint.hidden = true; clearInterval(watch); watch = null;
+      skipRun = 0; errRun = 0; hint.hidden = true; clearInterval(watch); watch = null;
       if (mode === 'game') schedulePreload(3000); // let this one buffer first, then get the next one ready
       return;
     }
@@ -722,6 +768,7 @@ function onErr(e) {
   const code = e.data;
   const song = mode === 'game' ? (current && byId(current.songId)) : byId(songId);
   if ((code === 100 || code === 101 || code === 150) && song) {
+    autoReport(song, curVid(song), 'video', 'YouTube error ' + code + ' on this upload'); // Studio › Reports hears about it, once per upload per phone
     if ((song.vi || 0) < song.videos.length - 1) {
       song.vi = (song.vi || 0) + 1;
       atVideo(song);
@@ -731,13 +778,28 @@ function onErr(e) {
       else playSong(song, 0, 'tag');
     } else {
       song.broken = true; save();
-      toast((hideName() ? 'This song' : song.title) + ' won’t play outside YouTube. Open it in Songs and paste a different upload.');
-      if (mode === 'game') nextRound();
+      toast((hideName() ? 'This song' : song.title) + (S.source === 'db' ? ' won’t play outside YouTube, so Jhapat skipped it. The studio has been told.'
+        : ' won’t play outside YouTube. Open it in Songs and paste a different upload.'));
+      if (mode === 'game') skipOn();
     }
     render(); return;
   }
   if (code === 152 || code === 153) { showBlocked('ref'); return; }
+  if (mode === 'game' && song) { toast('YouTube couldn’t play that song (error ' + code + '), so here’s another.'); skipOn(); return; } // 2 or 5: never leave the room waiting
   toast('YouTube couldn’t play that video (error ' + code + ').');
+}
+let errRun = 0; // songs skipped in a row for errors: after 3 it stops, so a dead connection can't spin through the list
+function skipOn() { if (++errRun <= 3) nextRound(); else { errRun = 0; toast('YouTube keeps refusing these songs. Check the connection, then press Next.'); } }
+/* A problem the phone can see for itself (an upload YouTube won't play, a drop past the end of its upload) goes to Studio › Reports
+   once per upload per phone, so dead uploads get fixed without anyone having to press Report. */
+function autoReport(song, yt, kind, note) {
+  if (S.source !== 'db' || !song || !yt) return;
+  const sig = kind + '|' + yt; if ((S.reported || []).includes(sig)) return;
+  S.reported = (S.reported || []).concat(sig).slice(-200); save();
+  const tag = current && current.songId === song.id ? current.tag : null;
+  const r = { song: song.id, yt, item: tag ? tag.item : null, t: tag ? tag.t : null, lead: tag && current.lead ? Math.round(current.lead * 100) / 100 : null,
+    kind, note: note + ' (sent by the player)', ver: VERSION };
+  dbCall('rpc/report_drop', { r }).then(res => { if (res.offline) { (S.outbox = S.outbox || []).push(r); save(); } });
 }
 /* The player behind: once it starts (muted), hold it at the drop point until Next. */
 function onSpareState(e) {
@@ -748,10 +810,11 @@ function onSpareState(e) {
 }
 /* A blocked upload found while getting ready: switch the song to its next upload quietly and plan again. */
 function onSpareErr(e) {
-  const code = e.data, song = pre && byId(pre.songId);
+  const code = e.data, song = pre && byId(pre.songId), vid = pre && pre.vid;
   pre = null;
   if (code === 152 || code === 153) { showBlocked('ref'); return; }
   if ((code === 100 || code === 101 || code === 150) && song) {
+    autoReport(song, vid, 'video', 'YouTube error ' + code + ' on this upload');
     if ((song.vi || 0) < song.videos.length - 1) { song.vi = (song.vi || 0) + 1; atVideo(song); }
     else song.broken = true;
     save();
@@ -898,6 +961,7 @@ function nextRound() {
   S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id;
   if (plan.drop && plan.drop.tag) { (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; markDone(plan.song.id, plan.drop.tag); } // next time: its next line
   save();
+  { const pk = plKey(); tally('drops', pk); if (S.source === 'db') tally('song', plan.song.id); if (night === 1) tally('start', pk); if (night === 5) tally('party', pk); }
   recent = recent.filter(x => x !== plan.song.id).concat(plan.song.id).slice(-RECENT);
   if (tab !== 'play') { tab = 'play'; songId = null; }
   if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
@@ -1348,7 +1412,7 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'tab': tab = arg; songId = null; syncing = null; render(); break;
     case 'next': nextRound(); break;
-    case 'blind': S.settings.blind = !S.settings.blind; save(); applyBlind(); renderNow(); break;
+    case 'blind': S.settings.blind = !S.settings.blind; save(); applyBlind(); renderNow(); if (S.settings.blind) tally('hide'); break;
     case 'sound': S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('on'); renderNow(); break;
     case 'moreitems': moreItems = !moreItems; render(); break;
     case 'settings': settingsOpen = !settingsOpen; render(); break;
@@ -1364,6 +1428,11 @@ document.addEventListener('click', async e => {
     case 'pickpl': pickPlaylist(arg); break;
     case 'intro': openIntro(); break;
     case 'introgo': closeIntro(); break;
+    case 'share': openShare(); break;
+    case 'sharego': await shareJhapat(); break;
+    case 'sharecopy': await copyLink(); break;
+    case 'shareclose': closeShare(); break;
+    case 'install': if (installEv) { const ev = installEv; installEv = null; $('#installWrap').hidden = true; try { ev.prompt(); } catch (x) {} } break;
     case 'reportopen': reporting = true; render(); break;
     case 'reportx': reporting = false; render(); break;
     case 'report': if (arg === 'other') { reporting = 'other'; render(); const n = $('#reportNote'); if (n) n.focus(); } else await sendReport(arg); break;
@@ -1455,7 +1524,7 @@ document.addEventListener('submit', async e => {
   if (f.id === 'ytForm') {
     const list = listIdOf(($('#ytLink') || {}).value);
     if (!list) { toast('That isn’t a YouTube playlist link. On the playlist, tap Share, then Copy link.'); return; }
-    await readYt(list);
+    if (await readYt(list)) tally('ytlist', 'paste');
     return;
   }
   if (f.id === 'addForm') {
@@ -1557,11 +1626,27 @@ async function dbCall(path, body, ms) { // { ok, data }, or offline: true when t
   finally { clearTimeout(timer); }
 }
 const dbGet = async (path, body, ms) => { const r = await dbCall(path, body, ms); return r.ok ? r.data : null; };
+/* The catalog (v39): every change in the studio moves its stamp, so a phone that has the catalog asks only for the stamp (a few
+   bytes) and downloads again only when it moved. A first visit reads the copy an hourly GitHub Action keeps on the repo's catalog
+   branch (fast, and it doesn't use the database's free allowance) and uses it when its stamp is the database's, or when the
+   database doesn't answer at all; otherwise it asks the database for the catalog itself, as before. */
+const SNAP = 'https://raw.githubusercontent.com/SachDQ/jhapat/catalog/catalog.json';
+async function getJson(url, ms) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null, timer = setTimeout(() => ctl && ctl.abort(), ms || 15000);
+  try { const r = await fetch(url, { signal: ctl ? ctl.signal : undefined }); return r && r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(timer); }
+}
 async function loadDb() {
   if (typeof fetch !== 'function') return;
-  const c = await dbGet('rpc/catalog', null, 30000); // about 140 KB, so it gets longer than other calls
+  const snapP = CAT ? null : getJson(SNAP, 15000); // a first visit starts on GitHub's copy while it asks the database
+  const st = await dbCall('rpc/catalog_stamp', null, 8000);
+  const stamp = st.ok && typeof st.data === 'string' && /^\w{8,64}$/.test(st.data) ? st.data : null;
+  let c = null;
+  if (stamp && CAT && CAT.stamp === stamp) c = CAT; // nothing changed since the last visit, so nothing to download
+  else if (snapP || stamp) { const snap = await (snapP || getJson(SNAP, 15000)); if (goodCat(snap) && (snap.stamp === stamp || (!stamp && !CAT))) c = snap; }
+  if (!c) c = await dbGet('rpc/catalog', null, 30000); // about 140 KB, so it gets longer than other calls
   if (goodCat(c) && (S.outbox || []).length) flushOutbox();
   if (!goodCat(c)) { save(); render(); if (CAT && sharedYt) openShared(); return; }
+  if (c === CAT) { if (sharedYt) openShared(); return; }
   const txt = JSON.stringify(c);
   if (catSaved && txt === stored(CAT_KEY)) { if (sharedYt) openShared(); return; } // nothing changed since the last visit
   delete S.bundles; delete S.cards; save(); // before v30 the phone kept a copy of each playlist it opened; the catalog replaces them
@@ -1679,8 +1764,8 @@ async function askFor(m) {
 }
 async function shareMine(m) {
   const url = (onSite ? location.origin + location.pathname.replace(/index\.html$/, '') : WEB_LINK) + '#yt=' + m.list; // whatever domain this page is on
-  try { if (navigator.share) { await navigator.share({ title: m.name + ' · Jhapat', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); toast('Link copied. It opens this playlist in Jhapat on any phone, read fresh from YouTube.'); }
+  try { if (navigator.share) { await navigator.share({ title: m.name + ' · Jhapat', url }); tally('share', 'yt'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); tally('share', 'yt'); toast('Link copied. It opens this playlist in Jhapat on any phone, read fresh from YouTube.'); }
   catch (e) { toast('Copy this link: ' + url); }
 }
 async function openShared() {
@@ -1688,15 +1773,72 @@ async function openShared() {
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
   picking = true; // the list shows while YouTube is read
   const m = await readYt(list);
+  if (m) tally('ytlist', 'link');
   if (m && songsIn(m).length) { discardPre(); S.chosen = true; picking = false; useList(m.id); }
   else if (m) { picking = true; render(); }
 }
+/* Share (v39): the footer and the intro open a sheet with a QR code friends scan, the phone's own share sheet, and Copy. Shared
+   links and the QR code carry ?ref=, which a phone's first visit counts and then takes off the address. */
+const SHARE_URL = 'https://jhapat.live/';
+const SHARE_TEXT = 'Jhapat: the Nepali party song game. Songs play, a word drops, grab it first! 🐯';
+function openShare() {
+  const el = $('#sharebox'); if (!el) return;
+  closeIntro(); el.hidden = false; document.body.classList.add('introopen'); tally('share', 'qr');
+  setTimeout(() => { const b = el.querySelector('[data-act="sharego"]'); if (b && !el.hidden) b.focus(); }, 60);
+}
+function closeShare() { const el = $('#sharebox'); if (!el || el.hidden) return; el.hidden = true; document.body.classList.remove('introopen'); }
+async function shareJhapat() {
+  const url = SHARE_URL + '?ref=share';
+  try { if (navigator.share) { await navigator.share({ title: 'Jhapat (झपट)', text: SHARE_TEXT, url }); tally('share', 'native'); return; } }
+  catch (e) { if (e && e.name === 'AbortError') return; }
+  await copyLink();
+}
+async function copyLink() {
+  const url = SHARE_URL + '?ref=share';
+  try { await navigator.clipboard.writeText(url); tally('share', 'copy'); toast('Link copied: jhapat.live. Paste it in the group chat.'); }
+  catch (e) { toast('Copy this link: ' + url); }
+}
+/* Install (Android and desktop Chrome): the browser offers it, and the footer shows Install until it's used. */
+let installEv = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEv = e; const w = $('#installWrap'); if (w) w.hidden = false; });
+window.addEventListener('appinstalled', () => { installEv = null; const w = $('#installWrap'); if (w) w.hidden = true; tally('install'); });
+/* Counts (v39), for Studio › Stats: anonymous and by day. A phone sends its time zone once a day, ?ref= on its first visit, and what
+   plays (the playlist, the song, the first and fifth drop of a night). No account, no ID for the phone, nothing typed. Events wait a
+   few seconds and go together; they're only sent from jhapat.live, so tests and copies of the page don't count. */
+const COUNT = location.hostname === 'jhapat.live';
+let tq = new Map(), tTimer = null;
+function tally(ev, k, n) {
+  if (!COUNT) return;
+  const key = ev + '\u0001' + (k || '');
+  tq.set(key, (tq.get(key) || 0) + (n || 1));
+  if (!tTimer) tTimer = setTimeout(() => flushTally(false), 5000);
+}
+function flushTally(leaving) {
+  clearTimeout(tTimer); tTimer = null;
+  if (!tq.size || typeof fetch !== 'function') return;
+  const all = [...tq], e = all.slice(0, 40).map(([key, n]) => { const [ev, k] = key.split('\u0001'); return [ev, k, n]; });
+  tq = new Map(all.slice(40));
+  try { fetch(DB.rest + 'rpc/tally', { method: 'POST', keepalive: !!leaving, headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ e }) }).catch(() => {}); } catch (x) {}
+  if (tq.size) tTimer = setTimeout(() => flushTally(false), 5000);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushTally(true); });
+const plKey = () => { const p = S.source === 'db' && S.playlist && S.playlist.id; return !p ? 'seed' : p.startsWith('yt-') ? 'yt' : p; }; // YouTube playlists count together, never by name
+const tz = () => { try { return String(Intl.DateTimeFormat().resolvedOptions().timeZone || '').slice(0, 64); } catch (e) { return ''; } };
+function readRef() {
+  try {
+    const u = new URL(location.href); if (!u.searchParams.has('ref')) return '';
+    const r = String(u.searchParams.get('ref') || '').toLowerCase(); u.searchParams.delete('ref');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+    return /^[a-z0-9-]{1,24}$/.test(r) ? r : '';
+  } catch (e) { return ''; }
+}
+
 /* The intro (v37): how to play in four lines, and Suju's TikTok, the party round that gave Sachin the idea. It opens on a phone's
    first visit and from How to play. TikTok's player loads only while the intro is open, with its description off. */
 const TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&loop=1&autoplay=1&muted=1';
 function openIntro() {
   const el = $('#intro'); if (!el) return;
-  el.querySelector('.ttbox').innerHTML = '<iframe src="' + TIKTOK + '" title="Suju (@sujupah) on TikTok: the Nepali party round that started Jhapat" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share" allowfullscreen></iframe>';
+  el.querySelector('.ttbox').innerHTML = '<iframe src="' + TIKTOK + '" title="Suju (@suzupah) on TikTok: the Nepali party round that started Jhapat" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share" allowfullscreen></iframe>';
   el.hidden = false; document.body.classList.add('introopen');
   setTimeout(() => { const b = el.querySelector('[data-act="introgo"]'); if (b && !el.hidden) b.focus(); }, 60);
 }
@@ -1705,8 +1847,8 @@ function closeIntro() {
   el.hidden = true; el.querySelector('.ttbox').innerHTML = ''; document.body.classList.remove('introopen'); // the video stops with its frame
   if (!S.introSeen) { S.introSeen = true; save(); }
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeIntro(); });
-document.addEventListener('click', e => { if (e.target && e.target.id === 'intro') closeIntro(); }); // a tap outside the card
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeIntro(); closeShare(); } });
+document.addEventListener('click', e => { const id = e.target && e.target.id; if (id === 'intro') closeIntro(); else if (id === 'sharebox') closeShare(); }); // a tap outside the card
 
 window.addEventListener('hashchange', () => { const l = (location.hash.match(/^#yt=([\w-]{10,64})$/) || [])[1]; if (l && CAT) { sharedYt = l; openShared(); } });
 
@@ -1715,6 +1857,8 @@ applySmall(); applyBlind();
 if (CAT) { buildCat(); useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id), true); } // from the phone, before the database answers
 $('#ver').textContent = 'v' + VERSION;
 render();
+{ const ref = readRef(); if (!hadSave) tally('new', ref);
+  const today = new Date().toISOString().slice(0, 10); if (S.seenDay !== today) { S.seenDay = today; save(); tally('visit', tz()); } }
 if (!S.introSeen) openIntro();
 loadDb();
 checkVersion();

@@ -1,0 +1,42 @@
+# Keeps a copy of the song catalog (the database's catalog(), with its stamp) on the catalog branch. A phone's first visit reads it
+# from raw.githubusercontent.com, which is quick and spares the database's free allowance; a phone whose stamp differs asks the
+# database itself, so a copy that's an hour behind never shows old songs. Hourly, and only commits when the stamp moved. After adding
+# songs, Actions › Copy the catalog › Run workflow brings the copy up to date at once. The branch holds one commit, replaced each time.
+name: Copy the catalog
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy the catalog if the database's stamp moved
+        env:
+          KEY: sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T
+          API: https://hckzkaprxywohazohmcu.supabase.co/rest/v1
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          live=$(curl -fsS --retry 3 -H "apikey: $KEY" "$API/rpc/catalog_stamp" | jq -r .)
+          git clone -q --depth 1 --branch catalog "https://x-access-token:${TOKEN}@github.com/${REPO}.git" copy
+          cd copy
+          have=$(jq -r '.stamp // ""' catalog.json 2>/dev/null || echo "")
+          echo "database stamp: $live; copy's stamp: $have"
+          if [ "$live" = "$have" ]; then echo "The copy is current."; exit 0; fi
+          curl -fsS --retry 3 --compressed -H "apikey: $KEY" "$API/rpc/catalog" -o ../new.json
+          jq -e '(.stamp | type == "string") and (.songs | length > 0) and (.items | type == "array") and (.playlists | type == "array")' ../new.json > /dev/null
+          jq -c . ../new.json > catalog.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q --orphan fresh
+          git add catalog.json
+          git commit -q -m "Catalog $(jq -r .stamp catalog.json): $(jq '.songs | length' catalog.json) songs"
+          git push -q --force origin fresh:catalog
+          echo "Copied $(jq '.songs | length' catalog.json) songs."

@@ -1,8 +1,8 @@
 # Jhapat (झपट)
 
-A party player for the Nepali grab-the-word game. Put items such as paani, phool, chiya and paisa on the table. Jhapat drops into a random song 7–10 seconds before one of them is sung, and the first person to grab it wins.
+The Nepali party song game. Put items such as paani, phool, chiya and paisa on the table. Jhapat drops into a random Nepali song 7–10 seconds before one of their words is sung, and the first hand on it wins. Free, no sign-up.
 
-- Party player: https://sachdq.github.io/jhapat/
-- Tagging studio (editors): https://sachdq.github.io/jhapat/studio/
+- Play: https://jhapat.live/
+- Tagging studio (editors): https://jhapat.live/studio/
 
-Songs, timed lyrics (from [LRCLIB](https://lrclib.net)), YouTube uploads and word tags live in a Supabase database. See `db/schema.sql`.
+Songs, timed lyrics (from [LRCLIB](https://lrclib.net)), YouTube uploads and word tags live in a Supabase database (`db/schema.sql`). An hourly workflow keeps a copy of the song catalog on the `catalog` branch for first visits; a weekly one checks that every upload still plays outside YouTube. `npm test` runs the checks.

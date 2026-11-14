@@ -243,7 +243,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   // 10. Embed refused (no referrer) → full cover with the web link
   front().events.onError({ data: 153, target: front() });
   const b = d.querySelector('#blocked');
-  ok(!b.hidden && b.textContent.includes('sachdq.github.io/jhapat'), 'error 153 shows the cover with the web link');
+  ok(!b.hidden && b.textContent.includes('jhapat.live'), 'error 153 shows the cover with the web link');
   ok(d.querySelector('#idle').hidden, 'idle text is actually hidden now');
 
   // 11. An older save upgrades: new songs added, untagged seed songs get timings, the user's own songs and tags stay
@@ -292,7 +292,10 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const dom4 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
     beforeParse(win) { win.localStorage.setItem('jhapat.v1', JSON.stringify(saved));
       const set = win.Storage.prototype.setItem; win.Storage.prototype.setItem = function (k, v) { if (k === 'jhapat.cat') throw new Error('quota'); return set.call(this, k, v); };
-      win.fetch = async (url, o) => { if (/\/rest\/v1\//.test(url)) fetched = { url, o }; return { ok: true, json: async () => catOf(bundle) }; }; } });
+      win.fetch = async (url, o) => { if (/\/rest\/v1\//.test(url)) fetched = { url, o }; // the stamp first, GitHub's copy not made yet, then the catalog itself
+        if (/catalog_stamp/.test(url)) return { ok: true, json: async () => 'aaaa1111aaaa1111aaaa1111aaaa1111' };
+        if (/raw\.githubusercontent/.test(url)) return { ok: false, status: 404, json: async () => null };
+        return { ok: true, json: async () => Object.assign(catOf(bundle), { stamp: 'aaaa1111aaaa1111aaaa1111aaaa1111' }) }; }; } });
   await sleep(50);
   const D4 = JSON.parse(dom4.window.localStorage.getItem('jhapat.v1')), d4 = dom4.window.document;
   ok(fetched && /rpc\/catalog$/.test(fetched.url) && !fetched.o.body && fetched.o.headers.apikey.startsWith('sb_publishable_'), 'asks the database for its catalog, in one call with the public key');
@@ -320,7 +323,8 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const c5 = sel => { const el = d5.querySelector(sel); if (!el) throw new Error('missing ' + sel); el.dispatchEvent(new w5.MouseEvent('click', { bubbles: true })); };
   const chips5 = () => [...d5.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg + (b.getAttribute('aria-pressed') === 'true' ? '+' : '-') + b.querySelector('.n').textContent);
   await sleep(60);
-  ok(asked.filter(a => !/version\.json/.test(a)).join(' ') === 'rpc/catalog', 'one call brings every playlist: ' + asked.join(', '));
+  ok(asked.filter(a => !/version\.json/.test(a)).join(' ') === 'https://raw.githubusercontent.com/SachDQ/jhapat/catalog/catalog.json rpc/catalog_stamp rpc/catalog',
+    'a first visit tries GitHub’s copy and the stamp, and with neither, one call brings every playlist: ' + asked.join(', '));
   const cards5 = [...d5.querySelectorAll('[data-act="pickpl"]')];
   ok(cards5.map(c => c.dataset.arg).join(' ') === 'all party-mix love' && d5.body.textContent.includes('Pick a playlist') && !d5.querySelector('[data-act="next"]'),
     'first visit: the playlist list comes first, with All songs on top (the empty playlist is left out)');
@@ -734,12 +738,119 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   await sleep(60);
   const w40 = dom40.window, d40 = w40.document, c40 = sel => d40.querySelector(sel).dispatchEvent(new w40.MouseEvent('click', { bubbles: true }));
   const tt40 = d40.querySelector('#intro .ttbox iframe');
-  ok(!d40.querySelector('#intro').hidden && !!tt40 && /tiktok\.com\/player\/v1\/7706561958320868638/.test(tt40.src) && /description=0/.test(tt40.src) && /@sujupah/.test(d40.querySelector('#intro').textContent),
+  ok(!d40.querySelector('#intro').hidden && !!tt40 && /tiktok\.com\/player\/v1\/7706561958320868638/.test(tt40.src) && /description=0/.test(tt40.src) && /@suzupah/.test(d40.querySelector('#intro').textContent),
     'a first visit opens the intro with Suju’s TikTok (its description off)');
   c40('[data-act="introgo"]'); await sleep(10);
   ok(d40.querySelector('#intro').hidden && !d40.querySelector('#intro iframe') && JSON.parse(w40.localStorage.getItem('jhapat.v1')).introSeen === true, 'Let’s go closes it, stops the video and remembers');
   c40('.foot [data-act="intro"]'); await sleep(10);
   ok(!d40.querySelector('#intro').hidden && !!d40.querySelector('#intro iframe'), 'How to play opens it again');
+
+  // 28. v39 catalog: a phone with the catalog asks only for the stamp; when it moved, GitHub's copy is used if it's current, else the
+  //     database's own; a first visit starts from GitHub's copy, and still gets every song from it when the database is down
+  { const SNAPURL = 'https://raw.githubusercontent.com/SachDQ/jhapat/catalog/catalog.json', base = catOf(B9);
+    const mk = st => Object.assign(JSON.parse(JSON.stringify(base)), { stamp: st });
+    const run = async o => { const log = [];
+      const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+        if (o.stored) { win.localStorage.setItem('jhapat.cat', JSON.stringify(mk(o.stored)));
+          win.localStorage.setItem('jhapat.v1', JSON.stringify({ v: 1, seedV: 4, source: 'db', songs: [], items: [], played: [], settings: {}, introSeen: true, chosen: true, playlist: { id: 'all', name: 'All songs' } })); }
+        win.fetch = async url => { if (!/version\.json/.test(url)) log.push(url === SNAPURL ? 'snap' : url.replace(/^.*\/rest\/v1\//, ''));
+          if (o.db === 'down' && /rest\/v1/.test(url)) throw new Error('offline');
+          if (/catalog_stamp/.test(url)) return { ok: true, json: async () => o.db };
+          if (url === SNAPURL) return o.snap ? { ok: true, json: async () => mk(o.snap) } : { ok: false, status: 404, json: async () => null };
+          if (/rpc\/catalog$/.test(url)) return { ok: true, json: async () => mk(o.db) };
+          return { ok: true, json: async () => ({}) }; }; } });
+      await sleep(80);
+      const cat = JSON.parse(dm.window.localStorage.getItem('jhapat.cat') || 'null');
+      return { log: log.join(' '), stamp: cat && cat.stamp, songs: cat ? cat.songs.length : 0 }; };
+    let r = await run({ stored: 'stampAAAA1', db: 'stampAAAA1', snap: 'stampAAAA1' });
+    ok(r.log === 'rpc/catalog_stamp', 'a phone with the catalog asks only for the stamp when nothing changed: ' + r.log);
+    r = await run({ stored: 'stampAAAA1', db: 'stampBBBB2', snap: 'stampBBBB2' });
+    ok(r.log === 'rpc/catalog_stamp snap' && r.stamp === 'stampBBBB2', 'when the stamp moved, GitHub’s copy is used if it’s current, not the database: ' + r.log);
+    r = await run({ stored: 'stampAAAA1', db: 'stampCCCC3', snap: 'stampBBBB2' });
+    ok(r.log === 'rpc/catalog_stamp snap rpc/catalog' && r.stamp === 'stampCCCC3', 'a copy older than the database is passed over for the database’s own: ' + r.log);
+    r = await run({ stored: null, db: 'stampBBBB2', snap: 'stampBBBB2' });
+    ok(r.log === 'snap rpc/catalog_stamp' && r.stamp === 'stampBBBB2' && r.songs === base.songs.length, 'a first visit gets its songs from GitHub’s copy: ' + r.log);
+    r = await run({ stored: null, db: 'down', snap: 'stampBBBB2' });
+    ok(r.log === 'snap rpc/catalog_stamp' && r.songs === base.songs.length, 'with the database down, a first visit still gets every song from the copy: ' + r.log); }
+
+  // 29. Share: the footer and the intro open a QR code for jhapat.live, the phone's share sheet and Copy. Suju's real handle; link previews.
+  { let shared = null, copied = null, tallies = 0;
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
+      win.fetch = async url => { if (/rpc\/tally/.test(url)) tallies++; return { ok: true, json: async () => catOf(B9) }; }; win.scrollTo = () => {};
+      win.navigator.share = async o => { shared = o; };
+      Object.defineProperty(win.navigator, 'clipboard', { value: { writeText: async t => { copied = t; } } }); } });
+    await sleep(60);
+    const wm = dm.window, dd = wm.document, cl = sel => dd.querySelector(sel).dispatchEvent(new wm.MouseEvent('click', { bubbles: true }));
+    ok(!/sujupah/.test(html) && dd.querySelector('#intro figcaption a').getAttribute('href') === 'https://www.tiktok.com/@suzupah', 'the TikTok credit is Suju’s real handle, @suzupah');
+    ok(dd.querySelector('meta[property="og:image"]').content === 'https://jhapat.live/img/og.jpg' && dd.querySelector('link[rel="canonical"]').href === 'https://jhapat.live/' && /Nepali party/.test(dd.title),
+      'link previews have a title, a picture and the address');
+    cl('[data-act="introgo"]'); await sleep(5);
+    cl('.foot [data-act="share"]'); await sleep(10);
+    const sbx = dd.querySelector('#sharebox');
+    ok(!sbx.hidden && sbx.querySelector('img.qr').getAttribute('src') === 'img/qr.svg' && /jhapat\.live/.test(sbx.textContent), 'Share opens a QR code for jhapat.live');
+    cl('#sharebox [data-act="sharego"]'); await sleep(10);
+    ok(shared && shared.url === 'https://jhapat.live/?ref=share' && /Nepali party/.test(shared.text), 'Share hands the phone’s share sheet the link: ' + JSON.stringify(shared));
+    cl('#sharebox [data-act="sharecopy"]'); await sleep(10);
+    ok(copied === 'https://jhapat.live/?ref=share' && /copied/i.test(dd.querySelector('#toast').textContent), 'Copy puts the link on the clipboard');
+    dd.dispatchEvent(new wm.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(5);
+    ok(sbx.hidden && !dd.body.classList.contains('introopen'), 'Escape closes it');
+    cl('.foot [data-act="intro"]'); await sleep(5); cl('#intro [data-act="share"]'); await sleep(10);
+    ok(dd.querySelector('#intro').hidden && !sbx.hidden, 'the intro’s Share swaps the intro for the QR code');
+    Object.defineProperty(dd, 'visibilityState', { configurable: true, get: () => 'hidden' }); dd.dispatchEvent(new wm.Event('visibilitychange')); await sleep(10);
+    ok(tallies === 0, 'pages away from jhapat.live never send counts'); }
+
+  // 30. Counts, only from jhapat.live and anonymous: the day's visit (with the time zone), a first visit with its ?ref=, what plays, Hide
+  { const posts = [];
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://jhapat.live/?ref=qr#x', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      win.fetch = async (url, o) => { if (/rpc\/tally/.test(url)) { posts.push(JSON.parse(o.body).e); return { ok: true, json: async () => 1 }; } return { ok: true, json: async () => catOf(B9) }; }; } });
+    await sleep(60);
+    const wm = dm.window, dd = wm.document, cl = sel => dd.querySelector(sel).dispatchEvent(new wm.MouseEvent('click', { bubbles: true }));
+    ok(wm.location.search === '' && wm.location.hash === '#x', 'the ?ref= comes off the address once it’s read');
+    cl('[data-act="introgo"]'); await sleep(5);
+    if (dd.querySelector('[data-act="pickpl"]')) { cl('[data-act="pickpl"]'); await sleep(10); }
+    for (let k = 0; k < 5; k++) { cl('[data-act="next"]'); await sleep(5); }
+    cl('.now [data-act="blind"]'); await sleep(5);
+    Object.defineProperty(dd, 'visibilityState', { configurable: true, get: () => 'hidden' }); dd.dispatchEvent(new wm.Event('visibilitychange')); await sleep(10);
+    const ev = {}; posts.flat().forEach(([e, k, n]) => { ev[e + ':' + k] = (ev[e + ':' + k] || 0) + n; });
+    const pl = JSON.parse(wm.localStorage.getItem('jhapat.v1')).playlist.id;
+    ok(posts.length === 1 && ev['new:qr'] === 1 && Object.keys(ev).some(k => /^visit:./.test(k)) && ev['drops:' + pl] === 5 && ev['start:' + pl] === 1 && ev['party:' + pl] === 1 && ev['hide:'] === 1,
+      'one call when the page is put away: a first visit from the QR code, the day’s visit, 5 drops, the night’s start and party, Hide: ' + JSON.stringify(ev));
+    ok(Object.keys(ev).filter(k => k.startsWith('song:')).reduce((a, k) => a + ev[k], 0) === 5 && !JSON.stringify(posts).includes('jhapat.v1'), 'and which songs played, nothing else'); }
+
+  // 31. An upload YouTube won't play: the party skips it, and Studio › Reports hears about it once per upload per phone
+  { const reps = [];
+    const C31 = { stamp: 'x', items: [{ id: 'paani', name: 'Paani', dev: 'पानी' }], playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['d1', 'g1'] }],
+      songs: [{ id: 'd1', title: 'Dead One', artist: 'A', videos: [{ yt: 'DEADxxxxxxx', offset: 0, synced: true }], tags: [['paani', 30], ['paani', 60]] },
+              { id: 'g1', title: 'Good One', artist: 'B', videos: [{ yt: 'GOODxxxxxxx', offset: 0, synced: true }], tags: [['paani', 40]] }] };
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      win.fetch = async (url, o) => { if (/report_drop/.test(url)) { reps.push(JSON.parse(o.body).r); return { ok: true, json: async () => 1 }; } return { ok: true, json: async () => JSON.parse(JSON.stringify(C31)) }; };
+      win.__p = []; win.YT = { Player: function (id, opts) { const me = this; me.events = opts.events; me.cur = { vid: null, t: 0, st: -1 }; win.__p.push(me);
+        me.loadVideoById = a => { me.cur = { vid: a.videoId, t: a.startSeconds, st: 1 }; }; me.isMuted = () => false; me.mute = () => {}; me.unMute = () => {};
+        me.getDuration = () => 0; me.getCurrentTime = () => me.cur.t; me.getPlayerState = () => me.cur.st; me.getVideoData = () => ({ video_id: me.cur.vid });
+        me.pauseVideo = () => {}; me.playVideo = () => {}; me.stopVideo = () => {}; me.seekTo = () => {};
+        setTimeout(() => opts.events.onReady({ target: me }), 0); } }; } });
+    await sleep(60); dm.window.onYouTubeIframeAPIReady(); await sleep(20);
+    const wm = dm.window, dd = wm.document, cl = sel => dd.querySelector(sel).dispatchEvent(new wm.MouseEvent('click', { bubbles: true }));
+    const st = () => JSON.parse(wm.localStorage.getItem('jhapat.v1')), A = wm.__p[0], fail = () => A.events.onError({ data: 150, target: A });
+    cl('[data-act="next"]'); await sleep(10);
+    const first = st().lastSong, firstYt = A.cur.vid;
+    fail(); await sleep(20);
+    ok(reps.length === 1 && reps[0].kind === 'video' && reps[0].yt === firstYt && reps[0].song === first && /error 150/.test(reps[0].note) && st().lastSong !== first,
+      'a dead upload is reported to the studio and the party moves on to another song: ' + JSON.stringify(reps[0]));
+    ok(/skipped it/.test(dd.querySelector('#toast').textContent), 'and says so: ' + dd.querySelector('#toast').textContent);
+    fail(); await sleep(20); fail(); await sleep(20);
+    ok(reps.length === 2 && reps[1].yt !== firstYt, 'each dead upload is reported once, however often it fails: ' + reps.map(r => r.yt).join(', ')); }
+
+  // 32. Install: when the browser offers it, the footer shows Install, which opens the browser's own prompt once
+  { const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
+      win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); win.scrollTo = () => {}; } });
+    await sleep(40);
+    const wm = dm.window, dd = wm.document; let prompted = 0;
+    ok(dd.querySelector('#installWrap').hidden, 'no Install until the browser offers it');
+    const e = new wm.Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { prompted++; }; wm.dispatchEvent(e); await sleep(5);
+    ok(!dd.querySelector('#installWrap').hidden && e.defaultPrevented, 'once the browser offers it, the footer shows Install');
+    dd.querySelector('[data-act="install"]').dispatchEvent(new wm.MouseEvent('click', { bubbles: true })); await sleep(5);
+    ok(prompted === 1 && dd.querySelector('#installWrap').hidden, 'Install opens the browser’s prompt, once'); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

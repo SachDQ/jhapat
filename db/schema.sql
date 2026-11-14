@@ -319,3 +319,108 @@ grant insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 grant execute on function public.playlist_bundle(text), public.catalog(), public.is_editor() to anon, authenticated;
 grant execute on function public.request_songs(jsonb), public.report_drop(jsonb) to anon, authenticated;
+
+-- ---------- v39, 15 Nov 2026 ----------
+-- A stamp that changes whenever anything the catalog holds changes (statement triggers on its six tables), so a phone that
+-- already has the catalog checks GET /rest/v1/rpc/catalog_stamp (a few bytes) instead of downloading 137 KB again. An hourly
+-- GitHub Action (.github/workflows/catalog.yml) keeps a copy of catalog() with its stamp on the repo's catalog branch, which
+-- first visits read from raw.githubusercontent.com; a phone whose stamp differs from that copy's asks catalog() itself.
+create table if not exists public.meta (
+  k  text primary key,
+  v  text not null,
+  at timestamptz not null default now()
+);
+alter table public.meta enable row level security;
+drop policy if exists "read meta" on public.meta;
+create policy "read meta" on public.meta for select using (true);
+insert into public.meta (k, v) values ('catalog', md5(random()::text)) on conflict (k) do nothing;
+
+create or replace function public.catalog_bump() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  update public.meta set v = md5(random()::text || clock_timestamp()::text), at = now() where k = 'catalog';
+  return null;
+end $$;
+do $$ declare t text; begin
+  foreach t in array array['items', 'songs', 'videos', 'tags', 'playlists', 'playlist_songs'] loop
+    execute format('drop trigger if exists catalog_bump on public.%I', t);
+    execute format('create trigger catalog_bump after insert or update or delete or truncate on public.%I for each statement execute function public.catalog_bump()', t);
+  end loop;
+end $$;
+
+create or replace function public.catalog_stamp() returns text
+language sql stable security invoker set search_path = '' as $$
+  select v from public.meta where k = 'catalog';
+$$;
+
+-- catalog() as above, plus its stamp (read in the same snapshot, so the two always belong together)
+create or replace function public.catalog() returns jsonb
+language sql stable security invoker set search_path = '' as $$
+  select jsonb_build_object(
+    'stamp', (select m.v from public.meta m where m.k = 'catalog'),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note, 'emoji', i.emoji) order by i.sort, i.id), '[]'::jsonb)
+              from public.items i),
+    'songs', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', s.id, 'title', s.title, 'artist', s.artist,
+                'videos', (select coalesce(jsonb_agg(jsonb_build_object('yt', v.yt, 'offset', v.offset_s, 'synced', v.synced) order by v.rank, v.id), '[]'::jsonb)
+                           from public.videos v where v.song_id = s.id and v.embeddable),
+                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t, t.rep) order by t.t), '[]'::jsonb) -- [item, lyric time, repeat group]
+                         from public.tags t where t.song_id = s.id)
+              ) order by s.title, s.id), '[]'::jsonb)
+              from public.songs s where s.status <> 'draft'),
+    'playlists', (select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'description', p.description,
+                'songs', (select coalesce(jsonb_agg(ps.song_id order by ps.position, ps.song_id), '[]'::jsonb)
+                          from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
+                          where ps.playlist_id = p.id)
+              ) order by p.sort, p.name), '[]'::jsonb)
+              from public.playlists p where p.owner is null and p.is_public));
+$$;
+
+-- Anonymous counts of how Jhapat is used (Studio › Stats). No accounts, no IP addresses, no ID for a phone: a phone sends
+-- events such as visit (once a day, with its time zone), new (its first visit, with ?ref= from a shared link or QR code),
+-- start and party (the first and fifth drop of a night, with the playlist), drops and song (what played), share, ytlist,
+-- hide and install. Anyone adds through tally(), which takes only those events and short keys and caps how many keys a day
+-- can gain; only editors read the table. Song counts are kept by week.
+create table if not exists public.stats (
+  day date not null,
+  ev  text not null,
+  k   text not null default '',
+  n   bigint not null default 0,
+  primary key (day, ev, k)
+);
+alter table public.stats enable row level security;
+drop policy if exists "editors read stats" on public.stats;
+create policy "editors read stats" on public.stats for select to authenticated using (public.is_editor());
+
+-- POST /rest/v1/rpc/tally {"e": [["visit", "Asia/Kathmandu"], ["drops", "party-mix", 7], ["song", "kaha-hola-ghar"]]}
+create or replace function public.tally(e jsonb) returns int
+language plpgsql volatile security definer set search_path = '' as $$
+declare x jsonb; v_ev text; v_k text; v_n int; v_day date; cnt int := 0;
+begin
+  if jsonb_typeof(e) is distinct from 'array' or jsonb_array_length(e) > 40 then raise exception 'send at most 40 events'; end if;
+  for x in select value from jsonb_array_elements(e) loop
+    if jsonb_typeof(x) is distinct from 'array' then continue; end if;
+    v_ev := x->>0; v_k := coalesce(x->>1, '');
+    v_n := case when jsonb_typeof(x->2) = 'number' then least(greatest((x->>2)::numeric, 1), 50)::int else 1 end;
+    if v_ev is null or v_ev not in ('visit', 'new', 'start', 'party', 'drops', 'song', 'share', 'ytlist', 'hide', 'install') then continue; end if;
+    if v_k !~ '^[A-Za-z0-9_+./:-]{0,64}$' then v_k := '?'; end if;
+    v_day := case when v_ev = 'song' then date_trunc('week', now() at time zone 'utc')::date else (now() at time zone 'utc')::date end;
+    if not exists (select 1 from public.stats s where s.day = v_day and s.ev = v_ev and s.k = v_k)
+       and (select count(*) from public.stats s where s.day = v_day and s.ev = v_ev) >= (case when v_ev = 'song' then 3000 else 300 end) then
+      v_k := '?'; -- made-up keys can't fill the table
+    end if;
+    insert into public.stats as s (day, ev, k, n) values (v_day, v_ev, v_k, v_n)
+      on conflict (day, ev, k) do update set n = s.n + excluded.n;
+    cnt := cnt + 1;
+  end loop;
+  return cnt;
+end $$;
+revoke execute on function public.tally(jsonb) from public;
+
+grant select on public.meta to anon, authenticated;
+grant select on public.stats to authenticated;
+grant execute on function public.catalog_stamp(), public.catalog() to anon, authenticated;
+grant execute on function public.tally(jsonb) to anon, authenticated;
+
+-- Suju's TikTok handle is @suzupah (the video's own page says so); the playlist said @sujupah.
+update public.playlists set description = replace(description, '@sujupah', '@suzupah'), updated_at = now()
+  where id = 'tiktok-og' and description like '%@sujupah%';

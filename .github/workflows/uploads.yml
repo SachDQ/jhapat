@@ -1,0 +1,26 @@
+# Weekly: asks YouTube whether every upload the player uses still plays outside YouTube (scripts/check-uploads.mjs). If any stopped
+# (embedding turned off, private or removed), it opens an issue listing them, or adds to the open one, so they can be turned off in
+# Studio › Reports. The player also reports uploads that fail for it, under Reports.
+name: Check uploads
+on:
+  schedule:
+    - cron: '41 4 * * 0'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ask YouTube about every upload
+        run: node scripts/check-uploads.mjs > report.md
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -s report.md ]; then echo "Every upload plays."; exit 0; fi
+          gh label create uploads --color FFA41B --description "Uploads that stopped playing" --force
+          n=$(gh issue list --state open --label uploads --json number -q '.[0].number')
+          if [ -n "$n" ]; then gh issue comment "$n" --body-file report.md; else gh issue create --title "Uploads that stopped playing" --label uploads --body-file report.md; fi

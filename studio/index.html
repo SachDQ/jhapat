@@ -57,8 +57,6 @@ nav.tabs .navn{display:inline-block;margin-left:6px;min-width:18px;padding:3px 6
 .res.rep .info{min-width:0;overflow-wrap:anywhere}
 .selbar .reported{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:6px 9px}
 .who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
-.garland{height:16px;background-image:radial-gradient(circle,#FF8A00 0 5.5px,transparent 6.5px),radial-gradient(circle,#FFC233 0 3px,transparent 4px);
-  background-size:16px 16px,16px 16px;background-position:0 0,8px 0;background-repeat:repeat-x} /* the player's marigold garland */
 
 .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;line-height:1.1}
 .btn:hover{border-color:var(--muted)}
@@ -155,6 +153,20 @@ aside.side{position:sticky;top:8px;display:grid;gap:12px;max-height:calc(100vh -
 .opts{display:grid;gap:4px;margin:8px 0 4px}
 .opt{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-size:14px}
 .okc{color:var(--ok)} .warnc{color:var(--warn)}
+/* v39: Stats, and the uploads check under Reports */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:12px 0}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:2px;align-content:start}
+.kpi b{font:800 30px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.bars{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:end;gap:3px;height:140px}
+.bar{position:relative;display:block;background:linear-gradient(var(--gold),var(--bagh));border-radius:4px 4px 1px 1px;min-height:2px}
+.bar i{position:absolute;left:0;right:0;bottom:0;background:var(--red);border-radius:inherit}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:12px}
+.toplist{list-style:none;margin:0;padding:0;display:grid}
+.toplist li{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--line);padding:6px 0;min-width:0}
+.toplist li:last-child{border-bottom:0}
+.toplist li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toplist b{font-variant-numeric:tabular-nums}
+.upcheck{margin-top:14px}
 .res.imp{align-items:start}
 .tchips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
 .tchip{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:2px 8px;font:600 12.5px/1.4 var(--mono);cursor:pointer;color:var(--ink)}
@@ -292,11 +304,11 @@ nav.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg);box-s
     <button data-act="go" data-arg="playlists">Playlists</button>
     <button data-act="go" data-arg="requests">Requests<span class="navn" id="navReq" hidden></span></button>
     <button data-act="go" data-arg="reports">Reports<span class="navn" id="navRep" hidden></span></button>
+    <button data-act="go" data-arg="stats">Stats</button>
   </nav>
   <div class="who" id="who"></div>
 </header>
 <div class="dhaka" aria-hidden="true"></div>
-<div class="garland" aria-hidden="true"></div>
 <div class="wrap">
   <div class="layout solo" id="layout">
     <aside class="side" id="side" hidden>
@@ -377,7 +389,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 38; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 39; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -422,7 +434,7 @@ function syncRow() { // bring the open song's row in the list up to date
 /* A newer version on the site (GitHub Pages can serve this page from cache for 10 minutes): offer a reload. */
 let verAt = 0;
 async function checkVersion() {
-  if (!/(^|\.)github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname) || typeof fetch !== 'function' || Date.now() - verAt < 600000) return;
+  if (!/(^|\.)github\.io$|^jhapat\.live$|^localhost$|^127\.0\.0\.1$/.test(location.hostname) || typeof fetch !== 'function' || Date.now() - verAt < 600000) return;
   verAt = Date.now();
   try {
     const r = await fetch('../version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1008,7 +1020,7 @@ const emoOf = id => (items.find(i => i.id === id) || {}).emoji || '';
 const itemLabel = id => (emoOf(id) ? emoOf(id) + ' ' : '') + itemName(id);
 function go() {
   const h = decodeURIComponent(location.hash.slice(1));
-  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add', 'import', 'requests', 'reports'].includes(h) ? h : 'songs', id: null };
+  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add', 'import', 'requests', 'reports', 'stats'].includes(h) ? h : 'songs', id: null };
   render();
 }
 window.addEventListener('hashchange', go);
@@ -1033,7 +1045,7 @@ async function render() {
   }
   if (cur) { syncRow(); try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; chk = null; }
   $('#view').innerHTML = route.view === 'items' ? itemsHTML() : route.view === 'playlists' ? playlistsHTML() : route.view === 'add' ? addHTML()
-    : route.view === 'import' ? importHTML() : route.view === 'requests' ? requestsHTML() : route.view === 'reports' ? reportsHTML() : songsHTML();
+    : route.view === 'import' ? importHTML() : route.view === 'requests' ? requestsHTML() : route.view === 'reports' ? reportsHTML() : route.view === 'stats' ? statsHTML() : songsHTML();
 }
 
 const SORTS = { title: 'A–Z', new: 'Newest first', tagged: 'Last tagged by hand', checked: 'Last checked by ear', tags: 'Most drop points', status: 'By status' };
@@ -1327,6 +1339,11 @@ document.addEventListener('click', async e => {
     case 'reqshow': reqShow = arg; render(); break;
     case 'repshow': repShow = arg; render(); break;
     case 'repfix': await repFix(arg); break;
+    case 'upcheck': await checkUploads(); break;
+    case 'upoff': await uploadOff([arg]); break;
+    case 'upoffall': if (upChk) await uploadOff(upChk.dead.map(x => x.v.id)); break;
+    case 'statdays': statsDays = Number(arg) || 30; render(); break;
+    case 'statsreload': stats = null; render(); break;
     case 'repopen': { const r = reports.find(x => String(x.id) === String(arg)); if (!r) break;
       pendingReport = r; if (location.hash === '#song:' + encodeURIComponent(r.song_id) && cur && cur.s.id === r.song_id) { pendingReport = null; reportCheck(r); } else location.hash = '#song:' + encodeURIComponent(r.song_id); break; }
     case 'reqskip': await reqDone(arg, 'skipped'); break;
@@ -1577,10 +1594,106 @@ function reportsHTML() {
   const open = reports.filter(r => !r.fixed_at), fixed = reports.filter(r => r.fixed_at), list = repShow === 'open' ? open : fixed;
   const seg = (k, label, n) => '<button class="seg" data-act="repshow" data-arg="' + k + '" aria-pressed="' + (repShow === k) + '">' + label + ' <span class="n">' + n + '</span></button>';
   return '<div class="pagehead"><h1>Reports<span class="count">' + open.length + '</span></h1></div>' +
-    '<p class="muted small">Drops someone said were off, from Something off? in the player, newest first. Open plays the word from 3 s before, as in Check tags.</p>' +
+    '<p class="muted small">Drops someone said were off, from Report in the player, newest first, and uploads the player found it couldn’t play (sent by itself, once per upload per phone). Open plays the word from 3 s before, as in Check tags.</p>' +
     '<div class="segs" role="group" aria-label="Show">' + seg('open', 'Open', open.length) + seg('fixed', 'Fixed', fixed.length) + '</div>' +
     (list.length ? '<div class="results">' + list.map(repRowHTML).join('') + '</div>'
-      : '<div class="empty"><p class="muted">' + (repShow === 'open' ? 'Nothing reported. Reports from the player show up here.' : 'None fixed yet.') + '</p></div>');
+      : '<div class="empty"><p class="muted">' + (repShow === 'open' ? 'Nothing reported. Reports from the player show up here.' : 'None fixed yet.') + '</p></div>') +
+    uploadsCardHTML();
+}
+const renderReports = () => { if (route.view === 'reports' && editor) $('#view').innerHTML = reportsHTML(); };
+
+/* ---------- uploads that stopped playing (v39) ----------
+   Asks YouTube's oEmbed about every upload the player can use, 8 at a time: 401 means its owner turned embedding off, 404 that it
+   went private or was removed. Turn off takes an upload out of the catalog (videos.embeddable), so the player moves to the song's
+   next upload, or leaves the song out until it gets a new one. A weekly GitHub Action runs the same check and opens an issue. */
+let upChk = null; // { busy, seen, total, dead: [{ s, v, why }], unsure }
+async function checkUploads() {
+  const list = []; songs.forEach(s => { if (s.status !== 'draft') (s.videos || []).forEach(v => { if (v.embeddable !== false) list.push({ s, v }); }); });
+  upChk = { busy: true, seen: 0, total: list.length, dead: [], unsure: 0 }; renderReports();
+  let k = 0;
+  const worker = async () => { while (k < list.length) { const x = list[k++];
+    let code = 0; try { const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + x.v.yt)); code = r && r.status; } catch (e) { code = 0; }
+    if (code === 401 || code === 403) upChk.dead.push({ ...x, why: 'Its owner turned embedding off' });
+    else if (code === 404) upChk.dead.push({ ...x, why: 'Private or removed' });
+    else if (code !== 200) upChk.unsure++;
+    upChk.seen++; if (upChk.seen % 25 === 0) renderReports(); } };
+  await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(worker));
+  upChk.busy = false; renderReports();
+  toast(upChk.dead.length ? plural(upChk.dead.length, 'upload') + ' won’t play outside YouTube.' : 'Checked ' + plural(list.length, 'upload') + ': every one plays.');
+}
+async function uploadOff(ids) {
+  ids = ids.map(Number).filter(Boolean); if (!ids.length) return;
+  const { error } = await sb.from('videos').update({ embeddable: false }).in('id', ids);
+  if (error) return fail('Couldn’t turn that off', error);
+  songs.forEach(s => { if ((s.videos || []).some(v => ids.includes(v.id))) { s.videos.forEach(v => { if (ids.includes(v.id)) v.embeddable = false; }); Object.assign(s, rowOf(s)); } });
+  if (upChk) { const n = upChk.dead.length; upChk.dead = upChk.dead.filter(x => !ids.includes(x.v.id)); upChk.off = (upChk.off || 0) + n - upChk.dead.length; }
+  renderReports();
+  toast('Turned off ' + plural(ids.length, 'upload') + '. A song left with none is out of the player until it gets a new upload.');
+}
+function uploadsCardHTML() {
+  const u = upChk;
+  const head = '<div class="row"><h2 class="grow">Uploads that stopped playing</h2>' + (u && u.busy ? '<span class="pill auto">Checking ' + u.seen + ' of ' + u.total + '</span>'
+    : '<button class="btn small" data-act="upcheck">' + (u ? 'Check again' : 'Check every upload') + '</button>') + '</div>';
+  if (!u) return '<div class="card upcheck">' + head + '<p class="muted small">Asks YouTube about every upload the player uses, 8 at a time (about a minute for 1,000). Uploads whose owners turned embedding off, or that went private, are listed here to turn off.</p></div>';
+  if (u.busy) return '<div class="card upcheck">' + head + '</div>';
+  const unsure = u.unsure ? ' ' + plural(u.unsure, 'upload') + ' didn’t answer; check again later.' : '';
+  if (!u.dead.length) return '<div class="card upcheck">' + head + '<p class="small okc">' + (u.off ? 'Turned off ' + plural(u.off, 'upload') + '. The other ' + plural(u.total - u.off - u.unsure, 'upload') + (u.total - u.off - u.unsure === 1 ? ' plays' : ' play') + ' outside YouTube.'
+    : 'All ' + plural(u.total - u.unsure, 'upload') + ' play outside YouTube.') + unsure + '</p></div>';
+  return '<div class="card upcheck">' + head + '<div class="row"><span class="small warnc grow">' + plural(u.dead.length, 'upload') + ' won’t play outside YouTube.' + unsure + '</span>' +
+    '<button class="btn small primary" data-act="upoffall">Turn off all ' + u.dead.length + '</button></div><div class="results">' + u.dead.map(x => {
+      const other = (x.s.videos || []).some(v => v.embeddable !== false && v.id !== x.v.id);
+      return '<div class="res rep">' + thumbHTML(x.v.yt, 'sm') + '<span class="info"><b><a href="#song:' + encodeURIComponent(x.s.id) + '">' + esc(x.s.title) + '</a></b>' + (x.s.artist ? ' · ' + esc(x.s.artist) : '') +
+        '<br><span class="meta">' + esc(x.why) + ' · <a href="https://youtu.be/' + esc(x.v.yt) + '" target="_blank" rel="noopener">youtu.be/' + esc(x.v.yt) + '</a> · ' + (other ? 'it has another upload' : 'its only upload') + '</span></span>' +
+        '<button class="btn small ghost" data-act="upoff" data-arg="' + x.v.id + '">Turn off</button></div>'; }).join('') + '</div></div>';
+}
+
+/* ---------- stats (v39): anonymous counts from the party player ----------
+   The player sends events to tally() (db/schema.sql): visit (once a day per phone, with its time zone), new (a phone's first visit,
+   with ?ref= from a QR code or shared link), start and party (the first and fifth drop of a night, by playlist), drops (by playlist),
+   song (by week), share, ytlist, hide and install. Days are UTC. Only editors can read them. */
+let stats = null, statsDays = 30, statsBusy = false;
+async function loadStats() {
+  if (statsBusy) return; statsBusy = true;
+  const since = isoDay(Date.now() - 64 * 864e5); // two windows of 30 days, for the change
+  const r = await allRows(() => sb.from('stats').select('day,ev,k,n').gte('day', since).order('day'));
+  statsBusy = false;
+  if (r.error) { stats = []; fail('Couldn’t load the stats', r.error); } else stats = r.data;
+  if (route.view === 'stats' && editor) $('#view').innerHTML = statsHTML();
+}
+const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+const dayLabel = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const REFS = { '': 'Typed or tapped the address', qr: 'Scanned the QR code', share: 'A shared link' };
+const SHARES = { qr: 'Opened the QR code', native: 'Shared from the phone', copy: 'Copied the link', yt: 'Shared a YouTube playlist' };
+function statsHTML() {
+  if (!stats) { loadStats(); return '<div class="pagehead"><h1>Stats</h1></div><p class="muted">Loading…</p>'; }
+  const D = statsDays, now = Date.now(), from = isoDay(now - (D - 1) * 864e5), prevFrom = isoDay(now - (2 * D - 1) * 864e5);
+  const cur = stats.filter(r => r.day >= from), prev = stats.filter(r => r.day >= prevFrom && r.day < from); // ISO days compare as text
+  const sum = (rows, ev, k) => rows.reduce((a, r) => a + (r.ev === ev && (k == null || (typeof k === 'function' ? k(r.k) : r.k === k)) ? Number(r.n) : 0), 0);
+  const kpi = (label, ev, k, note) => { const a = sum(cur, ev, k), b = sum(prev, ev, k), ch = b ? Math.round((a - b) / b * 100) : null;
+    return '<div class="kpi"><span class="small muted">' + label + '</span><b>' + a.toLocaleString('en') + '</b><span class="small ' + (ch == null ? 'muted' : ch >= 0 ? 'okc' : 'warnc') + '">' +
+      (ch == null ? (a ? 'new this time' : '–') : (ch >= 0 ? '+' : '') + ch + '% on the ' + D + ' days before') + '</span>' + (note ? '<span class="small muted">' + note + '</span>' : '') + '</div>'; };
+  const days = []; for (let i = D - 1; i >= 0; i--) days.push(isoDay(now - i * 864e5));
+  const per = days.map(d => { const rs = cur.filter(r => r.day === d); return { d, phones: sum(rs, 'visit'), parties: sum(rs, 'party'), drops: sum(rs, 'drops') }; });
+  const top = Math.max(1, ...per.map(x => x.phones));
+  const bars = '<div class="bars" role="img" aria-label="Phones and parties a day, the last ' + D + ' days">' + per.map(x =>
+    '<span class="bar" title="' + esc(dayLabel(x.d) + ': ' + plural(x.phones, 'phone') + ', ' + plural(x.parties, 'party').replace('partys', 'parties') + ', ' + plural(x.drops, 'drop')) + '" style="height:' +
+    Math.max(2, Math.round(x.phones / top * 100)) + '%">' + (x.parties ? '<i style="height:' + Math.min(100, Math.round(x.parties / Math.max(1, x.phones) * 100)) + '%"></i>' : '') + '</span>').join('') + '</div>' +
+    '<div class="row small muted"><span>' + esc(dayLabel(days[0])) + '</span><span class="grow"></span><span>' + esc(dayLabel(days[days.length - 1])) + '</span></div>';
+  const byKey = (ev, rows) => { const m = new Map(); (rows || cur).forEach(r => { if (r.ev === ev) m.set(r.k, (m.get(r.k) || 0) + Number(r.n)); }); return [...m].sort((a, b) => b[1] - a[1]); };
+  const list = (title, pairs, label, n) => '<div class="card"><h2>' + title + '</h2>' + (pairs.length ? '<ol class="toplist">' + pairs.slice(0, n || 10).map(([k, v]) =>
+    '<li><span class="grow">' + label(k) + '</span><b>' + Number(v).toLocaleString('en') + '</b></li>').join('') + '</ol>' : '<p class="muted small">Nothing yet.</p>') + '</div>';
+  const plName = id => ({ all: 'All songs', yt: 'From YouTube links', seed: 'Built-in songs (no database)' })[id] || esc((playlists.find(p => p.id === id) || {}).name || id);
+  const songName = id => { const x = songs.find(y => y.id === id); return x ? '<a href="#song:' + encodeURIComponent(id) + '">' + esc(x.title) + '</a> <span class="muted">' + esc(x.artist || '') + '</span>' : esc(id); };
+  const feats = [['Hide turned on', sum(cur, 'hide')], ['YouTube playlists pasted', sum(cur, 'ytlist', 'paste')], ['YouTube playlists opened from a link', sum(cur, 'ytlist', 'link')], ['Added to a home screen', sum(cur, 'install')]].filter(x => x[1]);
+  return '<div class="pagehead"><h1>Stats</h1><div class="segs" role="group" aria-label="Days">' + [7, 30].map(n => '<button class="seg" data-act="statdays" data-arg="' + n + '" aria-pressed="' + (D === n) + '">' + n + ' days</button>').join('') +
+    '<button class="seg" data-act="statsreload">Refresh</button></div></div>' +
+    '<p class="muted small statnote">Anonymous counts from the party player since v39 (15 Nov 2026): no accounts, no IDs, nothing typed. A phone counts once a day; a party is a night that reached 5 drops. Days are UTC.</p>' +
+    '<div class="kpis">' + kpi('Phones', 'visit', null, 'each counts once a day') + kpi('New phones', 'new') + kpi('Nights started', 'start') + kpi('Parties', 'party', null, '5+ drops in a night') +
+      kpi('Drops', 'drops') + kpi('Shares', 'share', k => k !== 'qr') + '</div>' +
+    '<div class="card"><h2>Every day</h2>' + bars + '<p class="small muted">Each bar: phones that opened Jhapat that day. Inside it, in red: parties.</p></div>' +
+    '<div class="statgrid">' + list('Parties by playlist', byKey('party'), plName) + list('Songs played, last 4 weeks', byKey('song', stats.filter(r => r.ev === 'song' && r.day >= isoDay(now - 28 * 864e5))), songName, 15) +
+      list('Time zones', byKey('visit'), k => esc(k || 'Unknown')) + list('How new phones arrived', byKey('new'), k => k in REFS ? REFS[k] : esc(k)) +
+      list('Sharing', byKey('share'), k => SHARES[k] || esc(k)) + list('Other features', feats, k => esc(k)) + '</div>';
 }
 function repRowHTML(r) {
   const s = songs.find(x => x.id === r.song_id), t = Number(r.t);

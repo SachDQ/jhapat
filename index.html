@@ -320,6 +320,45 @@ textarea{margin:10px 0 8px;resize:vertical}
 }
 @media (prefers-reduced-motion: reduce){.floor i::before,.dhaka::before,.brand .mark,.brand .word{animation:none}#stamp,.drift{display:none}
   .btn:hover,.chip:hover,.listbtn:hover,.btn:active,.chip:active,.listbtn:active{transform:none}}
+
+/* v35: an icon and a word on every button, Hide mode, item tiles, poppable emoji */
+.i{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4em}
+.sethead .h{display:inline-flex;align-items:center;gap:.4em}
+.nowtop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.nowtop .kicker{margin-bottom:0}
+.pills{display:flex;gap:6px;flex:none}
+.pill{appearance:none;border:1px solid var(--line-2);background:var(--raise);color:var(--ink);border-radius:999px;height:34px;min-width:38px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  font:700 13px/1 var(--body);cursor:pointer;transition:transform .15s ease,background-color .2s,border-color .2s}
+.pill.hide[aria-pressed="true"]{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
+.pill:active{transform:scale(.92)}
+.now .title.hid{color:var(--muted)}
+.cover{position:absolute;inset:0;z-index:5;display:none;place-items:center;align-content:center;gap:12px;pointer-events:none;background:radial-gradient(120% 90% at 50% 100%,#3A1E5E,#0F0B1E 70%)}
+body.blind .cover{display:grid}
+body.blind #tapHint{z-index:8}
+.cover img{height:clamp(56px,26%,150px);width:auto;animation:thump .55s ease-in-out infinite alternate}
+@keyframes thump{to{transform:translateY(-5px) scale(1.06)}}
+.cover .eq{display:flex;gap:6px;align-items:flex-end;height:40px}
+.cover .eq i{display:block;width:8px;height:100%;border-radius:4px;background:linear-gradient(var(--gold),var(--saffron));transform-origin:50% 100%;animation:eq .8s ease-in-out infinite alternate}
+.cover .eq i:nth-child(2){animation-duration:.6s;animation-delay:-.2s}.cover .eq i:nth-child(3){animation-duration:1s;animation-delay:-.5s}
+.cover .eq i:nth-child(4){animation-duration:.7s;animation-delay:-.3s}.cover .eq i:nth-child(5){animation-duration:.9s;animation-delay:-.6s}.cover .eq i:nth-child(6){animation-duration:.65s;animation-delay:-.1s}
+@keyframes eq{from{transform:scaleY(.18)}to{transform:scaleY(1)}}
+.cover .lbl{font:700 14px/1 var(--body);color:var(--muted);letter-spacing:.04em}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.chips .chip{display:grid;grid-template-columns:36px minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:9px;row-gap:1px;width:100%;min-height:56px;padding:8px 10px 8px 8px;border-radius:16px;text-align:left}
+.chips .chip .em{grid-column:1;grid-row:1/3;width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:var(--raise);font-size:21px}
+.chips .chip .nm{grid-column:2;grid-row:1;align-self:end;font:700 15px/1.15 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips .chip .d{grid-column:2;grid-row:2;align-self:start;font-size:13px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips .chip .n{grid-column:3;grid-row:1/3}
+.chips .chip[aria-pressed="true"] .em{background:rgba(26,18,6,.16)}
+.chips .chip.more{grid-column:1/-1;display:flex;justify-content:center;align-items:center;min-height:44px;padding:8px 12px}
+@media (hover:hover){.chips .chip:hover{transform:translateY(-2px)}}
+.drift{z-index:4;pointer-events:auto;cursor:pointer;font-size:34px;padding:8px;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.drift b{display:block;font-weight:400}
+.drift.popped{pointer-events:none}
+.drift.popped b{animation:popb .28s ease-out forwards}
+@keyframes popb{to{transform:scale(1.9);opacity:0}}
+@media (prefers-reduced-motion: reduce){.cover img,.cover .eq i{animation:none}.pill:active,.chips .chip:hover{transform:none}}
 </style>
 </head>
 <body>
@@ -327,7 +366,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 <div class="lights" aria-hidden="true"></div>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><img class="mark" src="img/jhapat-mark.webp" width="100" height="64" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span></div>
+    <div class="brand"><img class="mark" src="img/jhapat-mark.webp" width="88" height="64" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span></div>
     <nav class="tabs" aria-label="Sections">
       <button data-act="tab" data-arg="play" aria-selected="true">Play</button>
       <button data-act="tab" data-arg="songs" aria-selected="false">Songs</button>
@@ -343,6 +382,7 @@ textarea{margin:10px 0 8px;resize:vertical}
       <div class="idle" id="idle">Loading the video…</div>
       <div class="ytbox front" id="boxA"><div id="ytA"></div></div>
       <div class="ytbox" id="boxB"><div id="ytB"></div></div>
+      <div class="cover" aria-hidden="true"><img src="img/jhapat-mark.webp" alt="" width="88" height="64" decoding="async"><span class="eq"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="lbl">🙈 Hidden</span></div>
       <div id="pounce" aria-hidden="true"><svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice"><path d="M30 74 Q78 46 128 12 Q84 50 30 74Z"/><path d="M44 84 Q94 56 142 22 Q98 60 44 84Z"/><path d="M58 92 Q108 66 154 34 Q112 70 58 92Z"/></svg></div>
       <b id="stamp" aria-hidden="true">झपट!</b>
       <div id="tapHint" hidden></div>
@@ -359,7 +399,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 34; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 35; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -371,7 +411,7 @@ const TG = pairs => pairs.map(([item, t]) => ({ item, t, src: 'auto' }));
 function seed() {
   return {
     v: 1, seedV: SEED_V,
-    settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false },
+    settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false, blind: false, sound: true },
     played: [], lastSong: null,
     items: [
       { id: 'paani',  name: 'Paani',  dev: 'पानी', words: 'paani, pani, panima', on: true },
@@ -421,7 +461,7 @@ function seed() {
 /* Older saves get new seed songs, and seed songs the person hasn't tapped, nudged or synced get the latest videos and timings. */
 function upgrade(d) {
   // settings added later get their defaults on every load, so a phone that saved before them still works
-  const st = d.settings = Object.assign({ minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false }, d.settings || {});
+  const st = d.settings = Object.assign({ minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false, blind: false, sound: true }, d.settings || {});
   if (typeof st.balance !== 'number' || !(st.balance >= 0 && st.balance <= 10)) st.balance = 5;
   if ((d.seedV || 1) >= SEED_V) return d;
   const fresh = seed();
@@ -473,7 +513,19 @@ let revealed = false, syncing = null, lastTap = null;
 let picking = false;         // the playlist list is open
 let nextTimer = null, toastTimer = null, watch = null, skipRun = 0;
 const WEB_LINK = 'https://sachdq.github.io/jhapat/';
-const onSite = /(^|\.)(github\.io|pages\.dev)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+const onSite = /(^|\.)(github\.io|pages\.dev|jhapat\.live)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
+
+/* Icons: one small drawing and one word on each button, so they read for anyone. */
+const svgI = (d, fill) => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"' + (fill ? ' style="fill:currentColor;stroke:none"' : '') + '>' + d + '</svg>';
+const ICON = {
+  play: svgI('<path d="M7 4.5v15l12.5-7.5z"/>', 1), pause: svgI('<path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/>', 1), next: svgI('<path d="M4.5 5v14l10-7zM16 5h3v14h-3z"/>', 1),
+  replay: svgI('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'),
+  eye: svgI('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  flag: svgI('<path d="M5 21V4h12l-2.5 4.5L17 13H5"/>'), list: svgI('<path d="M4 6h16M4 12h16M4 18h10"/>'),
+  keep: svgI('<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'), share: svgI('<path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/>'),
+  plus: svgI('<path d="M12 5v14M5 12h14"/>'), trash: svgI('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
+  sliders: svgI('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>')
+};
 
 /* A full cover over the video when YouTube can't run on this page at all. */
 function showBlocked(kind) {
@@ -631,12 +683,12 @@ function onErr(e) {
       song.vi = (song.vi || 0) + 1;
       atVideo(song);
       save();
-      toast('That upload won’t play outside YouTube, so it switched to another upload of ' + song.title + '.');
+      toast('That upload won’t play outside YouTube, so it switched to another upload of ' + (hideName() ? 'this song' : song.title) + '.');
       if (mode === 'game') { const p = pickFromSong(song, current && current.tag.item); if (p) { current = p; playSong(song, p.start, 'game'); } else nextRound(); }
       else playSong(song, 0, 'tag');
     } else {
       song.broken = true; save();
-      toast(song.title + ' won’t play outside YouTube. Open it in Songs and paste a different upload.');
+      toast((hideName() ? 'This song' : song.title) + ' won’t play outside YouTube. Open it in Songs and paste a different upload.');
       if (mode === 'game') nextRound();
     }
     render(); return;
@@ -788,7 +840,7 @@ function nextRound() {
   if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
   render();
   pounce(); replay(document.querySelector('[data-act="next"]'), 'flare'); replay(document.querySelector('.streak'), 'bump');
-  if (CHEERS[night]) setTimeout(() => { burst(['🔥', '🎉', '✨', '🐯'], document.querySelector('.streak'), 22, 1.3); toast(CHEERS[night]); }, 700);
+  if (CHEERS[night]) setTimeout(() => { burst(['🔥', '🎉', '✨', '🐯'], document.querySelector('.streak'), 22, 1.3); toast(CHEERS[night]); sfx('cheer'); }, 700);
 }
 
 /* ---------- getting the next drop ready behind the current one ---------- */
@@ -857,20 +909,22 @@ function syncTap() {
 
 /* ---------- rendering ---------- */
 function nowHTML() {
-  if (!current) return '<div class="kicker">Ready</div><div class="title">Put the items out, then Start</div>' +
+  if (!current) return '<div class="nowtop"><div class="kicker">Ready</div>' + pillsHTML() + '</div><div class="title">Put the items out, then Start</div>' +
     '<div class="meta">It drops in ' + S.settings.minLead + '–' + S.settings.maxLead + ' seconds before one of their words.</div>';
   const s = byId(current.songId);
-  if (!s) return '<div class="kicker">Ready</div><div class="title">Press Next song</div>';
+  if (!s) return '<div class="nowtop"><div class="kicker">Ready</div>' + pillsHTML() + '</div><div class="title">Press Next</div>';
   const at = current.tag.t + (s.offset || 0);
   const spin = reel && reel.id === s.id ? Date.now() - reel.t0 : Infinity, spinning = spin < REEL_MS && !reduced();
-  return '<div class="stripes" aria-hidden="true"></div><div class="kicker">Now playing</div><div class="titlebox"><div class="title' + (spinning ? ' spinning' : spin < REEL_MS + 450 && !reduced() ? ' popin' : '') + '">' + esc(s.title) + '</div>' +
-    (spinning ? '<div class="reel" aria-hidden="true"><div class="reelin" style="animation-delay:-' + Math.round(spin) + 'ms">' + reel.titles.map(t => '<div>' + esc(t) + '</div>').join('') + '</div></div>' : '') + '</div>' +
-    '<div class="meta">' + esc(s.artist || '') + ' · dropped in at ' + fmt(current.start) + (pre && pre.ready && preGood(pre) ? ' · next song ready' : '') + '</div>' +
-    (nextTimer ? '<div class="row"><span>Next song in a moment…</span><button class="btn small" data-act="stay">Stay here</button></div>' : '') +
+  const hide = hideName(); // Hide mode: no title, no reel, no artist until Show
+  return '<div class="stripes" aria-hidden="true"></div><div class="nowtop"><div class="kicker">Now playing</div>' + pillsHTML() + '</div>' +
+    (hide ? '<div class="titlebox"><div class="title hid">🙈 Hidden song</div></div>' : '<div class="titlebox"><div class="title' + (spinning ? ' spinning' : spin < REEL_MS + 450 && !reduced() ? ' popin' : '') + '">' + esc(s.title) + '</div>' +
+    (spinning ? '<div class="reel" aria-hidden="true"><div class="reelin" style="animation-delay:-' + Math.round(spin) + 'ms">' + reel.titles.map(t => '<div>' + esc(t) + '</div>').join('') + '</div></div>' : '') + '</div>') +
+    '<div class="meta">' + (hide ? 'Dropped in at ' : esc(s.artist || '') + ' · dropped in at ') + fmt(current.start) + (pre && pre.ready && preGood(pre) ? ' · next song ready' : '') + '</div>' +
+    (nextTimer ? '<div class="row"><span>Next song in a moment…</span><button class="btn small" data-act="stay">Stay</button></div>' : '') +
     '<div class="row">' + (revealed
       ? '<span class="reveal">Word: <b' + (Date.now() - revealAt < 500 && !reduced() ? ' class="pop"' : '') + '>' + (emo(current.tag.item) ? esc(emo(current.tag.item)) + ' ' : '') + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
-      : '<button class="btn small" data-act="reveal">Show the word</button>') +
-    '<button class="btn small" data-act="replay">Replay the drop</button></div>';
+      : '<button class="btn small" data-act="reveal">' + ICON.eye + 'Show</button>') +
+    '<button class="btn small" data-act="replay">' + ICON.replay + 'Replay</button></div>';
 }
 /* ---------- the fun: everything here is quick, decorative, and off for anyone who turns motion down ---------- */
 const reduced = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
@@ -899,7 +953,7 @@ function burst(chars, from, n, t) { // emoji flying out from an element (or the 
 }
 function replay(el, cls) { if (!el || reduced()) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function pounce() { // the jhapat moment: a paw swipes the video, the screen jolts and the logo leaps
-  replay($('#pounce'), 'go'); replay($('#stamp'), 'go'); replay(document.querySelector('.screen'), 'shake'); replay(document.querySelector('.brand .mark'), 'leap');
+  sfx('drop'); replay($('#pounce'), 'go'); replay($('#stamp'), 'go'); replay(document.querySelector('.screen'), 'shake'); replay(document.querySelector('.brand .mark'), 'leap');
   buzz([14, 40, 22]);
 }
 /* Now and then an item that's on the table floats up behind the page. */
@@ -908,11 +962,65 @@ setInterval(() => {
   const ems = [...document.querySelectorAll('.chip[aria-pressed="true"] .em')].map(e => e.textContent).filter(Boolean);
   if (!ems.length) return;
   const sp = document.createElement('span'); sp.className = 'drift'; sp.setAttribute('aria-hidden', 'true');
-  sp.textContent = ems[Math.floor(Math.random() * ems.length)];
+  const em = document.createElement('b'); em.textContent = ems[Math.floor(Math.random() * ems.length)]; sp.appendChild(em); // the inner one pops
   sp.style.left = Math.round(3 + Math.random() * 90) + 'vw';
   sp.style.setProperty('--dx', Math.round(Math.random() * 140 - 70) + 'px'); sp.style.setProperty('--r', Math.round(Math.random() * 70 - 35) + 'deg');
   document.body.appendChild(sp); setTimeout(() => sp.remove(), 9000);
 }, 2600);
+/* Pop a drifting emoji: it bursts into a few more of itself with a pop. */
+document.addEventListener('pointerdown', e => {
+  unlockAudio();
+  const d = e.target && e.target.closest ? e.target.closest('.drift') : null;
+  if (!d || d.classList.contains('popped')) return;
+  d.classList.add('popped'); burst([d.textContent], d, 8, .7); sfx('pop'); buzz(12);
+  setTimeout(() => d.remove(), 300);
+});
+/* Hide mode: whoever holds the phone plays too. The video is covered and the title, reel and artist stay hidden until Show. */
+function applyBlind() { document.body.classList.toggle('blind', !!S.settings.blind); }
+const hideName = () => !!S.settings.blind && !revealed;
+function pillsHTML() { // Hide and sound, at the top of the Now card
+  return '<span class="pills"><button class="pill hide" data-act="blind" aria-pressed="' + !!S.settings.blind + '" title="Hide the song and video so you can play too">🙈 Hide</button>' +
+    '<button class="pill" data-act="sound" aria-pressed="' + sfxOn() + '" aria-label="Sound effects" title="Sound effects">' + (sfxOn() ? '🔊' : '🔇') + '</button></span>';
+}
+/* Sounds, made in the browser (no files): a madal on every drop with slot-machine ticks while the reel spins, a ding when an item
+   goes on, a sparkle for Show, a pop for every emoji, a madal roll for the cheers. 🔊 in the Now card turns them off. */
+const sfxOn = () => S.settings.sound !== false;
+let sfxCtx = null, sfxNoiseBuf = null;
+function sfxAudio() {
+  if (sfxCtx) return sfxCtx;
+  const A = window.AudioContext || window.webkitAudioContext; if (!A) return null;
+  try { sfxCtx = new A(); } catch (e) { sfxCtx = null; }
+  return sfxCtx;
+}
+function unlockAudio() { if (!sfxOn()) return; const c = sfxAudio(); if (c && c.state === 'suspended' && c.resume) c.resume(); }
+function sfxTone(c, f, t, dur, o) { // one note: a pitch (gliding to o.to), a quick attack and a fall
+  o = o || {}; const osc = c.createOscillator(), g = c.createGain();
+  osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(f, t);
+  if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur * .8);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || .3, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  osc.connect(g); g.connect(c.destination); osc.start(t); osc.stop(t + dur + .02);
+}
+function sfxNoise(c, t, vol, hp) { // a short burst of hiss: a hand slapping a drum head, or a reel tick
+  if (!sfxNoiseBuf) { const n = Math.round(c.sampleRate * .05); sfxNoiseBuf = c.createBuffer(1, n, c.sampleRate); const d = sfxNoiseBuf.getChannelData(0); for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / n); }
+  const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  src.buffer = sfxNoiseBuf; f.type = 'highpass'; f.frequency.value = hp || 2000; g.gain.value = vol || .2;
+  src.connect(f); f.connect(g); g.connect(c.destination); src.start(t);
+}
+const madalDhin = (c, t) => { sfxTone(c, 150, t, .45, { to: 70, vol: .6 }); sfxTone(c, 300, t, .12, { to: 150, vol: .15, type: 'triangle' }); }; // the madal's big head
+const madalTa = (c, t) => { sfxTone(c, 420, t, .14, { to: 300, vol: .3, type: 'triangle' }); sfxNoise(c, t, .12, 2500); };                      // its small head
+const SFX = {
+  drop(c, t) { // dhin with the claw swipe, ticks slowing through the reel, ta-dhin as it lands
+    const land = t + REEL_MS / 1000; madalDhin(c, t);
+    for (let at = t + .06, gap = .045; at < land - .06; at += gap, gap *= 1.17) sfxNoise(c, at, .1, 4000);
+    madalTa(c, land); madalDhin(c, land + .12);
+  },
+  on(c, t) { sfxTone(c, 880, t, .14, { vol: .2 }); sfxTone(c, 1320, t + .06, .18, { vol: .16 }); },
+  off(c, t) { sfxTone(c, 260, t, .12, { to: 160, vol: .25, type: 'triangle' }); },
+  show(c, t) { [660, 880, 1100, 1320].forEach((f, k) => sfxTone(c, f, t + k * .06, .2, { vol: .14 })); },
+  pop(c, t) { sfxTone(c, 500, t, .09, { to: 1400, vol: .3 }); sfxNoise(c, t, .08, 3000); },
+  cheer(c, t) { [0, .12, .2, .32, .4, .48, .56].forEach((d, k) => (k % 3 ? madalTa : madalDhin)(c, t + d)); SFX.show(c, t + .64); },
+};
+function sfx(name) { if (!sfxOn()) return; const c = sfxAudio(); if (!c) return; try { if (c.state === 'suspended' && c.resume) c.resume(); SFX[name](c, c.currentTime + .02); } catch (e) {} }
 /* Drops tonight: a counter that grows through the party, with a cheer at milestones. It starts again after 4 quiet hours. */
 const CHEERS = { 5: '5 drops in. Hands ready! 🐯', 10: '10 drops! The room is warming up 🔥', 25: '25 drops! This party has claws 🐯', 50: '50 drops! Legendary night ✨', 100: '100 drops! Someone call the neighbours 🎉' };
 const nightCount = () => (S.night && Date.now() - S.night.at < 4 * 3600e3 ? S.night.n : 0);
@@ -930,7 +1038,7 @@ const dropSig = d => d ? d.songId + '|' + d.tag.item + '|' + d.tag.t : '';
 function reportHTML() {
   if (!current || !byId(current.songId)) return '';
   if ((S.reported || []).includes(dropSig(current))) return '<div class="report"><span class="badge ok">Sent to the studio. Thanks!</span></div>';
-  if (!reporting) return '<div class="report"><button class="btn ghost small" data-act="reportopen" aria-expanded="false">Something off?</button></div>';
+  if (!reporting) return '<div class="report"><button class="btn ghost small" data-act="reportopen" aria-expanded="false">' + ICON.flag + 'Report</button></div>';
   return '<div class="report open" role="group" aria-label="What was off?"><div class="kicker">What was off?</div><div class="row">' +
     REPORT_KINDS.map(([k, label]) => '<button class="btn small" data-act="report" data-arg="' + k + '"' + (reporting === k ? ' aria-pressed="true"' : '') + '>' + label + '</button>').join('') + '</div>' +
     (reporting === 'other' ? '<form id="reportForm" class="row"><input type="text" id="reportNote" maxlength="300" placeholder="What happened?" aria-label="What happened?"><button class="btn small primary" type="submit">Send</button></form>' : '') +
@@ -969,7 +1077,7 @@ function renderPicker() {
   const active = S.playlist && S.playlist.id;
   return '<section class="card"><h2>Pick a playlist</h2><ul class="lists">' + lists().map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>' +
     (CAT ? mineHTML(active) : '') +
-    (S.chosen ? '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="keeppl">Keep ' + esc((S.playlist || {}).name || 'this playlist') + '</button></div>' : '') +
+    (S.chosen ? '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="keeppl" title="Keep ' + esc((S.playlist || {}).name || 'this playlist') + ' on this phone">' + ICON.keep + 'Keep</button></div>' : '') +
     '</section>';
 }
 /* Playlists made from YouTube links: each one's card, what matched, and the videos not in Jhapat yet, which can be asked for. */
@@ -981,10 +1089,10 @@ function mineHTML(active) {
   const rows = (S.mine || []).map(m => {
     const c = cardOf(m.id, m.name, 'From YouTube', songsIn(m)), open = m.missing.filter(x => !asked.has(x.yt)).length, a = ' data-arg="' + esc(m.id) + '"';
     return '<li class="mine">' + cardHTML(c, active) + '<p class="minesum">' + esc(mineSummary(m)) + '</p><div class="row minebtns">' +
-      (m.missing.length ? (open ? '<button class="btn small primary" data-act="ytask"' + a + '>Ask for ' + (open < m.missing.length ? open + ' more' : open === 1 ? 'it' : 'these ' + open) + '</button>'
+      (m.missing.length ? (open ? '<button class="btn small primary" data-act="ytask"' + a + '>' + ICON.plus + 'Ask' + (open > 1 ? ' ' + open : '') + '</button>'
         : '<span class="badge ok">Asked for ' + m.missing.length + '</span>') : '') +
-      '<button class="btn small" data-act="ytshare"' + a + '>Share</button><button class="btn small" data-act="ytread"' + a + (ytBusy ? ' disabled' : '') + '>Read again</button>' +
-      '<button class="btn small ghost" data-act="ytdel"' + a + '>Remove</button></div>' +
+      '<button class="btn small" data-act="ytshare"' + a + '>' + ICON.share + 'Share</button><button class="btn small" data-act="ytread"' + a + (ytBusy ? ' disabled' : '') + '>' + ICON.replay + 'Refresh</button>' +
+      '<button class="btn small ghost" data-act="ytdel"' + a + '>' + ICON.trash + 'Remove</button></div>' +
       (m.missing.length ? '<details class="miss"><summary>Not in Jhapat yet (' + m.missing.length + ')</summary><ul>' + m.missing.map(x =>
         '<li><img src="https://i.ytimg.com/vi/' + esc(x.yt) + '/default.jpg" alt="" loading="lazy"><span><b>' + esc(x.title) + '</b><br>' + esc(x.channel || '') + '</span></li>').join('') + '</ul></details>' : '') + '</li>';
   }).join('');
@@ -1012,21 +1120,21 @@ function renderPlay() {
   const hidden = shown.length - vis.length;
   const chip = it => { const n = songsWith(it.id), p = stats.get(it.id).pts;
     return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="' + n + ' song' + (n === 1 ? '' : 's') + ', ' + p + ' drop point' + (p === 1 ? '' : 's') + '">' + emoHTML(it.id) +
-      '<span>' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
+      '<span class="nm">' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
   return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
-    '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? 'Next song' : 'Start') + '</button>' +
-    (current ? '<button class="btn big" data-act="pause" data-pausebtn>Pause</button>' : '') + '</div>' + reportHTML() +
+    '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? ICON.next + 'Next' : ICON.play + 'Start') + '</button>' +
+    (current ? '<button class="btn big" data-act="pause" data-pausebtn data-l="Pause">' + ICON.pause + 'Pause</button>' : '') + '</div>' + reportHTML() +
     '<section class="card" id="table">' +
     (fromDb && S.playlist ? '<div class="plbar"><span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span></span>' +
       '<span class="plr">' + (nightCount() ? '<span class="streak" title="Drops tonight">🔥 ' + nightCount() + '</span>' : '') +
-      (CAT ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</span></div>' : '') +
+      (CAT ? '<button class="btn small" data-act="lists">' + ICON.list + 'Change</button>' : '') + '</span></div>' : '') +
     '<h2>On the table</h2><p class="hint">Tap what you’ve put out.</p>' +
     '<div class="chips">' + vis.map(chip).join('') +
     (moreItems && long ? '<button class="chip more" data-act="moreitems" aria-expanded="true">Fewer</button>'
       : hidden ? '<button class="chip more" data-act="moreitems" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div>' +
     '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> not played yet</span>'
       : '<span>' + (fromDb ? 'No song here has those words. Turn on more items.' : 'No tagged song matches these items yet. Tag one in Songs.') + '</span>') +
-    (S.played.length ? '<button class="btn ghost small" data-act="reset">Reset</button>' : '') + '</p></section>' +
+    (S.played.length ? '<button class="btn ghost small" data-act="reset">' + ICON.replay + 'Reset</button>' : '') + '</p></section>' +
     settingsHTML();
 }
 function settingsHTML() {
@@ -1034,7 +1142,7 @@ function settingsHTML() {
   const step = (arg, label) => '<button class="mini" data-act="lead" data-arg="' + arg + '" aria-label="' + label + '">' + (arg.endsWith('-') ? '−' : '+') + '</button>';
   const odds = settingsOpen ? nextOdds(eligible(), current && current.songId).sort((a, b) => b.p - a.p) : [];
   const pct = o => { const n = o.p * 100; return n > 0 && n < 1 ? '<1' : String(Math.round(n)); };
-  return '<section class="card set"><button class="sethead" data-act="settings" aria-expanded="' + settingsOpen + '"><span class="h">Settings</span>' +
+  return '<section class="card set"><button class="sethead" data-act="settings" aria-expanded="' + settingsOpen + '"><span class="h">' + ICON.sliders + 'Settings</span>' +
     '<span class="sum">Drops in ' + st.minLead + '–' + st.maxLead + ' s before the word · Balance ' + st.balance + '</span><span class="chev" aria-hidden="true"></span></button>' +
     '<div class="setbody"' + (settingsOpen ? '' : ' hidden') + '>' +
     '<div class="leadrow"><div class="stepper">' + step('min-', 'Shorter minimum') + '<output>' + st.minLead + '</output>' + step('min+', 'Longer minimum') + '</div><span>to</span>' +
@@ -1148,7 +1256,7 @@ function renderNow() { const n = document.querySelector('.now'); if (n && tab ==
 function tick() {
   const c = document.getElementById('clock'); if (c) c.textContent = fmt(now());
   const st = state();
-  document.querySelectorAll('[data-pausebtn]').forEach(b => { b.textContent = st === 2 ? 'Resume' : 'Pause'; });
+  document.querySelectorAll('[data-pausebtn]').forEach(b => { const l = st === 2 ? 'Play' : 'Pause'; if (b.dataset.l !== l) { b.dataset.l = l; b.innerHTML = (st === 2 ? ICON.play : ICON.pause) + l; } }); // only when it changes
   const nw = document.querySelector('.now'); if (nw) nw.classList.toggle('live', liveNow());
 }
 setInterval(tick, 200);
@@ -1170,19 +1278,22 @@ function parseYT(input) {
 function backupText() { return JSON.stringify(S); }
 
 document.addEventListener('click', async e => {
+  unlockAudio(); // iPhones only let a page make sound after a tap
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const act = b.dataset.act, arg = b.dataset.arg, song = byId(songId);
   switch (act) {
     case 'tab': tab = arg; songId = null; syncing = null; render(); break;
     case 'next': nextRound(); break;
+    case 'blind': S.settings.blind = !S.settings.blind; save(); applyBlind(); renderNow(); break;
+    case 'sound': S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('on'); renderNow(); break;
     case 'moreitems': moreItems = !moreItems; render(); break;
     case 'settings': settingsOpen = !settingsOpen; render(); break;
     case 'update': location.href = location.pathname + '?v=' + (b.dataset.v || Date.now()) + location.hash; break;
     case 'pause': case 'ttoggle': togglePause(); setTimeout(tick, 120); break;
-    case 'reveal': revealed = true; revealAt = Date.now(); renderNow(); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } break;
+    case 'reveal': revealed = true; revealAt = Date.now(); renderNow(); sfx('show'); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } break;
     case 'replay': replayDrop(); break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
-    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
+    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
       const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6); } break; }
     case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
@@ -1501,7 +1612,7 @@ async function askFor(m) {
   toast('Asked for ' + vids.length + ' song' + (vids.length === 1 ? '' : 's') + '. Once they’re in Jhapat they join this playlist by themselves.');
 }
 async function shareMine(m) {
-  const url = WEB_LINK + '#yt=' + m.list;
+  const url = (onSite ? location.origin + location.pathname.replace(/index\.html$/, '') : WEB_LINK) + '#yt=' + m.list; // whatever domain this page is on
   try { if (navigator.share) { await navigator.share({ title: m.name + ' · Jhapat', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); toast('Link copied. It opens this playlist in Jhapat on any phone, read fresh from YouTube.'); }
   catch (e) { toast('Copy this link: ' + url); }
@@ -1517,7 +1628,7 @@ async function openShared() {
 window.addEventListener('hashchange', () => { const l = (location.hash.match(/^#yt=([\w-]{10,64})$/) || [])[1]; if (l && CAT) { sharedYt = l; openShared(); } });
 
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
-applySmall();
+applySmall(); applyBlind();
 if (CAT) { buildCat(); useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id), true); } // from the phone, before the database answers
 $('#ver').textContent = 'v' + VERSION;
 render();

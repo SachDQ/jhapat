@@ -637,11 +637,11 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
 
   // 25. The fun: a reel of titles lands on the song, a paw swipe and a leaping logo on each drop, bursts of emoji, a drop counter
   //     with cheers at milestones, and none of it for anyone who turns motion down. The real title is always in the page.
-  async function fun(reduce, night) {
+  async function fun(reduce, night, extra) {
     const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
       win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); win.scrollTo = () => {};
       if (reduce) win.matchMedia = q => ({ matches: /reduce/.test(q), addEventListener() {} });
-      if (night) win.localStorage.setItem('jhapat.v1', JSON.stringify(Object.assign(seedState(), { night: { n: night, at: Date.now() } }))); } });
+      if (night) win.localStorage.setItem('jhapat.v1', JSON.stringify(Object.assign(seedState(), { night: { n: night, at: Date.now() } }))); if (extra) extra(win); } });
     await sleep(60);
     return dm;
   }
@@ -656,6 +656,11 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(d28.querySelector('#stamp').classList.contains('go') && d28.querySelector('#stamp').textContent === 'झपट!', 'and a झपट! stamp slams onto the video');
   ok(!!d28.querySelector('.dhaka') && !!d28.querySelector('.floor .sun') && !d28.querySelector('.garland') && !/diyo|tihar/i.test(html),
     'the look is Nepali, not religious: a Dhaka weave band and a grid floor to the Himalaya, no garland, no diyo');
+  const lab28 = a => ((d28.querySelector('[data-act="' + a + '"]') || {}).textContent || '').trim();
+  ok(lab28('next') === 'Next' && lab28('pause') === 'Pause' && lab28('reveal') === 'Show' && lab28('replay') === 'Replay' && lab28('reportopen') === 'Report' && lab28('lists') === 'Change' &&
+    ['next', 'pause', 'reveal', 'replay', 'reportopen', 'lists'].every(a => !!d28.querySelector('[data-act="' + a + '"] svg.i')), 'every button is an icon and one word: Next, Pause, Show, Replay, Report, Change');
+  ok(!!d28.querySelector('.chips .chip .em') && !!d28.querySelector('.chips .chip .nm') && !!d28.querySelector('.chips .chip .d') && !!d28.querySelector('.chips .chip .n'),
+    'items on the table are tiles: an emoji box, the name over its Devanagari, and a count');
   ok(/🔥 5/.test(d28.querySelector('.streak').textContent) && d28.querySelector('.streak').classList.contains('bump'), 'the drops-tonight counter goes up: ' + d28.querySelector('.streak').textContent);
   await sleep(950);
   ok(!d28.querySelector('.reel') && d28.querySelector('.now .title').classList.contains('popin'), 'then the title pops in where the reel stopped');
@@ -667,6 +672,12 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   await sleep(1300);
   const drift28 = [...d28.querySelectorAll('.drift')].map(x => x.textContent), on28 = [...d28.querySelectorAll('.chip[aria-pressed="true"] .em')].map(x => x.textContent);
   ok(drift28.length >= 1 && drift28.every(e => on28.includes(e)), 'an item on the table floats up behind the page: ' + drift28.join(' '));
+  const pop28 = d28.querySelector('.drift b'), popEm28 = pop28.textContent;
+  pop28.dispatchEvent(new w28.MouseEvent('pointerdown', { bubbles: true })); await sleep(10);
+  const popBurst28 = [...d28.querySelectorAll('.burst span')].map(x => x.textContent);
+  ok(!!d28.querySelector('.drift.popped') && popBurst28.length === 8 && popBurst28.every(e => e === popEm28), 'tapping a drifting emoji pops it into eight more of itself');
+  await sleep(900);
+  ok(![...d28.querySelectorAll('.drift')].some(x => x.classList.contains('popped')), 'and the popped one is gone');
   c28('[data-act="item"][data-arg="chithi"]'); await sleep(10); // off
   ok(d28.querySelector('[data-act="item"][data-arg="chithi"]').classList.contains('dim') && !d28.querySelector('.burst'), 'an item going off dips, with no sparks');
   c28('[data-act="item"][data-arg="chithi"]'); await sleep(10); // on again
@@ -676,6 +687,33 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   d29.querySelector('[data-act="reveal"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(10);
   ok(!d29.querySelector('.reel') && !d29.querySelector('.now .title.spinning') && !d29.querySelector('#pounce').classList.contains('go') && !d29.querySelector('#stamp').classList.contains('go') && !d29.querySelector('.burst') && !d29.querySelector('.reveal b.pop'),
     'with motion turned down: no reel, no swipe, no bursts; the title and the word just show');
+
+  // 26. Hide mode: whoever holds the phone can play too. The video is covered and the title, reel and artist stay hidden until Show.
+  const dom31 = await fun(false, 0), w31 = dom31.window, d31 = w31.document, c31 = sel => d31.querySelector(sel).dispatchEvent(new w31.MouseEvent('click', { bubbles: true }));
+  c31('.now [data-act="blind"]'); await sleep(10);
+  c31('[data-act="next"]'); await sleep(20);
+  const hid31 = d31.querySelector('.now .title').textContent, reel31 = !!d31.querySelector('.reel'), meta31 = d31.querySelector('.now .meta').textContent;
+  c31('[data-act="reveal"]'); await sleep(10);
+  const t31 = d31.querySelector('.now .title').textContent, s31 = B9.songs.find(x => x.title === t31);
+  ok(d31.body.classList.contains('blind') && !!d31.querySelector('.screen .cover') && d31.querySelector('.now [data-act="blind"]').getAttribute('aria-pressed') === 'true' &&
+    JSON.parse(w31.localStorage.getItem('jhapat.v1')).settings.blind === true, 'Hide covers the video and is remembered');
+  ok(hid31 === '🙈 Hidden song' && !reel31 && !!s31 && !(s31.artist && meta31.includes(s31.artist)) && d31.querySelector('.now .meta').textContent.includes(s31.artist || ''),
+    'while hidden: no title, no reel, no artist; Show brings them back: ' + t31);
+
+  // 27. Sounds: a madal and reel ticks on each drop, made in the browser; 🔊 turns them off
+  const audioStub = win => { win.__osc = 0; win.AudioContext = class { constructor() { this.currentTime = 0; this.sampleRate = 8000; this.state = 'running'; this.destination = {}; }
+    createOscillator() { win.__osc++; const f = { setValueAtTime() {}, exponentialRampToValueAtTime() {} }; return { type: '', frequency: f, connect() {}, start() {}, stop() {} }; }
+    createGain() { return { gain: { value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
+    createBuffer(ch, n) { return { getChannelData: () => new Float32Array(n) }; }
+    createBufferSource() { return { connect() {}, start() {} }; }
+    createBiquadFilter() { return { type: '', frequency: { value: 0 }, connect() {} }; } }; };
+  const dom30 = await fun(false, 0, audioStub), w30 = dom30.window, d30 = w30.document, c30 = sel => d30.querySelector(sel).dispatchEvent(new w30.MouseEvent('click', { bubbles: true }));
+  c30('[data-act="next"]'); await sleep(20);
+  const osc30 = w30.__osc;
+  c30('.now [data-act="sound"]'); await sleep(10); w30.__osc = 0;
+  c30('[data-act="item"][data-arg="chithi"]'); await sleep(10); c30('[data-act="reveal"]'); await sleep(10);
+  ok(osc30 >= 5 && w30.__osc === 0 && d30.querySelector('.now [data-act="sound"]').getAttribute('aria-pressed') === 'false' && d30.querySelector('.now [data-act="sound"]').textContent === '🔇',
+    'a drop plays the madal (' + osc30 + ' notes); with sound off, items and Show make none');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

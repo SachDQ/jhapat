@@ -255,7 +255,7 @@ textarea{resize:vertical}
 </head>
 <body>
 <header class="top wrap">
-  <a class="brand" href="./"><img class="mark" src="../img/jhapat-mark.webp" width="77" height="40" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
+  <a class="brand" href="./"><img class="mark" src="../img/jhapat-mark.webp" width="63" height="40" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
   <button class="btn small primary" id="update" data-act="update" hidden>New version · Reload</button>
   <nav class="tabs" id="nav" hidden>
     <button data-act="go" data-arg="">Songs</button>
@@ -321,7 +321,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 33; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 34; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };

@@ -653,6 +653,9 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     'Next spins a reel of ten titles that lands on the song that plays; the real title stays in the page: ' + title28.textContent);
   ok(d28.querySelector('#pounce').classList.contains('go') && d28.querySelector('.brand .mark').classList.contains('leap') && d28.querySelector('[data-act="next"]').classList.contains('flare'),
     'the drop lands with a paw swipe over the video, the logo leaps and the button flares');
+  ok(d28.querySelector('#stamp').classList.contains('go') && d28.querySelector('#stamp').textContent === 'झपट!', 'and a झपट! stamp slams onto the video');
+  ok(!!d28.querySelector('.dhaka') && !!d28.querySelector('.floor .sun') && !d28.querySelector('.garland') && !/diyo|tihar/i.test(html),
+    'the look is Nepali, not religious: a Dhaka weave band and a grid floor to the Himalaya, no garland, no diyo');
   ok(/🔥 5/.test(d28.querySelector('.streak').textContent) && d28.querySelector('.streak').classList.contains('bump'), 'the drops-tonight counter goes up: ' + d28.querySelector('.streak').textContent);
   await sleep(950);
   ok(!d28.querySelector('.reel') && d28.querySelector('.now .title').classList.contains('popin'), 'then the title pops in where the reel stopped');
@@ -662,6 +665,8 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const burst28 = [...d28.querySelectorAll('.burst span')].map(x => x.textContent);
   ok(!!d28.querySelector('.reveal b.pop') && burst28.length === 14 && new Set(burst28).size === 1, 'Show the word pops the word in with a burst of its emoji');
   await sleep(1300);
+  const drift28 = [...d28.querySelectorAll('.drift')].map(x => x.textContent), on28 = [...d28.querySelectorAll('.chip[aria-pressed="true"] .em')].map(x => x.textContent);
+  ok(drift28.length >= 1 && drift28.every(e => on28.includes(e)), 'an item on the table floats up behind the page: ' + drift28.join(' '));
   c28('[data-act="item"][data-arg="chithi"]'); await sleep(10); // off
   ok(d28.querySelector('[data-act="item"][data-arg="chithi"]').classList.contains('dim') && !d28.querySelector('.burst'), 'an item going off dips, with no sparks');
   c28('[data-act="item"][data-arg="chithi"]'); await sleep(10); // on again
@@ -669,7 +674,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const dom29 = await fun(true, 0), w29 = dom29.window, d29 = w29.document;
   d29.querySelector('[data-act="next"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(20);
   d29.querySelector('[data-act="reveal"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(10);
-  ok(!d29.querySelector('.reel') && !d29.querySelector('.now .title.spinning') && !d29.querySelector('#pounce').classList.contains('go') && !d29.querySelector('.burst') && !d29.querySelector('.reveal b.pop'),
+  ok(!d29.querySelector('.reel') && !d29.querySelector('.now .title.spinning') && !d29.querySelector('#pounce').classList.contains('go') && !d29.querySelector('#stamp').classList.contains('go') && !d29.querySelector('.burst') && !d29.querySelector('.reveal b.pop'),
     'with motion turned down: no reel, no swipe, no bursts; the title and the word just show');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

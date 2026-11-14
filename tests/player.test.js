@@ -512,6 +512,77 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     'a playlist taken out of the studio hands over to the party mix, with its own table');
   ok(st12.played.join() === 'e1', 'songs already played stay played');
 
+  // 23. A YouTube playlist: read by YouTube's player, matched by upload and then by name, asked for, shared, and rebuilt from a link
+  const IT23 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'paani', name: 'Paani', dev: 'पानी' }];
+  const mk23 = (id, title, artist, yt) => ({ id, title, artist, videos: [{ yt, offset: 0, synced: true }], tags: [['maya', 30, 1], ['paani', 70, 2]] });
+  const cat23 = { items: IT23, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['sasto', 'kaha', 'timi', 'other'] }],
+    songs: [mk23('sasto', 'Sasto Mutu', 'Sajjan Raj Vaidya', 'SASTOxxxxxx'), mk23('kaha', 'Kaha Hola Ghar', 'Karma Band', 'KAHAxxxxxxx'), mk23('timi', 'Timi Ra Ma', 'Dixita Karki', 'TIMIxxxxxxx'), mk23('other', 'Other', 'X', 'OTHERxxxxxx')] };
+  const PL23 = { PLtest1234567: ['SASTOxxxxxx', 'v2xxxxxxxxx', 'v3xxxxxxxxx', 'v4xxxxxxxxx', 'v5xxxxxxxxx', 'v2xxxxxxxxx'] }; // v2 twice
+  const OE23 = { v2xxxxxxxxx: { title: 'Kaha Hola Ghar Bara - Karma Band Official Music Video', author_name: 'Karma Band' }, // another upload of a Jhapat song
+    v3xxxxxxxxx: { title: 'Timi ra ma', author_name: 'Salin Magar' },     // the same title as a Jhapat song, by someone else
+    v5xxxxxxxxx: { title: 'Naya Geet', author_name: 'Someone - Topic' } }; // not in Jhapat; v4 won't play outside YouTube (401)
+  const posts23 = []; let copied23 = null;
+  const net23 = async (url, o) => {
+    if (/oembed/.test(url)) { const u = decodeURIComponent(url.split('url=')[1]), v = (u.match(/v=([\w-]{11})/) || [])[1];
+      if (/playlist\?list=/.test(u)) return { ok: true, json: async () => ({ title: 'Dashain Party', author_name: 'Me' }) };
+      return OE23[v] ? { ok: true, json: async () => OE23[v] } : { ok: false, status: 401, json: async () => ({}) }; }
+    if (/rpc\/request_songs/.test(url)) { posts23.push(JSON.parse(o.body)); return { ok: true, json: async () => JSON.parse(o.body).vids.length }; }
+    if (/rpc\/catalog/.test(url)) return { ok: true, json: async () => JSON.parse(JSON.stringify(cat23)) };
+    return { ok: true, json: async () => ({}) }; };
+  const setup23 = win => { win.fetch = net23; win.scrollTo = () => {};
+    Object.defineProperty(win.navigator, 'clipboard', { value: { writeText: async t => { copied23 = t; } } });
+    win.YT = { Player: function (id, o) { const me = this; me.pl = null;
+      me.cuePlaylist = x => { me.pl = PL23[x.list] || null; setTimeout(() => (me.pl ? o.events.onStateChange({ data: 5, target: me }) : o.events.onError({ data: 100, target: me })), 5); };
+      me.getPlaylist = () => me.pl; me.destroy = () => {};
+      ['loadVideoById', 'cueVideoById', 'mute', 'unMute', 'pauseVideo', 'playVideo', 'stopVideo', 'seekTo'].forEach(k => { me[k] = () => {}; });
+      me.getPlayerState = () => -1; me.isMuted = () => false; me.getDuration = () => 0; me.getCurrentTime = () => 0; me.getVideoData = () => ({});
+      setTimeout(() => o.events.onReady({ target: me }), 0); } }; };
+  const dom23 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse: setup23 });
+  await sleep(60);
+  const w23 = dom23.window, d23 = w23.document, st23 = () => JSON.parse(w23.localStorage.getItem('jhapat.v1'));
+  const c23 = sel => { const el = d23.querySelector(sel); if (!el) throw new Error('missing ' + sel); el.dispatchEvent(new w23.MouseEvent('click', { bubbles: true })); };
+  const send23 = async link => { d23.querySelector('#ytLink').value = link; d23.querySelector('#ytForm').dispatchEvent(new w23.Event('submit', { bubbles: true, cancelable: true })); await sleep(250); };
+  c23('[data-act="lists"]'); await sleep(10);
+  ok(!!d23.querySelector('#ytForm') && /Use a YouTube playlist/.test(d23.body.textContent), 'with one playlist, Change still opens the list, which offers Use a YouTube playlist');
+  await send23('https://example.com/watch?v=abc');
+  ok(/isn’t a YouTube playlist link/.test(d23.querySelector('#toast').textContent) && !st23().mine, 'a link that isn’t a YouTube playlist is refused');
+  await send23('https://youtube.com/playlist?list=PLtest1234567&si=xyz');
+  const m23 = (st23().mine || [])[0] || {};
+  ok(m23.id === 'yt-PLtest1234567' && m23.name === 'Dashain Party' && (m23.songs || []).join() === 'sasto,kaha' && JSON.stringify(m23.n) === '{"upload":1,"name":1,"gone":1}',
+    'its songs match by upload (Sasto Mutu), then by name and artist (another upload of Kaha Hola Ghar); a duplicate counts once: ' + JSON.stringify(m23.n));
+  ok((m23.missing || []).map(x => x.yt + ':' + x.title).join() === 'v3xxxxxxxxx:Timi ra ma,v5xxxxxxxxx:Naya Geet', 'the same title by another artist isn’t taken for a Jhapat song; those two wait to be asked for');
+  const card23 = d23.querySelector('[data-act="pickpl"][data-arg="yt-PLtest1234567"]'), sum23 = (d23.querySelector('.minesum') || {}).textContent;
+  ok(card23 && /Dashain Party/.test(card23.textContent) && /2 songs/.test(card23.textContent) && sum23 === '1 ready · 1 matched by name · 2 not in Jhapat yet · 1 won’t play outside YouTube',
+    'its card sits under From YouTube with what matched: ' + sum23);
+  ok(d23.querySelectorAll('.miss li').length === 2 && /Naya Geet/.test(d23.querySelector('.miss').textContent), 'the videos not in Jhapat yet are listed with their covers');
+  c23('[data-act="ytask"]'); await sleep(30);
+  ok(posts23.length === 1 && posts23[0].vids.map(v => v.yt + '|' + v.title + '|' + v.channel).join() === 'v3xxxxxxxxx|Timi ra ma|Salin Magar,v5xxxxxxxxx|Naya Geet|Someone - Topic',
+    'Ask sends the missing videos with their titles to request_songs');
+  ok(st23().asked.join() === 'v3xxxxxxxxx,v5xxxxxxxxx' && !d23.querySelector('[data-act="ytask"]') && /Asked for 2/.test(d23.body.textContent), 'and this phone remembers it asked, so it can’t ask twice');
+  c23('[data-act="ytshare"]'); await sleep(10);
+  ok(copied23 === 'https://sachdq.github.io/jhapat/#yt=PLtest1234567', 'Share copies a link that rebuilds it: ' + copied23);
+  c23('[data-act="pickpl"][data-arg="yt-PLtest1234567"]'); await sleep(20);
+  ok(/Dashain Party\s*2 songs/.test(d23.querySelector('.plbar').textContent), 'picking it plays only its songs: ' + d23.querySelector('.plbar').textContent);
+  c23('[data-act="next"]'); await sleep(10);
+  ok(['sasto', 'kaha'].includes(st23().lastSong), 'Start plays one of them, from Jhapat’s timed upload');
+  // the asked-for song arrives in Jhapat: the next visit's catalog adds it to the playlist, with no need to read YouTube again
+  cat23.songs.push(mk23('naya', 'Naya Geet', 'Someone', 'v5xxxxxxxxx'));
+  const keep23 = w23.localStorage.getItem('jhapat.v1'), kcat23 = w23.localStorage.getItem('jhapat.cat');
+  const dom24 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { setup23(win); win.localStorage.setItem('jhapat.v1', keep23); win.localStorage.setItem('jhapat.cat', kcat23); } });
+  await sleep(80);
+  const m24 = JSON.parse(dom24.window.localStorage.getItem('jhapat.v1')).mine[0];
+  ok(m24.songs.join() === 'sasto,kaha,naya' && m24.missing.length === 1 && /Dashain Party\s*3 songs/.test(dom24.window.document.querySelector('.plbar').textContent),
+    'a song asked for joins the playlist by itself once it’s in Jhapat');
+  // a shared link on a phone that has never seen it: read from YouTube and opened
+  const dom25 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/#yt=PLtest1234567', pretendToBeVisual: true, beforeParse: setup23 });
+  await sleep(300);
+  const d25 = dom25.window.document;
+  ok(/Dashain Party\s*3 songs/.test((d25.querySelector('.plbar') || {}).textContent || '') && !!d25.querySelector('[data-act="next"]') && dom25.window.location.hash === '',
+    'a shared link reads the playlist from YouTube, opens it straight away and tidies the address');
+  c23('[data-act="lists"]'); await sleep(10); c23('[data-act="ytdel"]'); await sleep(10);
+  ok(!st23().mine.length && st23().playlist.id === 'party-mix', 'Remove takes it off the phone and goes back to the party mix');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

@@ -17,6 +17,7 @@ function makeDb() {
     tags: [{ id: 1, song_id: 'old', item_id: 'paani', t: 30, line: null, word: null, source: 'estimate', checked: false }],
     playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', description: null, sort: 0, is_public: true, owner: null }],
     playlist_songs: [{ playlist_id: 'party-mix', song_id: 'old', position: 0 }],
+    requests: [], reports: [],
     seq: 100, log: [],
   };
 }
@@ -470,6 +471,35 @@ function makeDom(db, opts) {
     ok(d5.querySelector('.songrow').dataset.arg === 'dp-song', 'Last checked by ear puts it first');
     w5.location.hash = '#items'; await sleep(20);
     ok(/2 songs · 5 drop points/.test(d5.querySelector('[data-arg="paani"].itile').textContent), 'item tiles count songs and drop points: ' + d5.querySelector('[data-arg="paani"].itile .ic').textContent); }
+
+  // Requests: songs people asked for from their YouTube playlists, most asked first, handed to Add many, closed when added
+  { const db = makeDb();
+    db.requests = [
+      { yt: 'RRRRRRRRRR1', title: 'Naya Geet (Official Video)', channel: 'Someone - Topic', asks: 3, last_at: '2026-11-14T10:00:00Z', done: null },
+      { yt: 'RRRRRRRRRR2', title: 'Someone - Old Song (Official Video)', channel: 'Some Label', asks: 1, last_at: '2026-11-14T09:00:00Z', done: null },
+      { yt: 'AAAAAAAAAAA', title: 'Old Song', channel: 'Someone', asks: 2, last_at: '2026-11-13T09:00:00Z', done: null }, // a song in the studio has this upload now
+      { yt: 'RRRRRRRRRR4', title: 'Not This One', channel: 'X', asks: 5, last_at: '2026-11-12T09:00:00Z', done: 'skipped' }];
+    const { w, d, yt } = makeDom(db, { signedIn: true, editor: true }); yt.lens.RRRRRRRRRR1 = 42;
+    const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await sleep(60);
+    ok(d.querySelector('#navReq').textContent === '2' && !d.querySelector('#navReq').hidden, 'the Requests tab counts the open ones');
+    w.location.hash = '#requests'; await sleep(20);
+    const rows = [...d.querySelectorAll('.res.req')];
+    ok(rows.length === 2 && rows[0].textContent.includes('Naya Geet') && rows[0].textContent.includes('asked 3 times') && rows[0].textContent.includes('14 Nov 2026'), 'open requests, most asked first');
+    ok(rows[1].textContent.includes('Maybe already in Jhapat as Old Song'), 'one whose title and artist match a song in the studio says so');
+    ok(/In Jhapat\s*1/.test(d.querySelector('.segs').textContent) && /Skipped\s*1/.test(d.querySelector('.segs').textContent), 'one whose upload is in the studio now, and one skipped, sit apart');
+    const cb = d.querySelector('[data-req="RRRRRRRRRR1"]'); cb.checked = true; cb.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(5);
+    ok(d.querySelector('[data-act="reqadd"]').textContent === 'Add 1 to Add many', 'picking one readies Add many');
+    c('[data-act="reqadd"]'); await sleep(30);
+    ok(w.location.hash === '#import' && d.querySelector('#impText').value === 'Naya Geet - Someone | https://youtu.be/RRRRRRRRRR1',
+      'its Add many line comes from the video’s title and channel: ' + d.querySelector('#impText').value);
+    c('[data-act="impfind"]'); await sleep(400);
+    c('[data-act="impadd"]'); await sleep(200);
+    ok(db.songs.some(x => x.id === 'naya-geet' && x.status === 'auto') && db.requests.find(r => r.yt === 'RRRRRRRRRR1').done === 'added', 'adding the song closes its request');
+    w.location.hash = '#requests'; await sleep(20);
+    ok(d.querySelector('#navReq').textContent === '1' && d.querySelectorAll('.res.req').length === 1, 'and it leaves the open list');
+    c('[data-act="reqskip"][data-arg="RRRRRRRRRR2"]'); await sleep(20);
+    ok(db.requests.find(r => r.yt === 'RRRRRRRRRR2').done === 'skipped' && d.querySelector('#navReq').hidden && /No open requests/.test(d.body.textContent), 'Skip puts one aside'); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

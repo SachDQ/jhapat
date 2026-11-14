@@ -55,6 +55,11 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 nav.tabs{display:flex;background:var(--raise);border-radius:999px;padding:3px;gap:2px}
 nav.tabs button{border:0;background:transparent;color:var(--muted);font:700 14.5px/1 var(--body);padding:9px 13px;border-radius:999px;cursor:pointer}
 nav.tabs button[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+nav.tabs .navn{display:inline-block;margin-left:6px;min-width:18px;padding:3px 6px;border-radius:999px;background:var(--red);color:#fff;font:800 11px/1 var(--body);text-align:center}
+.res.req{grid-template-columns:auto 64px minmax(0,1fr) auto;align-items:center}
+.res.req input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold-fill)}
+.res.req .info{min-width:0;overflow-wrap:anywhere}
+.reqbar{margin-bottom:8px}
 .who{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
 .garland{height:16px;background-image:radial-gradient(circle,#FF8A00 0 5.5px,transparent 6.5px),radial-gradient(circle,#FFC233 0 3px,transparent 4px);
   background-size:16px 16px,16px 16px;background-position:0 0,8px 0;background-repeat:repeat-x} /* the player's marigold garland */
@@ -250,6 +255,7 @@ textarea{resize:vertical}
     <button data-act="go" data-arg="">Songs</button>
     <button data-act="go" data-arg="items">Items</button>
     <button data-act="go" data-arg="playlists">Playlists</button>
+    <button data-act="go" data-arg="requests">Requests<span class="navn" id="navReq" hidden></span></button>
   </nav>
   <div class="who" id="who"></div>
 </header>
@@ -298,7 +304,7 @@ function fail(what, error) { console.warn(what, error); toast(what + ': ' + ((er
 
 /* ---------- state ---------- */
 let user = null, editor = null;                 // editor: null = not checked yet
-let items = [], songs = [], playlists = [];
+let items = [], songs = [], playlists = [], requests = [];
 let route = { view: 'songs', id: null };
 let filter = '';
 let cur = null;                                 // the open song: { s, videos, tags, lines, groups, lit, byLine, typical }
@@ -308,7 +314,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 30; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 31; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -400,13 +406,15 @@ async function allRows(query, size = 1000) { // Supabase answers at most 1,000 r
   }
 }
 async function loadAll() {
-  const [a, b, c] = await Promise.all([
+  const [a, b, c, q] = await Promise.all([
     sb.from('items').select('*').order('sort'),
     allRows(() => sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,created_at,updated_at,tagged_at,checked_at,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(item_id,t,rep)').order('title').order('id')), // line0: has lyrics, without fetching them all
     sb.from('playlists').select('id,name,description,sort,is_public,owner,playlist_songs(song_id,position)').order('sort'),
+    sb.from('requests').select('*').order('asks', { ascending: false }),
   ]);
   if (a.error || b.error || c.error) return fail('Couldn’t load the studio', a.error || b.error || c.error);
   items = a.data; spell = null; playlists = c.data;
+  requests = q && !q.error && Array.isArray(q.data) ? q.data : []; // the list stays empty if it can't load; songs still work
   songs = b.data.map(s => { const r = rowOf({ ...s, hasLines: s.line0 != null }); delete r.line0; return r; });
 }
 async function openSong(id) {
@@ -933,7 +941,7 @@ const emoOf = id => (items.find(i => i.id === id) || {}).emoji || '';
 const itemLabel = id => (emoOf(id) ? emoOf(id) + ' ' : '') + itemName(id);
 function go() {
   const h = decodeURIComponent(location.hash.slice(1));
-  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add', 'import'].includes(h) ? h : 'songs', id: null };
+  route = h.startsWith('song:') ? { view: 'song', id: h.slice(5) } : { view: ['items', 'playlists', 'add', 'import', 'requests'].includes(h) ? h : 'songs', id: null };
   render();
 }
 window.addEventListener('hashchange', go);
@@ -941,6 +949,7 @@ async function render() {
   const nav = $('#nav'), who = $('#who');
   who.innerHTML = user ? esc(user.email) + ' <button class="btn small ghost" data-act="signout">Sign out</button>' : '';
   nav.hidden = !editor;
+  navCounts();
   document.querySelectorAll('#nav button').forEach(b => b.setAttribute('aria-current', (b.dataset.arg || 'songs') === (['song', 'add', 'import'].includes(route.view) ? 'songs' : route.view) ? 'page' : 'false'));
   const solo = route.view !== 'song' || !editor;
   $('#layout').classList.toggle('solo', solo); $('#side').hidden = solo;
@@ -955,7 +964,7 @@ async function render() {
   }
   if (cur) { syncRow(); try { yt && yt.pauseVideo(); } catch (e) {} cur = null; vi = -1; chk = null; }
   $('#view').innerHTML = route.view === 'items' ? itemsHTML() : route.view === 'playlists' ? playlistsHTML() : route.view === 'add' ? addHTML()
-    : route.view === 'import' ? importHTML() : songsHTML();
+    : route.view === 'import' ? importHTML() : route.view === 'requests' ? requestsHTML() : songsHTML();
 }
 
 const SORTS = { title: 'A–Z', new: 'Newest first', tagged: 'Last tagged by hand', checked: 'Last checked by ear', tags: 'Most drop points', status: 'By status' };
@@ -1246,6 +1255,15 @@ document.addEventListener('click', async e => {
     case 'fold': { const f = !isFolded(arg, b.dataset.dflt === '1'); ui.fold[arg] = f; saveUi(); // no re-render: typing and scroll stay put
       b.setAttribute('aria-expanded', String(!f)); if (b.nextElementSibling) b.nextElementSibling.hidden = f; break; }
     case 'show': show = arg; render(); break;
+    case 'reqshow': reqShow = arg; render(); break;
+    case 'reqskip': await reqDone(arg, 'skipped'); break;
+    case 'reqopen': await reqDone(arg, null); break;
+    case 'reqadd': {
+      if (imp.busy) { toast('Add many is still working. Try again when it’s done.'); break; }
+      const lines = requests.filter(r => reqPick.has(r.yt)).map(reqLine);
+      imp.text = (imp.text.trim() ? imp.text.trim() + '\n' : '') + lines.join('\n'); imp.rows = null; reqPick.clear();
+      location.hash = '#import'; toast('Check each title and artist, then press Find.'); break;
+    }
     case 'clearf': show = 'all'; plFilter = ''; filter = ''; render(); break;
     case 'newitem': itemEd = ''; render(); { const n = document.querySelector('#itemEd [data-f="name"]'); if (n) n.focus(); } break;
     case 'edititem': itemEd = itemEd === arg ? null : arg; render(); { const ed = $('#itemEd'); if (ed) ed.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } break;
@@ -1356,6 +1374,8 @@ document.addEventListener('change', async e => {
   if (t.id === 'isort') { ui.itemSort = t.value; saveUi(); $('#itemArea').innerHTML = itemAreaHTML(); }
   if (t.dataset && t.dataset.imp != null && imp.rows && imp.rows[Number(t.dataset.imp)]) { imp.rows[Number(t.dataset.imp)].pick = Number(t.value); renderImport(); }
   if (t.id === 'impPl') imp.pl = t.value;
+  if (t.dataset && t.dataset.req) { if (t.checked) reqPick.add(t.dataset.req); else reqPick.delete(t.dataset.req); $('#view').innerHTML = requestsHTML(); }
+  if (t.id === 'reqAll') { const yts = ytIn(); requests.filter(r => reqState(r, yts) === 'open').forEach(r => { if (t.checked) reqPick.add(r.yt); else reqPick.delete(r.yt); }); $('#view').innerHTML = requestsHTML(); }
   if (t.dataset && t.dataset.pl) {
     const pid = t.dataset.pl, p = playlists.find(x => x.id === pid); if (!p || !cur) return;
     if (t.checked) {
@@ -1406,6 +1426,73 @@ document.addEventListener('submit', async e => {
 async function lrcSearchOnly(q) {
   try { lrc.list = await lrcFind(q); } catch (e) { lrc.list = []; toast('LRCLIB didn’t answer. Try again in a moment.'); }
   lrc.busy = false;
+}
+
+/* ---------- requests: songs people asked for from their YouTube playlists ----------
+   Most asked first. A request is done once a song in Jhapat has that upload (Add many marks it), or when it's skipped. "Maybe
+   already in Jhapat" uses the player's name rule: the song's title in the video's, with its artist in the title or channel. */
+let reqShow = 'open';
+const reqPick = new Set();
+const sound = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().split(' ')
+  .map(w => w.replace(/ph/g, 'f').replace(/sh/g, 's').replace(/([bcdgjkpt])h+/g, '$1').replace(/[wv]/g, 'b').replace(/z/g, 'j').replace(/[aeiouy]+/g, 'a').replace(/(.)\1+/g, '$1'))
+  .filter(Boolean).join(' ');
+const hasWords = (hay, k) => !!k && (' ' + hay + ' ').includes(' ' + k + ' ');
+function nameMatch(title, channel) {
+  const v = sound(title), c = sound(channel), flat = (v + ' ' + c).replace(/ /g, '');
+  const parts = String(title || '').split(/\s[-–—|•~]\s|[|•【】「」『』[\]()"“”:]|\s-|-\s/).map(sound).filter(Boolean);
+  let best = null;
+  for (const s of songs) {
+    if (s.status === 'draft') continue;
+    const tk = sound(s.title.replace(/\(.*?\)/g, ' ')); if (!hasWords(v, tk)) continue;
+    const names = String(s.artist || '').split(/,|&|\/|\bx\b|\bft\.?|\bfeat\.?|\band\b/i).map(sound).filter(n => n.replace(/ /g, '').length >= 5);
+    const artist = names.some(n => hasWords(v, n) || hasWords(c, n) || flat.includes(n.replace(/ /g, '')));
+    if (!artist && !(parts.includes(tk) && tk.length >= 14 && tk.split(' ').length >= 3)) continue;
+    const score = (artist ? 1000 : 0) + tk.length; if (!best || score > best.score) best = { s, score };
+  }
+  return best && best.s;
+}
+const ytIn = () => new Set(songs.flatMap(s => (s.videos || []).map(v => v.yt)));
+const reqState = (r, yts) => (r.done === 'skipped' ? 'skipped' : r.done === 'added' || yts.has(r.yt) ? 'added' : 'open');
+function navCounts() {
+  const el = $('#navReq'); if (!el) return;
+  const yts = ytIn(), n = requests.filter(r => reqState(r, yts) === 'open').length;
+  el.textContent = n; el.hidden = !n;
+}
+function reqLine(r) { // an Add many line from the video's title and channel: "Title - Artist | link"; the channel's own name is dropped from the title
+  const ch = String(r.channel || '').replace(/\s*-\s*Topic$/i, '').trim();
+  const clean = String(r.title || '').replace(/\(.*?\)|\[.*?\]|【.*?】|「.*?」|『.*?』/g, ' ').replace(/\b(official|music|video|lyrics?|lyrical|audio|full song|mv|hd|4k)\b/gi, ' ');
+  const parts = clean.split(/\s[-–—|•]\s|\|/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const mine = parts.findIndex(p => norm(p) === norm(ch)); if (mine > -1 && parts.length > 1) parts.splice(mine, 1);
+  return (parts[0] || String(r.title || '').trim() || r.yt).replace(/\s+[-–—]\s+/g, ' ') + (ch ? ' - ' + ch : '') + ' | https://youtu.be/' + r.yt;
+}
+function requestsHTML() {
+  const yts = ytIn(), n = { open: 0, added: 0, skipped: 0 };
+  requests.forEach(r => { n[reqState(r, yts)]++; });
+  const list = requests.filter(r => reqState(r, yts) === reqShow).sort((a, b) => b.asks - a.asks || String(b.last_at || '').localeCompare(String(a.last_at || '')));
+  const picked = list.filter(r => reqPick.has(r.yt)).length;
+  const seg = (k, label) => '<button class="seg" data-act="reqshow" data-arg="' + k + '" aria-pressed="' + (reqShow === k) + '">' + label + ' <span class="n">' + n[k] + '</span></button>';
+  return '<div class="pagehead"><h1>Requests<span class="count">' + n.open + '</span></h1></div>' +
+    '<p class="muted small">Songs people asked for from their YouTube playlists, most asked first. Pick some and Add many looks for their timed lyrics; each one added leaves this list.</p>' +
+    '<div class="segs" role="group" aria-label="Show">' + seg('open', 'Open') + seg('added', 'In Jhapat') + seg('skipped', 'Skipped') + '</div>' +
+    (list.length ? (reqShow === 'open' ? '<div class="row reqbar"><label class="row small"><input type="checkbox" id="reqAll"' + (picked === list.length ? ' checked' : '') + '> Pick all ' + list.length + '</label>' +
+      '<span class="grow"></span><button class="btn primary" data-act="reqadd"' + (picked ? '' : ' disabled') + '>Add ' + (picked ? picked + ' ' : '') + 'to Add many</button></div>' : '') +
+      '<div class="results">' + list.map(r => reqRowHTML(r, reqShow)).join('') + '</div>'
+      : '<div class="empty"><p class="muted">' + (reqShow === 'open' ? 'No open requests. Songs people ask for from their YouTube playlists show up here.' : 'None yet.') + '</p></div>');
+}
+function reqRowHTML(r, st) {
+  const maybe = st === 'open' ? nameMatch(r.title, r.channel) : null;
+  return '<div class="res req">' + (st === 'open' ? '<input type="checkbox" data-req="' + esc(r.yt) + '" aria-label="Pick ' + esc(r.title || r.yt) + '"' + (reqPick.has(r.yt) ? ' checked' : '') + '>' : '<span></span>') +
+    thumbHTML(r.yt, 'sm') + '<span class="info"><b><a href="https://youtu.be/' + esc(r.yt) + '" target="_blank" rel="noopener">' + esc(r.title || r.yt) + '</a></b><br>' +
+    '<span class="meta">' + esc(r.channel || 'Unknown channel') + ' · asked ' + plural(r.asks, 'time') + (day(r.last_at) ? ' · last ' + day(r.last_at) : '') + '</span>' +
+    (maybe ? '<br><span class="small warnc">Maybe already in Jhapat as <a href="#song:' + encodeURIComponent(maybe.id) + '">' + esc(maybe.title) + '</a></span>' : '') + '</span>' +
+    (st === 'open' ? '<button class="btn small ghost" data-act="reqskip" data-arg="' + esc(r.yt) + '">Skip</button>'
+      : st === 'skipped' ? '<button class="btn small ghost" data-act="reqopen" data-arg="' + esc(r.yt) + '">Reopen</button>' : '<span class="pill checked">In Jhapat</span>') + '</div>';
+}
+async function reqDone(yt, done) {
+  const r = requests.find(x => x.yt === yt); if (!r) return;
+  const { error } = await sb.from('requests').update({ done, done_at: done ? new Date().toISOString() : null }).eq('yt', yt);
+  if (error) return fail('Couldn’t save that', error);
+  r.done = done; reqPick.delete(yt); navCounts(); $('#view').innerHTML = requestsHTML();
 }
 
 /* ---------- add many songs ----------
@@ -1512,6 +1599,8 @@ async function importAdd() {
     if (p) { const pos = (p.playlist_songs || []).length, e = await sb.from('playlist_songs').insert({ playlist_id: p.id, song_id: id, position: pos }); if (!e.error) (p.playlist_songs = p.playlist_songs || []).push({ song_id: id, position: pos }); }
     songs.push(rowOf({ ...song, lines: undefined, plain_lyrics: undefined, created_at: new Date().toISOString(), hasLines: lines.length > 0, videos, tags: ctx ? ctx.tags : [] }));
     r.done = id; r.made = { status: song.status, tags: n }; made++; renderImport();
+    const asked = r.yt && requests.find(x => x.yt === r.yt && !x.done); // it was asked for: that request is done
+    if (asked) { asked.done = 'added'; sb.from('requests').update({ done: 'added', done_at: new Date().toISOString() }).eq('yt', r.yt).then(() => {}, () => {}); }
   }
   songs.sort((q, w) => q.title.localeCompare(w.title));
   imp.busy = false; renderImport();

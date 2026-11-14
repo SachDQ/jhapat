@@ -237,8 +237,85 @@ language sql stable security invoker set search_path = '' as $$
               from public.playlists p where p.owner is null and p.is_public));
 $$;
 
+-- songs asked for from people's YouTube playlists (v31) and drops someone said were off (v32), 14 Nov 2026.
+-- Anyone adds through request_songs() and report_drop(), which check what they're given; only editors read and close them.
+create table if not exists public.requests (
+  yt       text primary key check (yt ~ '^[A-Za-z0-9_-]{11}$'),
+  title    text,                                  -- the video's title on YouTube, as the phone saw it
+  channel  text,
+  asks     int not null default 1,                -- each phone asks once per video
+  first_at timestamptz not null default now(),
+  last_at  timestamptz not null default now(),
+  done     text check (done in ('added', 'skipped')), -- null while open
+  done_at  timestamptz
+);
+create table if not exists public.reports (
+  id         bigint generated always as identity primary key,
+  song_id    text not null references public.songs (id) on update cascade on delete cascade,
+  yt         text check (yt ~ '^[A-Za-z0-9_-]{11}$'), -- the upload that played
+  item_id    text,
+  t          numeric,                             -- the word's time on the lyrics' timeline
+  lead       numeric,                             -- the run-up it got, in seconds
+  kind       text not null check (kind in ('soon', 'late', 'word', 'unsung', 'video', 'other')),
+  note       text,
+  ver        int,                                 -- the player's version
+  created_at timestamptz not null default now(),
+  fixed_at   timestamptz
+);
+create index if not exists reports_song_idx on public.reports (song_id);
+alter table public.requests enable row level security;
+alter table public.reports  enable row level security;
+drop policy if exists "editors read requests" on public.requests;
+create policy "editors read requests" on public.requests for select to authenticated using (public.is_editor());
+drop policy if exists "editors edit requests" on public.requests;
+create policy "editors edit requests" on public.requests for all to authenticated using (public.is_editor()) with check (public.is_editor());
+drop policy if exists "editors read reports" on public.reports;
+create policy "editors read reports" on public.reports for select to authenticated using (public.is_editor());
+drop policy if exists "editors edit reports" on public.reports;
+create policy "editors edit reports" on public.reports for all to authenticated using (public.is_editor()) with check (public.is_editor());
+
+-- POST /rest/v1/rpc/request_songs {"vids": [{"yt": "...", "title": "...", "channel": "..."}]}: at most 200; uploads already in
+-- Jhapat are left out; asking again counts again. Returns how many were counted.
+create or replace function public.request_songs(vids jsonb) returns int
+language plpgsql volatile security definer set search_path = '' as $$
+declare n int;
+begin
+  if jsonb_typeof(vids) is distinct from 'array' or jsonb_array_length(vids) > 200 then raise exception 'send a list of at most 200 videos'; end if;
+  insert into public.requests as r (yt, title, channel)
+    select distinct on (v->>'yt') v->>'yt', left(nullif(btrim(v->>'title'), ''), 200), left(nullif(btrim(v->>'channel'), ''), 100)
+    from jsonb_array_elements(vids) v
+    where jsonb_typeof(v) = 'object' and (v->>'yt') ~ '^[A-Za-z0-9_-]{11}$'
+      and not exists (select 1 from public.videos x where x.yt = v->>'yt')
+  on conflict (yt) do update set asks = r.asks + 1, last_at = now(),
+    title = coalesce(excluded.title, r.title), channel = coalesce(excluded.channel, r.channel);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+-- POST /rest/v1/rpc/report_drop {"r": {"song": "...", "yt": "...", "item": "...", "t": 83.2, "lead": 8.1, "kind": "late", "note": "...", "ver": 32}}
+create or replace function public.report_drop(r jsonb) returns bigint
+language plpgsql volatile security definer set search_path = '' as $$
+declare rid bigint;
+begin
+  if jsonb_typeof(r) is distinct from 'object' then raise exception 'send one report'; end if;
+  if not exists (select 1 from public.songs s where s.id = r->>'song' and s.status <> 'draft') then raise exception 'no such song'; end if;
+  insert into public.reports (song_id, yt, item_id, t, lead, kind, note, ver)
+  values (r->>'song',
+    case when (r->>'yt') ~ '^[A-Za-z0-9_-]{11}$' then r->>'yt' end,
+    left(r->>'item', 40),
+    case when jsonb_typeof(r->'t') = 'number' then round((r->>'t')::numeric, 2) end,
+    case when jsonb_typeof(r->'lead') = 'number' then round((r->>'lead')::numeric, 2) end,
+    r->>'kind',
+    left(nullif(btrim(r->>'note'), ''), 500),
+    case when jsonb_typeof(r->'ver') = 'number' then (r->>'ver')::numeric::int end)
+  returning id into rid;
+  return rid;
+end $$;
+revoke execute on function public.request_songs(jsonb), public.report_drop(jsonb) from public;
+
 grant usage on schema public to anon, authenticated;
 grant select on all tables in schema public to anon, authenticated;
 grant insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 grant execute on function public.playlist_bundle(text), public.catalog(), public.is_editor() to anon, authenticated;
+grant execute on function public.request_songs(jsonb), public.report_drop(jsonb) to anon, authenticated;

@@ -1,0 +1,14 @@
+{
+  "name": "Jhapat",
+  "short_name": "Jhapat",
+  "description": "Party player for the grab-the-word game: it drops into a song just before an item on the table is sung.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0F0B1E",
+  "theme_color": "#0F0B1E",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

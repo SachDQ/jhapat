@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jhapat Studio</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/icon-32.png">
+<link rel="apple-touch-icon" href="../img/icon-180.png">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,9 +50,10 @@ p{margin:0}
 code,.mono{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
 
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:calc(12px + env(safe-area-inset-top,0px)) 10px}
-.brand{display:flex;align-items:baseline;gap:8px;text-decoration:none;color:var(--ink)}
-.brand .word{font:400 27px/1 "Yatra One", var(--display)} /* the party player's mark (Tihar Night) */
-.brand .dev{font:400 19px/1 "Yatra One", var(--display);color:var(--gold)}
+.brand{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink)}
+.brand .mark{height:40px;width:auto;margin:-6px 0 -6px -4px} /* the player's tiger (v33); the studio keeps its light working colours */
+.brand .word{font:400 27px/1 "Yatra One", var(--display)}
+.brand .dev{font:400 20px/1.2 "Yatra One", var(--display);padding-top:2px;background:repeating-linear-gradient(115deg,#E2560E 0 6px,#C77800 6px 11px,#5A2408 11px 13px);-webkit-background-clip:text;background-clip:text;color:transparent}
 .brand .tag{font:700 12px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-left:4px}
 nav.tabs{display:flex;background:var(--raise);border-radius:999px;padding:3px;gap:2px}
 nav.tabs button{border:0;background:transparent;color:var(--muted);font:700 14.5px/1 var(--body);padding:9px 13px;border-radius:999px;cursor:pointer}
@@ -252,7 +255,7 @@ textarea{resize:vertical}
 </head>
 <body>
 <header class="top wrap">
-  <a class="brand" href="./"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
+  <a class="brand" href="./"><img class="mark" src="../img/jhapat-mark.webp" width="77" height="40" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span><span class="tag">Studio</span><span class="ver" id="ver"></span></a>
   <button class="btn small primary" id="update" data-act="update" hidden>New version · Reload</button>
   <nav class="tabs" id="nav" hidden>
     <button data-act="go" data-arg="">Songs</button>
@@ -318,7 +321,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 32; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 33; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };

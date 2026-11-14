@@ -635,6 +635,43 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   net24 = 'refuse'; c26('[data-act="next"]'); await sleep(10); c26('[data-act="reportopen"]'); c26('[data-act="report"][data-arg="word"]'); await sleep(20);
   ok(st26().outbox.length === 1 && /couldn’t take that report/.test(d26.querySelector('#toast').textContent), 'a report the database refuses isn’t kept to send again');
 
+  // 25. The fun: a reel of titles lands on the song, a paw swipe and a leaping logo on each drop, bursts of emoji, a drop counter
+  //     with cheers at milestones, and none of it for anyone who turns motion down. The real title is always in the page.
+  async function fun(reduce, night) {
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
+      win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); win.scrollTo = () => {};
+      if (reduce) win.matchMedia = q => ({ matches: /reduce/.test(q), addEventListener() {} });
+      if (night) win.localStorage.setItem('jhapat.v1', JSON.stringify(Object.assign(seedState(), { night: { n: night, at: Date.now() } }))); } });
+    await sleep(60);
+    return dm;
+  }
+  const seedState = () => ({ v: 1, seedV: 4, songs: [], items: [], played: [], lastSong: null, settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false } });
+  const dom28 = await fun(false, 4), w28 = dom28.window, d28 = w28.document, c28 = sel => d28.querySelector(sel).dispatchEvent(new w28.MouseEvent('click', { bubbles: true }));
+  c28('[data-act="next"]'); await sleep(20);
+  const title28 = d28.querySelector('.now .title'), reel28 = [...d28.querySelectorAll('.reel .reelin div')].map(x => x.textContent);
+  ok(title28.classList.contains('spinning') && reel28.length === 10 && reel28[9] === title28.textContent && B9.songs.some(x => x.title === title28.textContent),
+    'Next spins a reel of ten titles that lands on the song that plays; the real title stays in the page: ' + title28.textContent);
+  ok(d28.querySelector('#pounce').classList.contains('go') && d28.querySelector('.brand .mark').classList.contains('leap') && d28.querySelector('[data-act="next"]').classList.contains('flare'),
+    'the drop lands with a paw swipe over the video, the logo leaps and the button flares');
+  ok(/🔥 5/.test(d28.querySelector('.streak').textContent) && d28.querySelector('.streak').classList.contains('bump'), 'the drops-tonight counter goes up: ' + d28.querySelector('.streak').textContent);
+  await sleep(950);
+  ok(!d28.querySelector('.reel') && d28.querySelector('.now .title').classList.contains('popin'), 'then the title pops in where the reel stopped');
+  ok(/5 drops in/.test(d28.querySelector('#toast').textContent) && d28.querySelectorAll('.burst').length >= 1, 'the fifth drop of the night gets a cheer and fireworks: ' + d28.querySelector('#toast').textContent);
+  await sleep(1400);
+  c28('[data-act="reveal"]'); await sleep(10);
+  const burst28 = [...d28.querySelectorAll('.burst span')].map(x => x.textContent);
+  ok(!!d28.querySelector('.reveal b.pop') && burst28.length === 14 && new Set(burst28).size === 1, 'Show the word pops the word in with a burst of its emoji');
+  await sleep(1300);
+  c28('[data-act="item"][data-arg="chithi"]'); await sleep(10); // off
+  ok(d28.querySelector('[data-act="item"][data-arg="chithi"]').classList.contains('dim') && !d28.querySelector('.burst'), 'an item going off dips, with no sparks');
+  c28('[data-act="item"][data-arg="chithi"]'); await sleep(10); // on again
+  ok(d28.querySelector('[data-act="item"][data-arg="chithi"]').classList.contains('zap') && d28.querySelectorAll('.burst span').length === 8, 'an item going on springs, with a spark of its emoji');
+  const dom29 = await fun(true, 0), w29 = dom29.window, d29 = w29.document;
+  d29.querySelector('[data-act="next"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(20);
+  d29.querySelector('[data-act="reveal"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(10);
+  ok(!d29.querySelector('.reel') && !d29.querySelector('.now .title.spinning') && !d29.querySelector('#pounce').classList.contains('go') && !d29.querySelector('.burst') && !d29.querySelector('.reveal b.pop'),
+    'with motion turned down: no reel, no swipe, no bursts; the title and the word just show');
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#17112E">
+<meta name="theme-color" content="#0F0B1E">
+<link rel="icon" type="image/png" sizes="32x32" href="img/icon-32.png">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Jhapat">
 <title>Jhapat</title>
 <meta name="description" content="Party player for the grab-the-word game: pick the items on the table and it drops into a random song a few seconds before one of them is sung.">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -11,14 +15,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Yatra+One&display=swap">
 <style>
-/* Look: "Tihar Night" (mood board direction A). The party is after dark with the lights low, so the screen glows like a
-   diyo: night indigo, marigold for anything you press, diyo cream for text, tika red for accents; a marigold garland
-   under the header and rangoli dots behind the song that's playing. Yatra One (one weight: never bold it) for
-   display, Mukta for reading. Phone-first single column, video pinned at the top; Play / Songs / Items tabs below. */
+/* Look: "Night Festival" (v33). A night game in a dim room, lit like Tihar: raat (night) behind everything, saanjh (dusk)
+   cards, marigold for anything you press, the diyo's flame for glow and focus, tiger orange where things move, moonlight
+   text. String lights along the top, a marigold garland under the header, the tiger logo (GPT Image 2.6, 10 KB) that
+   leaps when a drop lands, a paw swipe over the video, a reel of song titles on Next, a burst of the item's emoji on
+   Show the word. Everything that moves is transform or opacity, lasts under a second, never blocks a tap or the music,
+   and stops for anyone who turns motion down. Yatra One (one weight: never bold it) for display, Mukta for reading. */
 :root{
-  --bg:#17112E; --surface:#211A44; --raise:#2D2457; --line:#3B3170; --line-2:#4A3F85;
-  --ink:#FFF4E0; --muted:#C9BEE6;
-  --gold:#FFC861; --gold-fill:#FFA41B; --gold-ink:#1A1206; --saffron:#FF6B1A;
+  --bg:#0F0B1E; --surface:#1D1636; --raise:#2A2050; --line:#3A2F66; --line-2:#4A3F85;
+  --ink:#FFF4E0; --muted:#B9AED6;
+  --gold:#FFD25E; --gold-fill:#FFA41B; --gold-ink:#1A1206; --saffron:#F26B1D; --bagh:#F26B1D; --diyo:#FFD25E;
   --red:#FF5A6E; --red-soft:#4A2140; --ok:#7EE2A8; --warn:#FFC861;
   --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 28px rgba(0,0,0,.35);
   --glow:0 0 0 4px rgba(255,164,27,.22), 0 10px 32px rgba(255,138,0,.45);
@@ -37,11 +43,20 @@ button{font:inherit}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* header */
-header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  padding-block:calc(14px + env(safe-area-inset-top,0px)) 10px}
-.brand{display:flex;align-items:baseline;gap:9px}
-.brand .word{font:400 34px/1 var(--display);color:var(--ink)}
-.brand .dev{font:400 23px/1 var(--display);color:var(--gold-fill)}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:4px 10px}
+.brand{display:flex;align-items:center;gap:8px}
+.brand .mark{height:54px;width:auto;margin:-8px 0 -8px -8px;filter:drop-shadow(0 0 9px rgba(242,107,29,.5));transform-origin:25% 75%}
+.brand .mark.leap{animation:leap .62s cubic-bezier(.3,1.5,.5,1)}
+@keyframes leap{35%{transform:translate(9px,-7px) rotate(-7deg) scale(1.1)}70%{transform:translate(-2px,1px) rotate(2deg)}}
+.brand .word{font:400 32px/1 var(--display);color:var(--ink)}
+.brand .dev{font:400 27px/1.2 var(--display);padding-top:2px;background:repeating-linear-gradient(115deg,var(--bagh) 0 7px,var(--gold-fill) 7px 13px,#4A1E06 13px 15px);
+  background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:prowl 14s linear infinite}
+/* string lights along the top: gold bulbs, with orange ones between that twinkle */
+.lights{height:22px;margin-top:env(safe-area-inset-top,0px);position:relative;overflow:hidden;filter:drop-shadow(0 0 4px rgba(255,210,94,.8));
+  background:radial-gradient(circle at 14px 13px,var(--diyo) 0 3.5px,transparent 4.5px) 0 0/28px 22px repeat-x,linear-gradient(var(--line-2),var(--line-2)) 0 7px/100% 1px no-repeat}
+.lights::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 14px 15px,#FF7A3D 0 3.5px,transparent 4.5px) 14px 0/28px 22px repeat-x;animation:twinkle 2.2s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.12}}
+@keyframes prowl{to{background-position:-120px 0}}
 .tabs{display:flex;background:var(--raise);border-radius:999px;padding:3px;gap:2px}
 .tabs button{border:0;background:transparent;color:var(--muted);font:700 15px/1 var(--body);padding:10px 15px;border-radius:999px;cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
@@ -81,23 +96,58 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 /* buttons */
 .btn{appearance:none;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:700 15px/1.1 var(--body);
   padding:12px 15px;border-radius:14px;cursor:pointer;min-height:44px}
-.btn.primary{background:var(--gold-fill);border-color:transparent;color:var(--gold-ink)}
+.btn.primary{background:radial-gradient(120% 140% at 50% 115%,var(--diyo),var(--gold-fill) 55%,var(--bagh));border-color:transparent;color:var(--gold-ink)}
 .btn.big{font:400 23px/1 var(--display);padding:16px 18px;min-height:62px;border-radius:18px}
 .btn.primary.big{box-shadow:var(--glow)}
-.btn.glow{animation:diyo 2.6s ease-in-out infinite} /* Start breathes like a diyo until the first drop */
+.btn.glow{animation:diyo 2.6s ease-in-out infinite,nudge 7s ease-in-out 4s infinite} /* Start breathes like a diyo until the first drop, and gives a little shake now and then */
+@keyframes nudge{0%,88%,100%{transform:none}90%{transform:rotate(-2deg) scale(1.03)}93%{transform:rotate(2deg) scale(1.03)}96%{transform:rotate(-1deg)}}
+.btn.flare{position:relative}
+.btn.flare::after{content:"";position:absolute;inset:-4px;border-radius:inherit;border:3px solid var(--diyo);animation:flare .5s ease-out forwards;pointer-events:none}
+@keyframes flare{from{opacity:.9;transform:scale(.96)}to{opacity:0;transform:scale(1.12)}}
 @keyframes diyo{0%,100%{box-shadow:0 0 0 4px rgba(255,164,27,.18),0 8px 26px rgba(255,138,0,.35)}50%{box-shadow:0 0 0 7px rgba(255,164,27,.28),0 12px 40px rgba(255,138,0,.6)}}
 .btn.wide{width:100%}
 .btn.small{font-size:14px;padding:9px 12px;min-height:40px}
 .btn.ghost{background:transparent}
 .btn.danger{background:transparent;color:var(--red);border-color:var(--red-soft);margin-top:12px}
 .btn:disabled{opacity:.45;cursor:default}
-.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:active:not(:disabled){transform:translateY(1px) scale(.98)}
 .mini{min-width:42px;min-height:42px;padding:0 8px;border-radius:12px;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:700 15px/1 var(--body);cursor:pointer}
 :is(.btn,.mini,.chip,.tap,.songbtn,.listbtn,.tabs button):focus-visible{outline:3px solid var(--gold-fill);outline-offset:2px}
 
 /* play tab */
 .now{background-color:var(--surface);background-image:radial-gradient(rgba(255,90,110,.42) 1.3px,transparent 1.8px);background-size:18px 18px}
 .now .title{font:400 28px/1.1 var(--display);text-wrap:balance}
+.now{position:relative;overflow:hidden}
+.now .stripes{position:absolute;left:0;right:0;top:0;height:6px;background:repeating-linear-gradient(115deg,var(--bagh) 0 12px,var(--bg) 12px 17px);background-size:200% 100%;opacity:0;transition:opacity .4s}
+.now.live .stripes{opacity:1;animation:prowl 1.4s linear infinite}
+.titlebox{position:relative}
+.now .title.spinning{visibility:hidden}
+.now .title.popin{animation:pop .42s cubic-bezier(.3,1.7,.5,1)}
+.reel{position:absolute;left:0;right:0;top:0;height:1.1em;font:400 28px/1.1 var(--display);overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)}
+.reelin{animation:spin .9s cubic-bezier(.12,.72,.2,1) both}
+.reelin div{height:1.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--gold)}
+@keyframes spin{from{transform:translateY(0)}to{transform:translateY(calc(-100% + 1.1em))}}
+@keyframes pop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:none}}
+.reveal b.pop{display:inline-block;animation:pop .45s cubic-bezier(.3,1.7,.5,1);text-shadow:0 0 14px rgba(255,210,94,.7)}
+/* the paw swipe over the video when a drop lands */
+#pounce{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0}
+#pounce svg{width:100%;height:100%;display:block}
+#pounce path{fill:#FFE7A8;stroke:var(--gold-fill);stroke-width:1.4;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(255,138,0,.95));transform-box:fill-box;transform-origin:0% 100%;transform:scale(0)}
+#pounce.go{animation:swipe .9s ease-out}
+#pounce.go path{animation:slash .26s cubic-bezier(.2,.9,.25,1) forwards}
+#pounce.go path:nth-child(2){animation-delay:.06s} #pounce.go path:nth-child(3){animation-delay:.12s}
+@keyframes slash{to{transform:none}}
+@keyframes swipe{0%{opacity:1;background:radial-gradient(circle at 75% 25%,rgba(255,210,94,.35),transparent 60%)}65%{opacity:1}100%{opacity:0}}
+.screen.shake{animation:shake .32s ease-out}
+@keyframes shake{25%{transform:translate(3px,-2px)}50%{transform:translate(-2px,1px)}75%{transform:translate(1px,0)}}
+/* emoji bursts: the item's emoji when the word is shown, sparks when an item goes on, fireworks at milestones */
+.burst{position:fixed;z-index:30;pointer-events:none;width:0;height:0}
+.burst span{position:absolute;left:0;top:0;font-size:var(--s,22px);line-height:1;transform:translate(-50%,-50%);animation:fly var(--t,1s) cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes fly{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}70%{opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy) + 40px)) rotate(var(--r)) scale(1.1);opacity:0}}
+.pool b.tick{display:inline-block;animation:tick .35s ease-out}
+@keyframes tick{0%{transform:translateY(-55%);opacity:0}100%{transform:none;opacity:1}}
+.streak{display:inline-flex;align-items:center;gap:4px;font:800 14px/1 var(--body);color:var(--gold);background:var(--raise);border-radius:999px;padding:6px 10px;font-variant-numeric:tabular-nums}
+.streak.bump{animation:zap .45s cubic-bezier(.3,1.7,.5,1)}
 .now .meta{color:var(--muted);margin-top:3px}
 .now .row{margin-top:12px}
 .reveal{font-size:16px}
@@ -110,9 +160,13 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .chip .d{font-weight:600;color:var(--muted)}
 .chip .em{font-size:18px;line-height:1;align-self:center}
 .chip .n{font:800 12px/1 var(--body);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--raise);border-radius:999px;padding:3px 7px}
-.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill);box-shadow:0 0 0 3px rgba(255,164,27,.16),0 6px 18px rgba(255,138,0,.28)}
 .chip[aria-pressed="true"] .d{color:inherit;opacity:.7}
-.chip[aria-pressed="true"] .n{background:var(--gold-fill);color:var(--gold-ink)}
+.chip[aria-pressed="true"] .n{background:rgba(26,18,6,.16);color:var(--gold-ink)}
+.chip.zap{animation:zap .45s cubic-bezier(.3,1.7,.5,1)}
+.chip.dim{animation:dim .3s ease-out}
+@keyframes zap{0%{transform:scale(.86)}55%{transform:scale(1.12)}100%{transform:none}}
+@keyframes dim{40%{transform:scale(.94)}}
 .chip.more{border-style:dashed;color:var(--gold)}
 .pool{margin:14px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .pool b{color:var(--ink)}
@@ -121,6 +175,7 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .stepper output{min-width:3ch;text-align:center;font:400 23px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--gold-fill)}
 .plbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .plbar span{min-width:0}
+.plbar .plr{display:flex;align-items:center;gap:8px;flex:none}
 .plbar .pn{font:400 20px/1.15 var(--display);display:block}
 .plbar .ps{color:var(--muted);font-size:14px}
 /* settings: one folded card under the table */
@@ -217,15 +272,18 @@ textarea{margin:10px 0 8px;resize:vertical}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);background:var(--ink);color:var(--bg);
   padding:12px 16px;border-radius:14px;font:600 15px/1.35 var(--body);width:max-content;max-width:min(92vw,560px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
-@media (prefers-reduced-motion: reduce){.tap.hit{animation:none;outline:3px solid var(--gold-fill)} #toast{transition:none} .btn.glow{animation:none} .screen,.sethead .chev{transition:none}}
+@media (prefers-reduced-motion: reduce){.tap.hit{animation:none;outline:3px solid var(--gold-fill)} #toast{transition:none} .btn.glow{animation:none} .screen,.sethead .chev{transition:none}
+  .lights::after,.brand .dev,.brand .mark.leap,.now.live .stripes,.chip.zap,.chip.dim,.reelin,.now .title.popin,.reveal b.pop,#pounce.go,#pounce.go path,.screen.shake,.burst span,.pool b.tick,.streak.bump,.btn.flare::after{animation:none!important}
+  .now .title.spinning{visibility:visible} .reel,.burst,#pounce{display:none}}
 @media (max-width:360px){.listbtn.has-fan{grid-template-columns:80px minmax(0,1fr)}.fan{transform:scale(.8);transform-origin:left center}}
 @media (max-width:380px){.tabs button{padding:9px 11px}.brand .word{font-size:29px}}
 </style>
 </head>
 <body>
+<div class="lights" aria-hidden="true"></div>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span></div>
+    <div class="brand"><img class="mark" src="img/jhapat-mark.webp" width="122" height="64" alt="" decoding="async"><span class="word">Jhapat</span><span class="dev" lang="ne">झपट</span></div>
     <nav class="tabs" aria-label="Sections">
       <button data-act="tab" data-arg="play" aria-selected="true">Play</button>
       <button data-act="tab" data-arg="songs" aria-selected="false">Songs</button>
@@ -241,6 +299,7 @@ textarea{margin:10px 0 8px;resize:vertical}
       <div class="idle" id="idle">Loading the video…</div>
       <div class="ytbox front" id="boxA"><div id="ytA"></div></div>
       <div class="ytbox" id="boxB"><div id="ytB"></div></div>
+      <div id="pounce" aria-hidden="true"><svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice"><path d="M30 74 Q78 46 128 12 Q84 50 30 74Z"/><path d="M44 84 Q94 56 142 22 Q98 60 44 84Z"/><path d="M58 92 Q108 66 154 34 Q112 70 58 92Z"/></svg></div>
       <div id="tapHint" hidden></div>
       <div id="blocked" hidden></div>
     </div>
@@ -255,7 +314,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 32; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 33; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -672,8 +731,10 @@ function nextRound() {
   clearTimeout(nextTimer); nextTimer = null;
   const plan = takePreloaded() || planRound();
   if (!plan) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
-  if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); }
+  if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); setTimeout(() => burst(['🎉', '✨', '🔥', '🐯', '💃'], null, 26, 1.4), 300); }
   current = plan.drop; revealed = false; reporting = false;
+  reel = makeReel(plan.song); clearTimeout(reelTimer); reelTimer = setTimeout(renderNow, REEL_MS + 30);
+  const night = nightCount() + 1; S.night = { n: night, at: Date.now() };
   S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id;
   if (plan.drop && plan.drop.tag) (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; // next time: its next drop point
   save();
@@ -681,6 +742,8 @@ function nextRound() {
   if (tab !== 'play') { tab = 'play'; songId = null; }
   if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
   render();
+  pounce(); replay(document.querySelector('[data-act="next"]'), 'flare'); replay(document.querySelector('.streak'), 'bump');
+  if (CHEERS[night]) setTimeout(() => { burst(['🔥', '🎉', '✨', '🐯'], document.querySelector('.streak'), 22, 1.3); toast(CHEERS[night]); }, 700);
 }
 
 /* ---------- getting the next drop ready behind the current one ---------- */
@@ -754,13 +817,54 @@ function nowHTML() {
   const s = byId(current.songId);
   if (!s) return '<div class="kicker">Ready</div><div class="title">Press Next song</div>';
   const at = current.tag.t + (s.offset || 0);
-  return '<div class="kicker">Now playing</div><div class="title">' + esc(s.title) + '</div>' +
+  const spin = reel && reel.id === s.id ? Date.now() - reel.t0 : Infinity, spinning = spin < REEL_MS && !reduced();
+  return '<div class="stripes" aria-hidden="true"></div><div class="kicker">Now playing</div><div class="titlebox"><div class="title' + (spinning ? ' spinning' : spin < REEL_MS + 450 && !reduced() ? ' popin' : '') + '">' + esc(s.title) + '</div>' +
+    (spinning ? '<div class="reel" aria-hidden="true"><div class="reelin" style="animation-delay:-' + Math.round(spin) + 'ms">' + reel.titles.map(t => '<div>' + esc(t) + '</div>').join('') + '</div></div>' : '') + '</div>' +
     '<div class="meta">' + esc(s.artist || '') + ' · dropped in at ' + fmt(current.start) + (pre && pre.ready && preGood(pre) ? ' · next song ready' : '') + '</div>' +
     (nextTimer ? '<div class="row"><span>Next song in a moment…</span><button class="btn small" data-act="stay">Stay here</button></div>' : '') +
     '<div class="row">' + (revealed
-      ? '<span class="reveal">Word: <b>' + (emo(current.tag.item) ? esc(emo(current.tag.item)) + ' ' : '') + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
+      ? '<span class="reveal">Word: <b' + (Date.now() - revealAt < 500 && !reduced() ? ' class="pop"' : '') + '>' + (emo(current.tag.item) ? esc(emo(current.tag.item)) + ' ' : '') + esc(itemName(current.tag.item)) + '</b> at ' + fmt(at) + '</span>'
       : '<button class="btn small" data-act="reveal">Show the word</button>') +
     '<button class="btn small" data-act="replay">Replay the drop</button></div>';
+}
+/* ---------- the fun: everything here is quick, decorative, and off for anyone who turns motion down ---------- */
+const reduced = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+const buzz = p => { try { if (navigator.vibrate && !reduced()) navigator.vibrate(p); } catch (e) {} }; // Android phones; iPhones ignore it
+const REEL_MS = 900;
+let reel = null, reelTimer = null, revealAt = 0, lastMatch = null;
+function makeReel(song) { // a slot-machine reel of song titles that lands on the one that plays
+  const pool = S.songs.filter(x => x !== song), titles = [];
+  for (let k = 0; k < 9 && pool.length; k++) titles.push(pool[Math.floor(Math.random() * pool.length)].title);
+  return { id: song.id, t0: Date.now(), titles: titles.concat(song.title) };
+}
+function burst(chars, from, n, t) { // emoji flying out from an element (or the middle of the screen), then gone
+  if (reduced() || !document.body) return;
+  n = n || 12;
+  const r = from && from.getBoundingClientRect ? from.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2.5, width: 0, height: 0 };
+  const box = document.createElement('div'); box.className = 'burst'; box.setAttribute('aria-hidden', 'true');
+  box.style.left = (r.left + r.width / 2) + 'px'; box.style.top = (r.top + r.height / 2) + 'px'; if (t) box.style.setProperty('--t', t + 's');
+  for (let i = 0; i < n; i++) {
+    const sp = document.createElement('span'), a = Math.PI * 2 * i / n + Math.random() * 0.5, d = 50 + Math.random() * (from ? 70 : 170);
+    sp.textContent = chars[i % chars.length];
+    sp.style.setProperty('--dx', Math.round(Math.cos(a) * d) + 'px'); sp.style.setProperty('--dy', Math.round(Math.sin(a) * d - 30) + 'px');
+    sp.style.setProperty('--r', Math.round(Math.random() * 140 - 70) + 'deg'); sp.style.setProperty('--s', Math.round(16 + Math.random() * 14) + 'px');
+    box.appendChild(sp);
+  }
+  document.body.appendChild(box); setTimeout(() => box.remove(), (t || 1) * 1000 + 150);
+}
+function replay(el, cls) { if (!el || reduced()) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function pounce() { // the jhapat moment: a paw swipes the video, the screen jolts and the logo leaps
+  replay($('#pounce'), 'go'); replay(document.querySelector('.screen'), 'shake'); replay(document.querySelector('.brand .mark'), 'leap');
+  buzz([14, 40, 22]);
+}
+/* Drops tonight: a counter that grows through the party, with a cheer at milestones. It starts again after 4 quiet hours. */
+const CHEERS = { 5: '5 drops in. Hands ready! 🐯', 10: '10 drops! The room is warming up 🔥', 25: '25 drops! This party has claws 🐯', 50: '50 drops! Legendary night ✨', 100: '100 drops! Someone call the neighbours 🎉' };
+const nightCount = () => (S.night && Date.now() - S.night.at < 4 * 3600e3 ? S.night.n : 0);
+function liveNow() { // the run-up is playing: from the drop until just after the word
+  if (mode !== 'game' || !current || !ready) return false;
+  const s = byId(current.songId); if (!s) return false;
+  const t = now(), at = current.tag.t + (s.offset || 0);
+  return state() === 1 && t >= current.start - 0.5 && t <= at + 1.5;
 }
 /* Something off? under the song: what was wrong goes to Studio › Reports with the song, upload, word, run-up and version.
    With no signal it waits on the phone and goes with the next visit that reaches the database. */
@@ -858,7 +962,8 @@ function renderPlay() {
     (current ? '<button class="btn big" data-act="pause" data-pausebtn>Pause</button>' : '') + '</div>' + reportHTML() +
     '<section class="card" id="table">' +
     (fromDb && S.playlist ? '<div class="plbar"><span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span></span>' +
-      (CAT ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</div>' : '') +
+      '<span class="plr">' + (nightCount() ? '<span class="streak" title="Drops tonight">🔥 ' + nightCount() + '</span>' : '') +
+      (CAT ? '<button class="btn small" data-act="lists">Change</button>' : '') + '</span></div>' : '') +
     '<h2>On the table</h2><p class="hint">Tap what you’ve put out.</p>' +
     '<div class="chips">' + vis.map(chip).join('') +
     (moreItems && long ? '<button class="chip more" data-act="moreitems" aria-expanded="true">Fewer</button>'
@@ -980,6 +1085,7 @@ function render() {
   document.querySelector('.tabs').hidden = fromDb;
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
   $('#view').innerHTML = tab === 'play' ? renderPlay() : tab === 'items' ? renderItems() : (songId ? renderSong() : renderSongs());
+  const pb = document.querySelector('.pool b'); if (pb) { if (lastMatch != null && pb.textContent !== lastMatch) replay(pb, 'tick'); lastMatch = pb.textContent; }
   tick();
 }
 function renderNow() { const n = document.querySelector('.now'); if (n && tab === 'play') n.innerHTML = nowHTML(); }
@@ -987,6 +1093,7 @@ function tick() {
   const c = document.getElementById('clock'); if (c) c.textContent = fmt(now());
   const st = state();
   document.querySelectorAll('[data-pausebtn]').forEach(b => { b.textContent = st === 2 ? 'Resume' : 'Pause'; });
+  const nw = document.querySelector('.now'); if (nw) nw.classList.toggle('live', liveNow());
 }
 setInterval(tick, 200);
 
@@ -1016,10 +1123,11 @@ document.addEventListener('click', async e => {
     case 'settings': settingsOpen = !settingsOpen; render(); break;
     case 'update': location.href = location.pathname + '?v=' + (b.dataset.v || Date.now()) + location.hash; break;
     case 'pause': case 'ttoggle': togglePause(); setTimeout(tick, 120); break;
-    case 'reveal': revealed = true; renderNow(); break;
+    case 'reveal': revealed = true; revealAt = Date.now(); renderNow(); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } break;
     case 'replay': replayDrop(); break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
-    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true); } break; }
+    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
+      const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6); } break; }
     case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': pickPlaylist(arg); break;

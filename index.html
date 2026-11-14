@@ -361,23 +361,31 @@ body.blind #tapHint{z-index:8}
 @media (prefers-reduced-motion: reduce){.cover img,.cover .eq i{animation:none}.pill:active,.chips .chip:hover{transform:none}}
 /* the intro (v37) */
 .linkbtn{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
-.intro{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:rgba(15,11,30,.84);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-.introcard{width:min(100%,430px);max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;
-  padding:16px 16px 0;text-align:center;box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
+.intro{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:12px;background:rgba(15,11,30,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.introcard{width:min(100%,440px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;
+  padding:14px 14px 0;display:grid;grid-template-areas:"head" "vid" "steps" "btns";gap:12px;text-align:center;
+  box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
 @keyframes introin{from{opacity:0;transform:translateY(24px) scale(.94)}}
-.introlg{height:76px;width:auto;filter:drop-shadow(0 0 10px rgba(242,107,29,.5));animation:bob 3.4s ease-in-out infinite}
-.introcard h2{font:400 34px/1.1 var(--display);margin:2px 0}
-.introcard h2 span{background:repeating-linear-gradient(115deg,#F26B1D 0 7px,#FFA41B 7px 13px,#4A1E06 13px 15px);-webkit-background-clip:text;background-clip:text;color:transparent}
-.introsub{color:var(--muted);margin:0 0 12px;font-weight:600}
-.tt{margin:0 0 12px}
-.ttbox{width:min(100%,230px);aspect-ratio:325/578;margin:0 auto 8px;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 2px var(--gold-fill),0 12px 34px rgba(242,107,29,.4)}
+.ihead{grid-area:head;display:flex;align-items:center;justify-content:center;gap:10px;text-align:left}
+.introlg{height:56px;width:auto;filter:drop-shadow(0 0 10px rgba(242,107,29,.5));animation:bob 3.4s ease-in-out infinite}
+.ihead h2{font:400 30px/1.05 var(--display);margin:0}
+.ihead h2 span{background:repeating-linear-gradient(115deg,#F26B1D 0 7px,#FFA41B 7px 13px,#4A1E06 13px 15px);-webkit-background-clip:text;background-clip:text;color:transparent}
+.introsub{color:var(--muted);margin:2px 0 0;font-weight:600;font-size:14px}
+.tt{grid-area:vid;margin:0}
+.ttbox{height:clamp(320px,calc(100dvh - 210px),680px);aspect-ratio:325/578;max-width:100%;margin:0 auto 6px;border-radius:18px;overflow:hidden;background:#000;
+  box-shadow:0 0 0 2px var(--gold-fill),0 12px 34px rgba(242,107,29,.4)}
 .ttbox iframe{width:100%;height:100%;border:0;display:block}
-.tt figcaption{font-size:14px;color:var(--muted)}
-.tt figcaption a{color:var(--gold);font-weight:700}
-.introsteps{list-style:none;margin:0;padding:0;display:grid;gap:7px;text-align:left}
+.tt figcaption a{color:var(--gold);font-weight:800;font-size:15px;text-decoration:none}
+.introsteps{grid-area:steps;list-style:none;margin:0;padding:0;display:grid;gap:7px;text-align:left}
 .introsteps li{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:center;background:var(--raise);border-radius:14px;padding:7px 10px;font-size:15px;line-height:1.3}
 .introsteps b{font-size:21px;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:var(--bg)}
-.introbtns{position:sticky;bottom:0;display:grid;gap:8px;padding:14px 0 16px;background:linear-gradient(rgba(29,22,54,0),var(--surface) 26%)}
+.introbtns{grid-area:btns;position:sticky;bottom:0;display:grid;padding:10px 0 14px;background:linear-gradient(rgba(29,22,54,0),var(--surface) 30%)}
+@media (min-width:760px){
+  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-areas:"vid head" "vid steps" "vid btns";column-gap:24px;row-gap:14px;align-content:center;padding:20px;text-align:left}
+  .ihead{justify-content:flex-start}
+  .ttbox{height:min(calc(100dvh - 90px),680px)}
+  .introbtns{position:static;background:none;padding:4px 0 0}
+}
 body.introopen{overflow:hidden}
 @media (prefers-reduced-motion: reduce){.introcard,.introlg{animation:none}}
 </style>
@@ -414,18 +422,16 @@ body.introopen{overflow:hidden}
 <main class="wrap" id="view"></main>
 <div class="intro" id="intro" role="dialog" aria-modal="true" aria-labelledby="introH" hidden>
   <div class="introcard">
-    <img class="introlg" src="img/jhapat-mark.webp" width="105" height="76" alt="">
-    <h2 id="introH">Jhapat! <span lang="ne">झपट</span></h2>
-    <p class="introsub">Songs play. A word drops. Grab it first. 🐯</p>
-    <figure class="tt"><div class="ttbox"></div>
-      <figcaption>Where it all started: Suju’s party round 🎶 <a href="https://www.tiktok.com/@sujupah" target="_blank" rel="noopener">@sujupah</a></figcaption></figure>
+    <div class="ihead"><img class="introlg" src="img/jhapat-mark.webp" width="77" height="56" alt=""><div><h2 id="introH">Jhapat! <span lang="ne">झपट</span></h2>
+      <p class="introsub">Songs play. A word drops. Grab it first. 🐯</p></div></div>
+    <figure class="tt"><div class="ttbox"></div><figcaption><a href="https://www.tiktok.com/@sujupah" target="_blank" rel="noopener">@sujupah</a></figcaption></figure>
     <ol class="introsteps">
       <li><b aria-hidden="true">🧺</b><span>Put things on the table, then tap the same ones here.</span></li>
       <li><b aria-hidden="true">▶️</b><span>Start. A song drops in a few seconds before one of their words.</span></li>
       <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
       <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
     </ol>
-    <div class="introbtns"><button class="btn primary big" data-act="introsuju">Play Suju’s round</button><button class="btn big" data-act="introgo">Let’s go</button></div>
+    <div class="introbtns"><button class="btn primary big" data-act="introgo">Let’s go</button></div>
   </div>
 </div>
 <footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <a href="studio/">Studio</a></footer>
@@ -436,7 +442,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 37; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 38; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -798,7 +804,8 @@ function pickFromSong(song, want) {
   if (d.list.length) {
     const item = want && d.list.some(x => x.tag.item === want) ? want : d.list[0].tag.item;
     const mine = d.list.filter(x => x.tag.item === item), last = (S.dropAt || {})[dropKey(song, item)];
-    c = (typeof last === 'number' && mine.find(x => x.tag.t > last + 0.01)) || mine[0];
+    const fresh = mine.filter(x => !done().has(ptKey(song.id, x.tag))); // its lines not dropped yet, full run-ups first
+    c = fresh.find(x => x.room >= FULL) || fresh[0] || (typeof last === 'number' && mine.find(x => x.tag.t > last + 0.01)) || mine[0]; // its first line not dropped yet
   } else if (d.all.length) c = d.all.reduce((a, x) => (x.room > a.room ? x : a)); // a packed song: its roomiest word
   if (!c) return null;
   const lead = c.room >= minL ? minL + Math.random() * (Math.min(maxL, c.room) - minL) : Math.max(1, c.room);
@@ -822,27 +829,42 @@ function dpOf(song) {
   return m;
 }
 /* Choose the next song and drop without changing anything, so it can be planned ahead. The item comes first, then one
-   of its songs not played yet. Item balance (Settings, 0–10) sets how evenly the items on the table share the drops:
-   at 5, half the drops take turns round the items and half follow the songs, so Maya, sung in most of them, still gets
-   the most without crowding out the rest; 0 follows the songs only, 10 gives every item equal turns. An item whose songs
-   have all played comes up a quarter as often until the list starts again, and a song doesn't come back within the last
-   10 drops (half the list in a short one), so a rare item's few songs don't come round again and again. */
-const allPlayed = el => el.every(s => S.played.includes(s.id));
-const RECENT = 10;
+   of its songs with a line for it that hasn't dropped yet (songs not heard in the last 10 drops first). A song comes back
+   for its other lines, since each line is a different moment; every line for the table drops once before any comes round
+   again (S.donePts). The same item never drops twice in a row while another is on, and a song never plays twice in a row.
+   Item balance (Settings, 0–10) sets how evenly the items on the table share the drops: at 5, half the drops take turns
+   round the items and half follow the songs, so Maya, sung in most of them, still gets the most without crowding out the
+   rest; 0 follows the songs only, 10 gives every item equal turns. An item whose lines have all dropped comes up a quarter
+   as often until the round starts again. */
+const ptKey = (sid, tag) => sid + '|' + tag.item + '|' + (tag.g != null ? 'g' + tag.g : 't' + Math.round(tag.t * 10)); // one line of one item in one song
+let DONE = null; // S.donePts as a set
+const done = () => DONE || (DONE = new Set(S.donePts || []));
+function markDone(sid, tag) { const k = ptKey(sid, tag); if (done().has(k)) return; S.donePts = (S.donePts || []).concat(k).slice(-5000); DONE = null; }
+function clearDone() { S.donePts = []; DONE = null; }
+const freshFor = (s, it) => dropsFor(s, it).list.some(x => !done().has(ptKey(s.id, x.tag)));
+const allDone = el => el.every(s => dropsFor(s).list.every(x => done().has(ptKey(s.id, x.tag))));
+const RECENT = 10, GAP = 2;
 let recent = []; // the last songs played, kept apart from S.played, which empties when the list starts again
-const recentSkip = el => { const gap = Math.min(RECENT, Math.floor(el.length / 2)); return gap ? recent.slice(-gap) : []; };
+const recentSkip = el => { const gap = Math.min(GAP, Math.floor(el.length / 2)); return gap ? recent.slice(-gap) : []; };
 function itemOdds(el, skip) { // each table item with a song for it: its songs (less those skipped) and its share of the next drop
   const beta = Math.min(10, Math.max(0, +S.settings.balance || 0)) / 10;
   const opts = [...onItems()].map(it => { const all = el.filter(s => dpOf(s).has(it) && dropsFor(s, it).list.length); // songs with a drop point for it with this table
     return { it, n: all.length, songs: all.filter(s => !skip.includes(s.id)) }; }).filter(o => o.songs.length);
   const tot = opts.reduce((a, o) => a + o.n, 0);
-  opts.forEach(o => { o.w = (beta / opts.length + (1 - beta) * o.n / tot) * (o.songs.some(s => !S.played.includes(s.id)) ? 1 : 0.25); });
+  opts.forEach(o => { o.w = (beta / opts.length + (1 - beta) * o.n / tot) * (o.songs.some(s => freshFor(s, o.it)) ? 1 : 0.25); });
   const W = opts.reduce((a, o) => a + o.w, 0);
   opts.forEach(o => { o.p = o.w / W; });
   return opts;
 }
-const nextOdds = (el, avoid) => { let o = itemOdds(el, recentSkip(el).concat(S.lastSong, avoid || []));
-  if (!o.length) o = itemOdds(el, [S.lastSong, avoid]); if (!o.length) o = itemOdds(el, []); return o; };
+function nextOdds(el, avoid) { // a different item from the last drop comes first, then keeping recent songs apart
+  const li = current && current.tag && current.tag.item; let first = null;
+  for (const skip of [recentSkip(el).concat(S.lastSong, avoid || []), [S.lastSong, avoid], []]) {
+    const o = itemOdds(el, skip); if (!o.length) continue; first = first || o;
+    const rest = li ? o.filter(x => x.it !== li) : o;
+    if (rest.length) { if (rest.length < o.length) { const W = rest.reduce((a, x) => a + x.w, 0); rest.forEach(x => { x.p = x.w / W; }); } return rest; }
+  }
+  return first || [];
+}
 function planRound(avoid) {
   const el = eligible();
   if (!el.length) return null;
@@ -851,26 +873,30 @@ function planRound(avoid) {
   if (!opts.length) { // no table word anywhere has a clean run-up: any song, at its roomiest word
     const pool = el.filter(s => s.id !== S.lastSong && s.id !== avoid), fresh = pool.filter(s => age(s.id) < 0);
     const song = rand(fresh.length ? fresh : pool.length ? pool : el);
-    return { song, drop: pickFromSong(song), wrap: age(song.id) >= 0 && allPlayed(el) };
+    return { song, drop: pickFromSong(song), wrap: false };
   }
   let r = Math.random(), o = opts[opts.length - 1];
   for (const x of opts) { r -= x.p; if (r < 0) { o = x; break; } }
-  const fresh = o.songs.filter(s => age(s.id) < 0);
+  const fresh = o.songs.filter(s => freshFor(s, o.it)); // songs with a line for this item that hasn't dropped yet
   let song;
-  if (fresh.length) { const roomy = fresh.filter(s => dropsFor(s, o.it).full.length); song = rand(roomy.length ? roomy : fresh); }
-  else song = o.songs.reduce((a, s) => (age(s.id) < age(a.id) ? s : a));
-  return { song, drop: pickFromSong(song, o.it), wrap: age(song.id) >= 0 && allPlayed(el) };
+  if (fresh.length) {
+    const lately = new Set(S.played.slice(-RECENT)), far = fresh.filter(s => !lately.has(s.id)), pool = far.length ? far : fresh;
+    const roomy = pool.filter(s => dropsFor(s, o.it).full.some(x => !done().has(ptKey(s.id, x.tag))));
+    song = rand(roomy.length ? roomy : pool);
+  } else song = o.songs.reduce((a, s) => (age(s.id) < age(a.id) ? s : a));
+  const drop = pickFromSong(song, o.it);
+  return { song, drop, wrap: !!drop && done().has(ptKey(song.id, drop.tag)) && allDone(el) };
 }
 function nextRound() {
   clearTimeout(nextTimer); nextTimer = null;
   const plan = takePreloaded() || planRound();
   if (!plan) { toast('No song has a tagged word for the items on the table. Turn on more items or tag a song.'); render(); return; }
-  if (plan.wrap) { S.played = []; toast('Every matching song has played. Starting the list again.'); setTimeout(() => burst(['🎉', '✨', '🔥', '🐯', '💃'], null, 26, 1.4), 300); }
+  if (plan.wrap) { S.played = []; clearDone(); toast('Every drop has played. Starting again.'); setTimeout(() => burst(['🎉', '✨', '🔥', '🐯', '💃'], null, 26, 1.4), 300); }
   current = plan.drop; revealed = false; reporting = false;
   reel = makeReel(plan.song); clearTimeout(reelTimer); reelTimer = setTimeout(renderNow, REEL_MS + 30);
   const night = nightCount() + 1; S.night = { n: night, at: Date.now() };
   S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id;
-  if (plan.drop && plan.drop.tag) (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; // next time: its next drop point
+  if (plan.drop && plan.drop.tag) { (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; markDone(plan.song.id, plan.drop.tag); } // next time: its next line
   save();
   recent = recent.filter(x => x !== plan.song.id).concat(plan.song.id).slice(-RECENT);
   if (tab !== 'play') { tab = 'play'; songId = null; }
@@ -905,7 +931,7 @@ function takePreloaded() {
   const p = pre;
   if (!preloadOK() || !preGood(p)) { discardPre(); return null; }
   const song = byId(p.songId), at = p.tag.t + (song.offset || 0);
-  return { song, drop: { songId: song.id, tag: p.tag, lead: p.lead, start: Math.max(0, at - p.lead) }, wrap: S.played.includes(song.id) && allPlayed(eligible()), swap: true };
+  return { song, drop: { songId: song.id, tag: p.tag, lead: p.lead, start: Math.max(0, at - p.lead) }, wrap: done().has(ptKey(song.id, p.tag)) && allDone(eligible()), swap: true };
 }
 function swapIn(drop) {
   mode = 'game';
@@ -1147,7 +1173,7 @@ const touched = new Set(); // items tapped here stay in view when the list folds
 function renderPlay() {
   if (picking || needPick()) return renderPicker();
   const el = eligible().filter(s => dropsFor(s).list.length); // songs the game can drop into with this table
-  const played = new Set(S.played), left = el.filter(s => !played.has(s.id)).length;
+  const left = el.reduce((a, s) => a + dropsFor(s).list.filter(x => !done().has(ptKey(s.id, x.tag))).length, 0); // their lines not dropped yet
   const stats = new Map(S.items.map(it => [it.id, { songs: 0, pts: 0 }])); // each item's songs with a drop point, and its drop points
   S.songs.forEach(s => { if (!s.broken) dpOf(s).forEach((n, id) => { const x = stats.get(id); if (x) { x.songs++; x.pts += n; } }); });
   const songsWith = id => stats.get(id).songs; // songs where the item has a drop point, so the count is what can actually play
@@ -1170,9 +1196,9 @@ function renderPlay() {
     '<div class="chips">' + vis.map(chip).join('') +
     (moreItems && long ? '<button class="chip more" data-act="moreitems" aria-expanded="true">Fewer</button>'
       : hidden ? '<button class="chip more" data-act="moreitems" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div>' +
-    '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' match · <b>' + left + '</b> not played yet</span>'
+    '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' · <b>' + left + '</b> drop' + (left === 1 ? '' : 's') + ' left</span>'
       : '<span>' + (fromDb ? 'No song here has those words. Turn on more items.' : 'No tagged song matches these items yet. Tag one in Songs.') + '</span>') +
-    (S.played.length ? '<button class="btn ghost small" data-act="reset">' + ICON.replay + 'Reset</button>' : '') + '</p></section>' +
+    ((S.donePts || []).length ? '<button class="btn ghost small" data-act="reset">' + ICON.replay + 'Reset</button>' : '') + '</p></section>' +
     settingsHTML();
 }
 function settingsHTML() {
@@ -1338,7 +1364,6 @@ document.addEventListener('click', async e => {
     case 'pickpl': pickPlaylist(arg); break;
     case 'intro': openIntro(); break;
     case 'introgo': closeIntro(); break;
-    case 'introsuju': closeIntro(); playSuju(); break;
     case 'reportopen': reporting = true; render(); break;
     case 'reportx': reporting = false; render(); break;
     case 'report': if (arg === 'other') { reporting = 'other'; render(); const n = $('#reportNote'); if (n) n.focus(); } else await sendReport(arg); break;
@@ -1360,7 +1385,7 @@ document.addEventListener('click', async e => {
       save(); render(); schedulePreload(1200, true); break;
     }
     case 'balance': S.settings.balance = Math.min(10, Math.max(0, S.settings.balance + (arg === '+' ? 1 : -1))); save(); render(); schedulePreload(1200, true); break;
-    case 'reset': S.played = []; save(); render(); toast('Every song is back in the list.'); break;
+    case 'reset': S.played = []; clearDone(); save(); render(); toast('Every drop is back in the list.'); break;
     case 'open': songId = arg; syncing = null; render(); window.scrollTo(0, 0); break;
     case 'back': songId = null; syncing = null; render(); break;
     case 'tstart': if (song) { syncing = null; playSong(song, 0, 'tag'); render(); } break;
@@ -1377,7 +1402,7 @@ document.addEventListener('click', async e => {
     case 'tdel': if (song) { song.tags.splice(Number(arg), 1); save(); render(); } break;
     case 'delsong':
       if (song && confirm('Delete “' + song.title + '” and its ' + song.tags.length + ' tags?')) {
-        S.songs = S.songs.filter(x => x.id !== song.id); S.played = S.played.filter(x => x !== song.id);
+        S.songs = S.songs.filter(x => x.id !== song.id); S.played = S.played.filter(x => x !== song.id); S.donePts = (S.donePts || []).filter(k => !k.startsWith(song.id + '|')); DONE = null;
         if (current && current.songId === song.id) current = null;
         songId = null; save(); render(); toast('Deleted.');
       } break;
@@ -1517,7 +1542,7 @@ function useList(pid, quiet) {
   S.items = CAT.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '',
     on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id)) }));
   S.songs = songs; S.source = 'db'; S.playlist = { id: pid, name: p ? p.name : 'All songs' };
-  const ids = new Set(songs.map(s => s.id)); S.played = S.played.filter(id => ids.has(id));
+  const ids = new Set(songs.map(s => s.id)); S.played = S.played.filter(id => ids.has(id)); S.donePts = (S.donePts || []).filter(k => ids.has(k.slice(0, k.indexOf('|')))); DONE = null;
   save(); if (!quiet) render(); schedulePreload(1200, true);
 }
 async function dbCall(path, body, ms) { // { ok, data }, or offline: true when the database didn't answer at all
@@ -1668,12 +1693,10 @@ async function openShared() {
 }
 /* The intro (v37): how to play in four lines, and Suju's TikTok, the party round that gave Sachin the idea. It opens on a phone's
    first visit and from How to play. TikTok's player loads only while the intro is open, with its description off. */
-const SUJU = 'tiktok-og', TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&autoplay=1&muted=1';
-let wantSuju = false;
+const TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&loop=1&autoplay=1&muted=1';
 function openIntro() {
   const el = $('#intro'); if (!el) return;
   el.querySelector('.ttbox').innerHTML = '<iframe src="' + TIKTOK + '" title="Suju (@sujupah) on TikTok: the Nepali party round that started Jhapat" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share" allowfullscreen></iframe>';
-  el.querySelector('[data-act="introsuju"]').innerHTML = ICON.play + 'Play Suju’s round';
   el.hidden = false; document.body.classList.add('introopen');
   setTimeout(() => { const b = el.querySelector('[data-act="introgo"]'); if (b && !el.hidden) b.focus(); }, 60);
 }
@@ -1681,10 +1704,6 @@ function closeIntro() {
   const el = $('#intro'); if (!el || el.hidden) return;
   el.hidden = true; el.querySelector('.ttbox').innerHTML = ''; document.body.classList.remove('introopen'); // the video stops with its frame
   if (!S.introSeen) { S.introSeen = true; save(); }
-}
-function playSuju() { // Suju's OG Round; on a first visit the catalog may still be on its way, so it opens when it lands
-  if (!CAT || !lists().some(x => x.id === SUJU)) { wantSuju = true; return; }
-  wantSuju = false; tab = 'play'; pickPlaylist(SUJU);
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeIntro(); });
 document.addEventListener('click', e => { if (e.target && e.target.id === 'intro') closeIntro(); }); // a tap outside the card
@@ -1697,7 +1716,7 @@ if (CAT) { buildCat(); useList(pidFor(S.source === 'db' && S.playlist && S.playl
 $('#ver').textContent = 'v' + VERSION;
 render();
 if (!S.introSeen) openIntro();
-loadDb().then(() => { if (wantSuju) playSuju(); });
+loadDb();
 checkVersion();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
 })();

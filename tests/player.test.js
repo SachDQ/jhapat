@@ -77,8 +77,8 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     if (prevWord !== undefined && c.startSeconds - prevWord < 1.15) { close++; if (close < 4) console.log('  close to previous word', s.id, prevWord, c.startSeconds.toFixed(2)); }
   }
   ok(bad === 0, `400 drops: first table word arrives 1–10s after the drop (bad=${bad})`);
-  // every drop point takes its turn now, short ones (4.5–7 s) too: these packed seed songs give about 82% full run-ups, the real songs 92–96%
-  ok(long / n >= 0.78, `most drops get the full 7–10s run-up: ${long}/${n}`);
+  // every line drops once a round now, short ones (4.5–7 s) too, full ones first: these packed seed songs give about 77% full run-ups, the real songs 92–96%
+  ok(long / n >= 0.72, `most drops get the full 7–10s run-up: ${long}/${n}`);
   ok(close === 0, `no drop starts within 1.2s after an earlier table word (close=${close})`);
   ok(![...seen].some(id => ['chiyabari', 'gurasai', 'bistarai', 'mayaraicha'].includes(id)), 'never picks untagged or Maya-only songs');
   ok(seen.size >= 10, 'picks across ' + seen.size + ' songs: ' + [...seen].join(','));
@@ -444,25 +444,38 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     c9('[data-act="settings"]');
     for (let k = 0; k < Math.abs(clicks); k++) c9(`[data-act="balance"][data-arg="${clicks > 0 ? '+' : '-'}"]`);
     const shown = d9.querySelector('#balance').textContent, odds = (d9.querySelector('.odds') || {}).textContent || '';
-    const got = { maya: 0, paani: 0, chithi: 0 }, last = []; let rep = 0;
+    const got = { maya: 0, paani: 0, chithi: 0 }, last = []; let rep = 0, itRep = 0, prevIt = null;
     for (let k = 0; k < drops; k++) {
       c9('[data-act="next"]'); await sleep(0);
       c9('[data-act="reveal"]');
-      const rv = d9.querySelector('.reveal').textContent; got[/Chithi/.test(rv) ? 'chithi' : /Paani/.test(rv) ? 'paani' : 'maya']++;
-      const t = d9.querySelector('.now .title').textContent; if (last.slice(-7).includes(t)) rep++; last.push(t);
+      const rv = d9.querySelector('.reveal').textContent, it = /Chithi/.test(rv) ? 'chithi' : /Paani/.test(rv) ? 'paani' : 'maya'; got[it]++; if (it === prevIt) itRep++; prevIt = it;
+      const t = d9.querySelector('.now .title').textContent; if (last.slice(-1).includes(t)) rep++; last.push(t);
     }
-    return { shown, odds, got, rep, st: JSON.parse(w9.localStorage.getItem('jhapat.v1')), summary: d9.querySelector('.sethead').textContent };
+    return { shown, odds, got, rep, itRep, st: JSON.parse(w9.localStorage.getItem('jhapat.v1')), summary: d9.querySelector('.sethead').textContent };
   }
   const mid = await run9(0, 300), even = await run9(5, 300), songsOnly = await run9(-5, 300);
   ok(mid.shown === '5' && mid.summary.includes('Balance 5') && /^Next drop: Maya 52% · Paani 27% · Chithi 22%$/.test(mid.odds),
     'Item balance starts at 5, shows in the summary, and gives the next drop’s odds: ' + mid.odds);
   ok(mid.got.maya > mid.got.paani && mid.got.paani > mid.got.chithi && mid.got.chithi >= 15 && mid.got.maya <= 240,
     'at 5, Maya (in every song) gets the most, but Paani and Chithi still get their turns: ' + JSON.stringify(mid.got));
-  ok(even.shown === '10' && even.st.settings.balance === 10 && /Maya 33% · Paani 33% · Chithi 33%/.test(even.odds) && even.got.chithi > songsOnly.got.chithi && even.got.paani > songsOnly.got.paani,
+  ok(even.shown === '10' && even.st.settings.balance === 10 && /Maya 33% · Paani 33% · Chithi 33%/.test(even.odds) && even.got.chithi > songsOnly.got.chithi && even.got.maya < songsOnly.got.maya,
     'at 10 every item has the same odds; at 0 the drops follow the songs: ' + JSON.stringify(even.got) + ' vs ' + JSON.stringify(songsOnly.got));
   ok(songsOnly.shown === '0' && /Maya 70% · Paani 20% · Chithi 10%/.test(songsOnly.odds), 'at 0 the odds follow the songs: ' + songsOnly.odds);
-  ok(mid.rep + even.rep + songsOnly.rep === 0, 'no song comes back within 7 drops (half of these 14 songs), even at 10 with Chithi’s two songs (' + [mid.rep, even.rep, songsOnly.rep] + ')');
+  ok(mid.itRep + even.itRep + songsOnly.itRep === 0 && mid.rep + even.rep + songsOnly.rep === 0,
+    'the same item never drops twice in a row, and no song plays twice in a row (' + [mid.itRep, even.itRep, songsOnly.itRep, mid.rep, even.rep, songsOnly.rep] + ')');
   ok(new Set(even.st.played).size === even.st.played.length, 'a song played again moves to the end of the played list instead of being listed twice');
+  // 19b. A song comes back for its other lines: every line for the table drops once before any comes round again
+  const B9b = { id: 'party-mix', name: 'Nepali Party Mix', items: [IT9[0]], songs: [mkSong('m1', [['maya', 20], ['maya', 60], ['maya', 100]]), mkSong('m2', [['maya', 25], ['maya', 70], ['maya', 110]]), mkSong('m3', [['maya', 30], ['maya', 80]])] };
+  const dom9b = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => catOf(B9b) }); } });
+  await sleep(60);
+  const w9b = dom9b.window, d9b = w9b.document, c9b = sel => d9b.querySelector(sel).dispatchEvent(new w9b.MouseEvent('click', { bubbles: true }));
+  if (d9b.querySelector('[data-act="item"][data-arg="maya"]').getAttribute('aria-pressed') !== 'true') c9b('[data-act="item"][data-arg="maya"]');
+  const pool9b = () => d9b.querySelector('.pool').textContent, start9b = pool9b(), seen9b = [];
+  for (let k = 0; k < 6; k++) { c9b('[data-act="next"]'); await sleep(0); c9b('[data-act="reveal"]'); seen9b.push(d9b.querySelector('.now .title').textContent + ' ' + d9b.querySelector('.reveal').textContent.split(' at ')[1]); }
+  const twice9b = seen9b.map(x => x.split(' ').slice(0, 2).join(' ')).some((x, i, a) => a.indexOf(x) !== i);
+  ok(/3 songs · 8 drops left/.test(start9b) && new Set(seen9b).size === 6 && twice9b && /2 drops left/.test(pool9b()),
+    'songs come back for their other lines, a different line each time: ' + start9b + ' → ' + pool9b() + ' | ' + seen9b.join(', '));
 
   // 20. Drop points: a word sung right behind another table word is never a drop; a word with less room gets a shorter run-up
   const IT10 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'phool', name: 'Phool', dev: 'फूल' }];
@@ -479,7 +492,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const chip10 = id => d10.querySelector(`[data-act="item"][data-arg="${id}"]`);
   ok(chip10('maya').querySelector('.n').textContent === '3' && chip10('maya').title === '3 songs, 5 drop points' && chip10('phool').title === '3 songs, 3 drop points',
     'the chips count songs where the item has a drop point (not the song that sings Maya 3 s in), and say how many drop points: ' + chip10('maya').title);
-  ok(/^3 songs match/.test(d10.querySelector('.pool').textContent), 'the pool counts the songs the game can drop into with this table: ' + d10.querySelector('.pool').textContent);
+  ok(/^3 songs · 6 drops left/.test(d10.querySelector('.pool').textContent), 'the pool counts the songs the game can drop into with this table: ' + d10.querySelector('.pool').textContent);
   const seen10 = new Set(), order10 = []; let crossed10 = 0, shortOk = true;
   for (let k = 0; k < 120; k++) {
     c10('[data-act="next"]'); await sleep(0);

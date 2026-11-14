@@ -264,7 +264,12 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const pl3 = dom3.window.document.querySelector('#preload');
   ok(pl3.disabled && !pl3.checked && dom3.window.document.body.textContent.includes('Not on iPhone'), 'and the preload switch is off with the reason');
 
-  // 15. Songs from the studio's database replace the built-in list, keep the table choices, and use each upload's offset
+  // The database's catalog() from playlists in their old bundle shape: every song once, each playlist as a list of its songs
+  const catOf = (...bs) => { const songs = new Map(); bs.forEach(b => b.songs.forEach(x => songs.set(x.id, x)));
+    return { items: bs[0].items, songs: [...songs.values()], playlists: bs.map(b => ({ id: b.id, name: b.name, description: b.description || null, songs: b.songs.map(x => x.id) })) }; };
+
+  // 15. Songs from the database's catalog replace the built-in list, keep the table choices, and use each upload's offset.
+  //     A phone with no room to store the catalog keeps its songs in the save, as before v30.
   const bundle = { id: 'party-mix', name: 'Nepali Party Mix', items: [{ id: 'paani', name: 'Paani', dev: 'पानी' }, { id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'rumal', name: 'Rumal', dev: 'रुमाल' }],
     songs: [{ id: 'kaha', title: 'Kaha Hola Ghar', artist: 'Karma Band', status: 'tagged', videos: [{ yt: 'jU7L4KDAT6w', offset: 0, synced: true }, { yt: 'CCCCCCCCCCC', offset: 2.5, synced: true }], tags: [['paani', 96.5], ['maya', 70.1]] },
             { id: 'novid', title: 'No Upload', artist: '', status: 'tagged', videos: [], tags: [['paani', 20]] }] };
@@ -272,11 +277,13 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   let fetched = null;
   const dom4 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
     beforeParse(win) { win.localStorage.setItem('jhapat.v1', JSON.stringify(saved));
-      win.fetch = async (url, o) => { if (/playlist_bundle/.test(url)) fetched = { url, o }; return { ok: true, json: async () => bundle }; }; } });
+      const set = win.Storage.prototype.setItem; win.Storage.prototype.setItem = function (k, v) { if (k === 'jhapat.cat') throw new Error('quota'); return set.call(this, k, v); };
+      win.fetch = async (url, o) => { if (/\/rest\/v1\//.test(url)) fetched = { url, o }; return { ok: true, json: async () => catOf(bundle) }; }; } });
   await sleep(50);
   const D4 = JSON.parse(dom4.window.localStorage.getItem('jhapat.v1')), d4 = dom4.window.document;
-  ok(fetched && /rpc\/playlist_bundle$/.test(fetched.url) && JSON.parse(fetched.o.body).pid === 'party-mix' && fetched.o.headers.apikey.startsWith('sb_publishable_'), 'asks the database for the party-mix playlist with the public key');
-  ok(D4.source === 'db' && D4.songs.length === 1 && D4.songs[0].id === 'kaha', 'database songs replace the built-in list (songs without an upload are skipped)');
+  ok(fetched && /rpc\/catalog$/.test(fetched.url) && !fetched.o.body && fetched.o.headers.apikey.startsWith('sb_publishable_'), 'asks the database for its catalog, in one call with the public key');
+  ok(D4.source === 'db' && D4.songs.length === 1 && D4.songs[0].id === 'kaha' && !dom4.window.localStorage.getItem('jhapat.cat'),
+    'database songs replace the built-in list (songs without an upload are skipped); with no room for the catalog they stay in the save');
   ok(D4.items.find(i => i.id === 'maya').on === true && D4.items.find(i => i.id === 'rumal').on === false && D4.items.find(i => i.id === 'paani').on === true, 'table choices carry over; new items start off');
   ok(d4.querySelector('.tabs').hidden && d4.querySelector('.plbar').textContent.includes('Nepali Party Mix'), 'tagging tabs step aside and the playlist is named');
   ok(D4.songs[0].offsets.join(',') === '0,2.5', 'each upload keeps its own offset');
@@ -288,29 +295,33 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     'party-mix': { id: 'party-mix', name: 'Nepali Party Mix', items: IT, songs: [mkSong('p1', [['paani', 30], ['phool', 60]]), mkSong('p2', [['paani', 40], ['maya', 80]])] },
     'love': { id: 'love', name: 'Love Songs', items: IT, songs: [mkSong('l1', [['maya', 30], ['phool', 50]]), mkSong('l2', [['maya', 45]])] },
   };
-  const CARDS = [{ id: 'party-mix', name: 'Nepali Party Mix', description: 'The big one', songs: 2, items: { paani: 2, phool: 1, maya: 1 }, sort: 0 },
-    { id: 'love', name: 'Love Songs', description: null, songs: 2, items: { maya: 2, phool: 1 }, sort: 1 },
-    { id: 'empty', name: 'Empty', description: null, songs: 0, items: {}, sort: 2 }];
+  const CAT5 = { items: IT, songs: B['party-mix'].songs.concat(B.love.songs), playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', description: 'The big one', songs: ['p1', 'p2'] },
+    { id: 'love', name: 'Love Songs', description: null, songs: ['l1', 'l2'] }, { id: 'empty', name: 'Empty', description: null, songs: [] }] };
   let online = true; const asked = [];
   const net = async (url, o) => { asked.push(url.replace(/^.*\/rest\/v1\//, '') + (o && o.body ? ' ' + o.body : ''));
     if (!online) throw new Error('offline');
-    if (/playlist_cards/.test(url)) return { ok: true, json: async () => CARDS };
-    return { ok: true, json: async () => B[JSON.parse(o.body).pid] || null }; };
+    return { ok: true, json: async () => (/rpc\/catalog$/.test(url) ? CAT5 : null) }; };
   const dom5 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.fetch = net; } });
   const w5 = dom5.window, d5 = w5.document, st5 = () => JSON.parse(w5.localStorage.getItem('jhapat.v1'));
   const c5 = sel => { const el = d5.querySelector(sel); if (!el) throw new Error('missing ' + sel); el.dispatchEvent(new w5.MouseEvent('click', { bubbles: true })); };
   const chips5 = () => [...d5.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg + (b.getAttribute('aria-pressed') === 'true' ? '+' : '-') + b.querySelector('.n').textContent);
   await sleep(60);
-  ok(asked.some(a => /^playlist_cards\?.*owner=is\.null.*is_public=is\.true/.test(a)), 'asks for the official public playlist cards');
+  ok(asked.filter(a => !/version\.json/.test(a)).join(' ') === 'rpc/catalog', 'one call brings every playlist: ' + asked.join(', '));
   const cards5 = [...d5.querySelectorAll('[data-act="pickpl"]')];
-  ok(cards5.length === 2 && d5.body.textContent.includes('Pick a playlist') && !d5.querySelector('[data-act="next"]'), 'first visit: the playlist list comes first (the empty playlist is left out)');
-  ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('Paani 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, item counts and description');
-  { const many = {}; for (let k = 0; k < 11; k++) many['it' + k] = 11 - k; // a playlist with 11 items lists its 8 most common, then "+3 more"
+  ok(cards5.map(c => c.dataset.arg).join(' ') === 'all party-mix love' && d5.body.textContent.includes('Pick a playlist') && !d5.querySelector('[data-act="next"]'),
+    'first visit: the playlist list comes first, with All songs on top (the empty playlist is left out)');
+  ok(cards5[1].textContent.includes('2 songs') && cards5[1].textContent.includes('Paani 2') && cards5[1].textContent.includes('The big one'), 'each playlist shows its song count, item counts and description');
+  ok(cards5[0].textContent.includes('All songs') && cards5[0].textContent.includes('4 songs') && cards5[0].textContent.includes('Maya 3'), 'All songs counts every song once: ' + cards5[0].textContent);
+  const fan5 = [...cards5[0].querySelectorAll('.fan img')].map(i => i.getAttribute('src'));
+  ok(fan5.length === 2 && fan5[0].includes('/p1xxxxxxxxx/') && fan5[1].includes('/l1xxxxxxxxx/'), 'its covers are each playlist’s first song');
+  { const its = []; for (let k = 0; k < 11; k++) its.push({ id: 'it' + k, name: 'it' + k, dev: '' }); // a playlist with 11 items lists its 8 most common, then "+3 more"
+    const sg = []; for (let j = 0; j < 11; j++) sg.push(mkSong('q' + j, its.slice(0, 11 - j).map((it, k) => [it.id, 20 + k * 15]))); // it0 is in 11 songs, it1 in 10 … it10 in 1
+    const C = { items: its, songs: sg.concat(mkSong('z0', [['it0', 30]])), playlists: [{ id: 'party-mix', name: 'P', songs: ['z0'] }, { id: 'love', name: 'Love Songs', songs: sg.map(x => x.id) }] };
     const d8 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
-      win.fetch = async (url, o) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [CARDS[0], { ...CARDS[1], items: many }] : B[JSON.parse(o.body).pid]) }); } });
+      win.fetch = async () => ({ ok: true, json: async () => C }); } });
     await sleep(60);
     const b8 = [...d8.window.document.querySelectorAll('[data-act="pickpl"][data-arg="love"] .badge')].map(x => x.textContent);
-    ok(b8.length === 10 && b8[1].startsWith('it0 ') && b8[9] === '+3 more', 'a long item list shows the 8 most common and “+3 more”: ' + b8.slice(-2).join(', ')); }
+    ok(b8.length === 10 && b8[1] === 'it0 11' && b8[9] === '+3 more', 'a long item list shows the 8 most common and “+3 more”: ' + [b8[1], b8[9]].join(', ')); }
   c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
   ok(st5().playlist.id === 'love' && st5().chosen === true && !!d5.querySelector('[data-act="next"]'), 'picking a playlist loads it and opens the Play screen');
   ok(chips5().join(' ') === 'phool+1 maya+2', 'only the items in that playlist, with how many of its songs have each; Maya, in every song, starts on: ' + chips5().join(' '));
@@ -330,14 +341,18 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
   ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani-2 phool-1 maya+1', 'offline: a playlist opened before still loads from the phone, with its table: ' + chips5().join(' '));
   c5('[data-act="lists"]'); await sleep(10);
-  ok(d5.querySelectorAll('[data-act="pickpl"]').length === 2, 'offline: the playlist list still shows');
-  const keep5 = w5.localStorage.getItem('jhapat.v1');
+  ok(d5.querySelectorAll('[data-act="pickpl"]').length === 3, 'offline: the playlist list still shows');
+  c5('[data-act="pickpl"][data-arg="all"]'); await sleep(20);
+  ok(st5().playlist.id === 'all' && /All songs\s*4 songs/.test(d5.querySelector('.plbar').textContent) && chips5().join(' ') === 'paani-2 phool-2 maya+3',
+    'offline too, All songs opens with every song and every item they have: ' + chips5().join(' '));
+  const keep5 = w5.localStorage.getItem('jhapat.v1'), cat5 = w5.localStorage.getItem('jhapat.cat');
+  ok(JSON.parse(keep5).songs.length === 0 && JSON.parse(cat5).songs.length === 4 && !JSON.parse(keep5).bundles, 'songs are left out of the save: the stored catalog has them');
   const dom6 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-    beforeParse(win) { win.localStorage.setItem('jhapat.v1', keep5); win.fetch = async () => { throw new Error('offline'); }; } });
+    beforeParse(win) { win.localStorage.setItem('jhapat.v1', keep5); win.localStorage.setItem('jhapat.cat', cat5); win.fetch = async () => { throw new Error('offline'); }; } });
   await sleep(40);
   const d6 = dom6.window.document;
-  ok(!!d6.querySelector('[data-act="next"]') && d6.querySelector('.plbar').textContent.includes('Nepali Party Mix') && JSON.parse(dom6.window.localStorage.getItem('jhapat.v1')).songs.length === 2,
-    'reopened offline: straight to Play with the last playlist and its songs');
+  ok(!!d6.querySelector('[data-act="next"]') && /All songs\s*4 songs/.test(d6.querySelector('.plbar').textContent),
+    'reopened offline: straight to Play with the last playlist, its songs rebuilt from the stored catalog');
 
   // 17. A repeated line counts once: its word drops in at the first repeat with room for the run-up. Emojis show on the items.
   const IT7 = [{ id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧' }, { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸' }, { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️' }];
@@ -348,7 +363,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     tags: [['maya', 30, 2], ['maya', 90, 2]] }; // the same line twice, both with plenty of room
   const B7 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT7, songs: [chorus, twice] };
   const dom7 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-    beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 2, items: {} }] : B7) }); } });
+    beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => catOf(B7) }); } });
   await sleep(60);
   const w7 = dom7.window, d7 = w7.document, c7 = sel => d7.querySelector(sel).dispatchEvent(new w7.MouseEvent('click', { bubbles: true }));
   ok([...d7.querySelectorAll('[data-act="item"] .em')].map(e => e.textContent).join('') === '💧🌸❤️', 'items show their emoji');
@@ -373,17 +388,16 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const VER = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'version.json'), 'utf8')).v;
   ok(d.querySelector('#ver').textContent === 'v' + VER, 'the version shows at the bottom and matches version.json: ' + d.querySelector('#ver').textContent);
   const IT8 = 'paani phool chiya paisa chithi maya rakshi mutu aankha sapana raat haat'.split(' ').map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '' }));
-  const B8 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT8, songs: [mkSong('m1', IT8.map((it, k) => [it.id, 20 + k * 15])), mkSong('m2', [['paani', 30]])] }; // only Paani is in both songs
-  const C8 = [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 1, items: { paani: 1 }, thumbs: ['m1xxxxxxxxx', 'bad id!', 'AAAAAAAAAAA', 'BBBBBBBBBBB', 'CCCCCCCCCCC'] },
-    { id: 'love', name: 'Love Songs', songs: 2, items: { maya: 2 } }];
+  const B8 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT8, songs: [mkSong('m1', IT8.map((it, k) => [it.id, 20 + k * 15])), mkSong('m2', [['paani', 30]]), mkSong('m3', [['paani', 30]]), mkSong('m4', [['paani', 30]])] };
+  const L8 = { id: 'love', name: 'Love Songs', items: IT8, songs: [mkSong('m2', [['paani', 30]])] }; // songs in both: no All songs card, since it would add nothing
   const dom8 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
-    win.fetch = async (url, o) => ({ ok: true, json: async () => (/version\.json/.test(url) ? { v: VER + 1 } : /playlist_cards/.test(url) ? C8 : B8) }); } });
+    win.fetch = async (url) => ({ ok: true, json: async () => (/version\.json/.test(url) ? { v: VER + 1 } : catOf(B8, L8)) }); } });
   await sleep(60);
   const w8 = dom8.window, d8 = w8.document, c8 = sel => d8.querySelector(sel).dispatchEvent(new w8.MouseEvent('click', { bubbles: true }));
   ok(!d8.querySelector('#update').hidden && d8.querySelector('#update').textContent.includes('v' + (VER + 1)), 'a newer version on the site offers a reload');
   const fan = [...d8.querySelectorAll('[data-arg="party-mix"] .fan img')].map(i => i.getAttribute('src'));
-  ok(fan.length === 3 && fan[0] === 'https://i.ytimg.com/vi/m1xxxxxxxxx/mqdefault.jpg' && fan[1].includes('/AAAAAAAAAAA/'), 'a playlist card fans out its first three song covers (a bad id is dropped)');
-  ok(!d8.querySelector('[data-arg="love"]').classList.contains('has-fan'), 'a card without covers stays plain');
+  ok(fan.length === 3 && fan[0] === 'https://i.ytimg.com/vi/m1xxxxxxxxx/mqdefault.jpg' && fan[2].includes('/m3xxxxxxxxx/'), 'a playlist card fans out its first three song covers');
+  ok(d8.querySelectorAll('[data-arg="love"] .fan img').length === 1 && !d8.querySelector('[data-arg="all"]'), 'a one-song playlist shows one cover, and All songs stays away when it would add no songs');
   ok(d8.querySelector('.stage').classList.contains('off') && !d8.body.textContent.includes('Step 1 of 2'), 'the video box stays folded and the list has no step text');
   c8('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
   const chips8 = () => [...d8.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg);
@@ -409,7 +423,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const B9 = { id: 'party-mix', name: 'Nepali Party Mix', items: IT9, songs: S9 };
   async function run9(clicks, drops) { // clicks: presses of Item balance + (or − when negative) from the default 5
     const dom9 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-      beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 14, items: {} }] : B9) }); } });
+      beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); } });
     await sleep(60);
     const w9 = dom9.window, d9 = w9.document, c9 = sel => d9.querySelector(sel).dispatchEvent(new w9.MouseEvent('click', { bubbles: true }));
     for (const id of ['maya', 'paani', 'chithi']) if (d9.querySelector(`[data-act="item"][data-arg="${id}"]`).getAttribute('aria-pressed') !== 'true') c9(`[data-act="item"][data-arg="${id}"]`);
@@ -444,7 +458,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const D10 = mkSong('d10', [['maya', 3]]);                                              // Maya 3 s into the song: too soon for any run-up
   const B10x = { id: 'party-mix', name: 'Nepali Party Mix', items: IT10, songs: [A10, B10, C10, D10] };
   const dom10 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-    beforeParse(win) { win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 3, items: {} }] : B10x) }); } });
+    beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => catOf(B10x) }); } });
   await sleep(60);
   const w10 = dom10.window, d10 = w10.document, c10 = sel => d10.querySelector(sel).dispatchEvent(new w10.MouseEvent('click', { bubbles: true }));
   for (const id of ['maya', 'phool']) if (d10.querySelector(`[data-act="item"][data-arg="${id}"]`).getAttribute('aria-pressed') !== 'true') c10(`[data-act="item"][data-arg="${id}"]`);
@@ -477,10 +491,26 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     settings: { minLead: 7, maxLead: 10, autoNext: true, lag: 0.3, preload: true, small: false } };
   const dom11 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
     beforeParse(win) { win.localStorage.setItem('jhapat.v1', JSON.stringify(OLD));
-      win.fetch = async (url) => ({ ok: true, json: async () => (/playlist_cards/.test(url) ? [{ id: 'party-mix', name: 'Nepali Party Mix', songs: 14, items: {} }] : B9) }); } });
+      win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); } });
   await sleep(80);
   const st11 = JSON.parse(dom11.window.localStorage.getItem('jhapat.v1')).settings, sum11 = (dom11.window.document.querySelector('.sethead .sum') || {}).textContent || '';
   ok(st11.balance === 5 && /Balance 5/.test(sum11) && st11.minLead === 7, 'settings saved before Item balance existed load with balance 5: ' + sum11);
+
+  // 22. A phone coming from v29: its copy of each playlist goes once the catalog is in, and a playlist taken out of the studio
+  //     (Maya Round) hands over to the party mix, its remembered table forgotten
+  const V29 = { v: 1, seedV: 4, source: 'db', chosen: true, playlist: { id: 'maya-round', name: 'Maya Round' }, played: ['e1'], lastSong: 'e1',
+    songs: [{ id: 'e1', title: 'Old copy', artist: '', vi: 0, videos: ['e1xxxxxxxxx'], offsets: [0], synced: [true], offset: 0, sync: 'ok', tags: [{ item: 'maya', t: 30, g: 1, src: 'db' }] }],
+    items: [{ id: 'maya', name: 'Maya', on: true }], bundles: { 'maya-round': B9 }, cards: [{ id: 'maya-round', name: 'Maya Round', songs: 14 }],
+    tables: { 'maya-round': ['maya'], 'party-mix': ['maya', 'paani'] }, settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false } };
+  const dom12 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { win.localStorage.setItem('jhapat.v1', JSON.stringify(V29)); win.fetch = async () => ({ ok: true, json: async () => catOf(B9) }); } });
+  await sleep(80);
+  const st12 = JSON.parse(dom12.window.localStorage.getItem('jhapat.v1')), d12 = dom12.window.document;
+  ok(!st12.bundles && !st12.cards && st12.songs.length === 0 && JSON.parse(dom12.window.localStorage.getItem('jhapat.cat')).songs.length === 14,
+    'from v29: the copies of each playlist go, and songs live in the stored catalog');
+  ok(st12.playlist.id === 'party-mix' && !st12.tables['maya-round'] && st12.tables['party-mix'].join() === 'maya,paani' && /14 songs/.test(d12.querySelector('.plbar').textContent),
+    'a playlist taken out of the studio hands over to the party mix, with its own table');
+  ok(st12.played.join() === 'e1', 'songs already played stay played');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

@@ -213,8 +213,32 @@ select p.id, p.name, p.description, p.sort, p.owner, p.is_public,
      where ps.playlist_id = p.id order by ps.position limit 4) x) as thumbs
 from public.playlists p;
 
+-- everything the party player needs, in one call (v30, 14 Nov 2026): every public song once, with its uploads and tags, and each
+-- official playlist as a list of its songs. GET /rest/v1/rpc/catalog. The phone keeps it, so All songs and every playlist open
+-- straight away and work without signal. playlist_bundle and playlist_cards stay for pages cached before v30.
+create or replace function public.catalog() returns jsonb
+language sql stable security invoker set search_path = '' as $$
+  select jsonb_build_object(
+    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note, 'emoji', i.emoji) order by i.sort, i.id), '[]'::jsonb)
+              from public.items i),
+    'songs', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', s.id, 'title', s.title, 'artist', s.artist,
+                'videos', (select coalesce(jsonb_agg(jsonb_build_object('yt', v.yt, 'offset', v.offset_s, 'synced', v.synced) order by v.rank, v.id), '[]'::jsonb)
+                           from public.videos v where v.song_id = s.id and v.embeddable),
+                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t, t.rep) order by t.t), '[]'::jsonb) -- [item, lyric time, repeat group]
+                         from public.tags t where t.song_id = s.id)
+              ) order by s.title, s.id), '[]'::jsonb)
+              from public.songs s where s.status <> 'draft'),
+    'playlists', (select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'description', p.description,
+                'songs', (select coalesce(jsonb_agg(ps.song_id order by ps.position, ps.song_id), '[]'::jsonb)
+                          from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
+                          where ps.playlist_id = p.id)
+              ) order by p.sort, p.name), '[]'::jsonb)
+              from public.playlists p where p.owner is null and p.is_public));
+$$;
+
 grant usage on schema public to anon, authenticated;
 grant select on all tables in schema public to anon, authenticated;
 grant insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
-grant execute on function public.playlist_bundle(text), public.is_editor() to anon, authenticated;
+grant execute on function public.playlist_bundle(text), public.catalog(), public.is_editor() to anon, authenticated;

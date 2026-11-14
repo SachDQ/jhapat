@@ -236,7 +236,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 29; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 30; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -322,9 +322,17 @@ function loadState() {
     return d && d.v === 1 && Array.isArray(d.songs) && Array.isArray(d.items) ? upgrade(d) : null;
   } catch (e) { return null; }
 }
+/* The database's catalog (v30): every public song once, and each playlist as a list of its songs. It's stored under its own
+   key, so saving the table and the played list stays quick; songs from it are rebuilt on every load instead of saved. */
+const CAT_KEY = 'jhapat.cat', ALL = 'all'; // ALL: the All songs card
+let CAT = null, catSaved = false, CARDS = null, songMap = new Map(); // the catalog, whether this phone has it stored, the picker's cards, its songs by id
+const goodCat = c => !!c && Array.isArray(c.songs) && c.songs.length > 0 && Array.isArray(c.items) && Array.isArray(c.playlists);
+const stored = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+try { const c = JSON.parse(stored(CAT_KEY) || 'null'); if (goodCat(c)) { CAT = c; catSaved = true; } } catch (e) {}
 let S = loadState() || seed();
+if (S.source === 'db' && !CAT && !S.songs.length) S = Object.assign(seed(), { settings: S.settings }); // its songs were in a catalog that's gone
 save(); // keep the stored copy in step with any upgrade that just ran
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S.source === 'db' && catSaved ? Object.assign({}, S, { songs: [] }) : S)); } catch (e) {} }
 const byId = id => S.songs.find(s => s.id === id);
 const itemById = id => S.items.find(i => i.id === id);
 const itemName = id => (itemById(id) || { name: id }).name;
@@ -339,7 +347,7 @@ let tab = 'play', songId = null;
 let current = null;          // the drop that is playing: {songId, tag, start}
 let mode = null;             // 'game' or 'tag': who loaded the video
 let revealed = false, syncing = null, lastTap = null;
-let picking = false, loadingList = null;   // the playlist list is open / which playlist is loading
+let picking = false;         // the playlist list is open
 let nextTimer = null, toastTimer = null, watch = null, skipRun = 0;
 const WEB_LINK = 'https://sachdq.github.io/jhapat/';
 const onSite = /(^|\.)(github\.io|pages\.dev)$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
@@ -579,6 +587,16 @@ function dropCount(song, id) {
   ts.forEach((t, i) => { const room = i ? t.t - ts[i - 1].t - MARGIN : t.t + (song.offset || 0); if (room >= SHORT) seen.add(t.g != null ? t.g : t); });
   return seen.size;
 }
+/* Each item's drop points in a song (item → count), worked out once for a song from the catalog, whose tags never change here. */
+const dpMemo = new WeakMap(), catSongs = new WeakSet();
+function dpOf(song) {
+  let m = dpMemo.get(song);
+  if (m) return m;
+  m = new Map();
+  new Set(song.tags.map(t => t.item)).forEach(id => { const n = dropCount(song, id); if (n) m.set(id, n); });
+  if (catSongs.has(song)) dpMemo.set(song, m);
+  return m;
+}
 /* Choose the next song and drop without changing anything, so it can be planned ahead. The item comes first, then one
    of its songs not played yet. Item balance (Settings, 0–10) sets how evenly the items on the table share the drops:
    at 5, half the drops take turns round the items and half follow the songs, so Maya, sung in most of them, still gets
@@ -591,7 +609,7 @@ let recent = []; // the last songs played, kept apart from S.played, which empti
 const recentSkip = el => { const gap = Math.min(RECENT, Math.floor(el.length / 2)); return gap ? recent.slice(-gap) : []; };
 function itemOdds(el, skip) { // each table item with a song for it: its songs (less those skipped) and its share of the next drop
   const beta = Math.min(10, Math.max(0, +S.settings.balance || 0)) / 10;
-  const opts = [...onItems()].map(it => { const all = el.filter(s => s.tags.some(t => t.item === it) && dropsFor(s, it).list.length); // songs with a clean word for it
+  const opts = [...onItems()].map(it => { const all = el.filter(s => dpOf(s).has(it) && dropsFor(s, it).list.length); // songs with a drop point for it with this table
     return { it, n: all.length, songs: all.filter(s => !skip.includes(s.id)) }; }).filter(o => o.songs.length);
   const tot = opts.reduce((a, o) => a + o.n, 0);
   opts.forEach(o => { o.w = (beta / opts.length + (1 - beta) * o.n / tot) * (o.songs.some(s => !S.played.includes(s.id)) ? 1 : 0.25); });
@@ -713,8 +731,8 @@ function nowHTML() {
       : '<button class="btn small" data-act="reveal">Show the word</button>') +
     '<button class="btn small" data-act="replay">Replay the drop</button></div>';
 }
-/* Official playlists to choose from (cached, so the list also shows offline). */
-const lists = () => (S.cards || []).filter(c => c.songs > 0);
+/* All songs, then the official playlists: built from the catalog on the phone, so the list also shows offline. */
+const lists = () => (CARDS || []).filter(c => c.songs > 0);
 const needPick = () => S.source === 'db' && !S.chosen && !current && lists().length > 1; // never over a song that's playing
 const thumbUrl = id => 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg';
 function renderPicker() {
@@ -724,7 +742,7 @@ function renderPicker() {
       const th = (c.thumbs || []).slice(0, 3); // the first songs' covers, fanned out
       return '<li><button class="listbtn' + (th.length ? ' has-fan' : '') + '" data-act="pickpl" data-arg="' + esc(c.id) + '" aria-current="' + (S.chosen && c.id === active) + '">' +
         (th.length ? '<span class="fan" aria-hidden="true">' + th.map(id => '<img src="' + thumbUrl(id) + '" alt="" loading="lazy">').join('') + '</span>' : '') +
-        '<span class="lb"><span class="t">' + esc(c.name) + (loadingList === c.id ? ' <span class="badge">Loading…</span>' : '') + '</span>' +
+        '<span class="lb"><span class="t">' + esc(c.name) + '</span>' +
         (c.description ? '<span class="a">' + esc(c.description) + '</span>' : '') +
         '<span class="row"><span class="badge ok">' + c.songs + ' song' + (c.songs === 1 ? '' : 's') + '</span>' +
         its.slice(0, 8).map(k => '<span class="badge">' + (emo(k) ? esc(emo(k)) + ' ' : '') + esc(itemName(k)) + ' ' + c.items[k] + '</span>').join('') +
@@ -740,9 +758,9 @@ const touched = new Set(); // items tapped here stay in view when the list folds
 function renderPlay() {
   if (picking || needPick()) return renderPicker();
   const el = eligible().filter(s => dropsFor(s).list.length); // songs the game can drop into with this table
-  const left = el.filter(s => !S.played.includes(s.id)).length;
-  const dropStats = id => { let songs = 0, pts = 0; S.songs.forEach(s => { if (s.broken) return; const n = dropCount(s, id); if (n) { songs++; pts += n; } }); return { songs, pts }; };
-  const stats = new Map(S.items.map(it => [it.id, dropStats(it.id)]));
+  const played = new Set(S.played), left = el.filter(s => !played.has(s.id)).length;
+  const stats = new Map(S.items.map(it => [it.id, { songs: 0, pts: 0 }])); // each item's songs with a drop point, and its drop points
+  S.songs.forEach(s => { if (!s.broken) dpOf(s).forEach((n, id) => { const x = stats.get(id); if (x) { x.songs++; x.pts += n; } }); });
   const songsWith = id => stats.get(id).songs; // songs where the item has a drop point, so the count is what can actually play
   const fromDb = S.source === 'db';
   const shown = fromDb ? S.items.filter(it => songsWith(it.id) > 0) : S.items; // a playlist only offers the items its songs have
@@ -921,7 +939,7 @@ document.addEventListener('click', async e => {
     case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true); } break; }
     case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
-    case 'pickpl': await pickPlaylist(arg); break;
+    case 'pickpl': pickPlaylist(arg); break;
     case 'lead': {
       const st = S.settings;
       if (arg === 'min-') st.minLead = Math.max(1, st.minLead - 1);
@@ -1032,8 +1050,9 @@ document.addEventListener('submit', async e => {
 function applySmall() { document.querySelector('.stage').classList.toggle('small', !!S.settings.small); }
 
 /* ---------- songs from the studio's database ----------
-   The official playlist loads on every visit and is kept on the phone, so a party without signal still has it.
-   If the database has never answered on this phone, the songs built into this page are used instead. */
+   One catalog holds every public song once, with each official playlist as a list of its songs (v30). It loads in one call
+   on every visit and stays on the phone, so All songs and every playlist open straight away and work without signal once
+   it has loaded here. If the database has never answered on this phone, the songs built into this page are used instead. */
 const DB = { rest: 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', key: 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T', playlist: 'party-mix' };
 const ON_BY_DEFAULT = ['paani', 'phool', 'chiya', 'paisa', 'chithi'];
 function atVideo(song) { // a song moved to its next upload: use that upload's own offset
@@ -1045,27 +1064,44 @@ function rememberTable() {
   if (S.source !== 'db' || !S.playlist) return;
   (S.tables = S.tables || {})[S.playlist.id] = S.items.filter(i => i.on).map(i => i.id);
 }
-function applyBundle(b) {
-  // A playlist opened for the first time starts with what's on the table now, plus any item all of its songs have (a Maya Round opens with Maya on).
-  const wasOn = new Map(S.items.map(i => [i.id, i.on]));
-  const mem = (S.tables || {})[b.id], playable = b.songs.filter(s => s.videos && s.videos.length);
-  const inAll = id => playable.length > 0 && playable.every(s => (s.tags || []).some(t => t[0] === id));
-  S.items = b.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '',
-    on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id)) }));
-  S.songs = b.songs.filter(s => s.videos && s.videos.length).map(s => ({
-    id: s.id, title: s.title, artist: s.artist || '', vi: 0,
-    videos: s.videos.map(v => v.yt), offsets: s.videos.map(v => Number(v.offset) || 0), synced: s.videos.map(v => !!v.synced),
-    offset: Number(s.videos[0].offset) || 0, sync: s.videos[0].synced ? 'ok' : 'check',
-    tags: (s.tags || []).map(([item, t, g]) => ({ item, t: Number(t), g: g == null ? null : Number(g), src: 'db' })).sort((x, y) => x.t - y.t) }));
-  S.source = 'db'; S.playlist = { id: b.id, name: b.name }; S.dbAt = Date.now();
-  (S.bundles = S.bundles || {})[b.id] = b; // every playlist opened here stays on the phone for parties without signal
-  S.played = S.played.filter(id => S.songs.some(s => s.id === id));
-  save(); render(); schedulePreload(1200, true);
+function fromCat(s) { // a catalog song in the player's own shape (the database leaves out uploads YouTube won't embed)
+  const v = s.videos;
+  const song = { id: s.id, title: s.title, artist: s.artist || '', vi: 0,
+    videos: v.map(x => x.yt), offsets: v.map(x => Number(x.offset) || 0), synced: v.map(x => !!x.synced),
+    offset: Number(v[0].offset) || 0, sync: v[0].synced ? 'ok' : 'check',
+    tags: (s.tags || []).map(([item, t, g]) => ({ item, t: Number(t), g: g == null ? null : Number(g), src: 'db' })).sort((x, y) => x.t - y.t) };
+  catSongs.add(song);
+  return song;
 }
-const goodBundle = b => !!b && Array.isArray(b.songs) && b.songs.length > 0 && Array.isArray(b.items);
-async function dbGet(path, body) {
+const songsIn = p => (p.songs || []).map(id => songMap.get(id)).filter(Boolean);
+/* The songs, and the picker's cards: song counts, how many songs have a drop point for each item, and covers. */
+function buildCat() {
+  const all = CAT.songs.filter(s => Array.isArray(s.videos) && s.videos.length).map(fromCat);
+  songMap = new Map(all.map(s => [s.id, s]));
+  const card = (id, name, description, songs, thumbs) => {
+    const items = {}; songs.forEach(s => dpOf(s).forEach((n, it) => { items[it] = (items[it] || 0) + 1; }));
+    return { id, name, description: description || '', songs: songs.length, items, thumbs: thumbs || songs.slice(0, 3).map(s => s.videos[0]) };
+  };
+  const pls = CAT.playlists.map(p => card(p.id, p.name, p.description, songsIn(p))).filter(c => c.songs);
+  const most = pls.reduce((a, c) => Math.max(a, c.songs), 0); // All songs shows when it adds songs to the biggest playlist
+  CARDS = (all.length > most ? [card(ALL, 'All songs', 'Every song in Jhapat', all, pls.slice(0, 3).map(c => c.thumbs[0]))] : []).concat(pls); // its covers: each playlist's first song
+}
+const pidFor = pid => [pid, DB.playlist, ALL].find(id => id && lists().some(c => c.id === id)) || ALL; // that playlist while it's still there, else the party mix
+/* Open All songs or a playlist. One opened for the first time starts with what's on the table now, plus any item all of its songs have. */
+function useList(pid, quiet) {
+  const p = pid === ALL ? null : CAT.playlists.find(x => x.id === pid);
+  const songs = p ? songsIn(p) : [...songMap.values()];
+  const wasOn = new Map(S.items.map(i => [i.id, i.on])), mem = (S.tables || {})[pid];
+  const inAll = id => songs.length > 0 && songs.every(s => s.tags.some(t => t.item === id));
+  S.items = CAT.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '',
+    on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id)) }));
+  S.songs = songs; S.source = 'db'; S.playlist = { id: pid, name: p ? p.name : 'All songs' };
+  const ids = new Set(songs.map(s => s.id)); S.played = S.played.filter(id => ids.has(id));
+  save(); if (!quiet) render(); schedulePreload(1200, true);
+}
+async function dbGet(path, body, ms) {
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
-  const timer = setTimeout(() => ctl && ctl.abort(), 8000);
+  const timer = setTimeout(() => ctl && ctl.abort(), ms || 8000);
   try {
     const r = await fetch(DB.rest + path, body
       ? { method: 'POST', signal: ctl ? ctl.signal : undefined, headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
@@ -1074,39 +1110,32 @@ async function dbGet(path, body) {
   } catch (e) { return null; } // offline or blocked: keep what this phone already has
   finally { clearTimeout(timer); }
 }
-const bundleOf = pid => dbGet('rpc/playlist_bundle', { pid });
 async function loadDb() {
   if (typeof fetch !== 'function') return;
-  const pid = (S.source === 'db' && S.playlist && S.playlist.id) || DB.playlist;
-  const [cards, b] = await Promise.all([
-    dbGet('playlist_cards?select=*&owner=is.null&is_public=is.true&order=sort,name'), bundleOf(pid)]);
-  if (Array.isArray(cards)) S.cards = cards.map(c => ({ id: c.id, name: c.name, description: c.description || '', songs: Number(c.songs) || 0, items: c.items || {},
-    thumbs: (Array.isArray(c.thumbs) ? c.thumbs : []).filter(x => /^[\w-]{11}$/.test(x)) }));
-  if (Array.isArray(cards) && cards.length) { // a playlist taken out of the studio leaves the phone too
-    const ids = new Set(cards.map(c => c.id));
-    ['bundles', 'tables'].forEach(k => Object.keys(S[k] || {}).forEach(id => { if (!ids.has(id)) delete S[k][id]; }));
-  }
-  if (goodBundle(b)) return applyBundle(b);
-  if (pid !== DB.playlist && Array.isArray(cards) && !cards.some(c => c.id === pid)) { // that playlist is gone: back to the party mix
-    const d = await bundleOf(DB.playlist); if (goodBundle(d)) return applyBundle(d);
-  }
-  save(); render();
+  const c = await dbGet('rpc/catalog', null, 30000); // about 140 KB, so it gets longer than other calls
+  if (!goodCat(c)) { save(); render(); return; }
+  const txt = JSON.stringify(c);
+  if (catSaved && txt === stored(CAT_KEY)) return; // nothing changed since the last visit
+  delete S.bundles; delete S.cards; save(); // before v30 the phone kept a copy of each playlist it opened; the catalog replaces them
+  CAT = c;
+  try { localStorage.setItem(CAT_KEY, txt); catSaved = true; } catch (e) { catSaved = false; } // too big to store: this visit still has it
+  buildCat();
+  const ids = new Set(CARDS.map(x => x.id)); // a playlist taken out of the studio leaves the phone too
+  Object.keys(S.tables || {}).forEach(id => { if (!ids.has(id)) delete S.tables[id]; });
+  useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id));
 }
-async function pickPlaylist(pid) {
-  if (loadingList) return;
-  if (S.source === 'db' && S.playlist && S.playlist.id === pid) { S.chosen = true; picking = false; save(); render(); toast('Turn on the items you’ve put out, then press Start.'); return; }
-  loadingList = pid; render();
-  let b = await bundleOf(pid);
-  if (!goodBundle(b)) b = (S.bundles || {})[pid] || null; // offline: the copy from the last time it was opened here
-  loadingList = null;
-  if (!goodBundle(b)) { render(); toast('Couldn’t load that playlist. Check the internet connection and try again.'); return; }
-  discardPre(); S.chosen = true; picking = false;
-  applyBundle(b);
-  toast(b.name + ': turn on the items you’ve put out, then press Start.');
+function pickPlaylist(pid) {
+  const c = lists().find(x => x.id === pid);
+  if (!c) { toast('Couldn’t open that playlist. Reload the page and try again.'); return; }
+  S.chosen = true; picking = false;
+  if (S.source === 'db' && S.playlist && S.playlist.id === pid) { save(); render(); toast('Turn on the items you’ve put out, then press Start.'); return; }
+  discardPre(); useList(pid);
+  toast(c.name + ': turn on the items you’ve put out, then press Start.');
 }
 
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
 applySmall();
+if (CAT) { buildCat(); useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id), true); } // from the phone, before the database answers
 $('#ver').textContent = 'v' + VERSION;
 render();
 loadDb();

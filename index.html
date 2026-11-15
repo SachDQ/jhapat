@@ -517,7 +517,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 42; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 43; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2237,7 +2237,8 @@ function tvStart(code, tapped) {
 }
 function tvStop() {
   if (!tv) return;
-  tv.room.close(); clearTimeout(tv.pushT); tv = null;
+  tv.room.send('bye', { code: tv.code }); // the phones say so at once instead of waiting a minute
+  const room = tv.room; setTimeout(() => room.close(), 300); clearTimeout(tv.pushT); tv = null;
   document.body.classList.remove('tv');
   try { const u = new URL(location.href); u.searchParams.delete('tv'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {}
   tvFull(false); render();

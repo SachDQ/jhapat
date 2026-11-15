@@ -1009,6 +1009,8 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(JSON.parse(tw.localStorage.getItem('jhapat.v1')).playlist.id === 'hits' && rd.querySelector('.plbar .pn').textContent === 'Nepali Hits', 'picking one on the phone switches the TV’s playlist');
     tclick('[data-act="tvoff"]'); await sleep(30);
     ok(!td.body.classList.contains('tv') && !new URL(tw.location.href).searchParams.has('tv') && !td.querySelector('#tvjoin'), 'Exit TV leaves big-screen mode');
+    await sleep(100);
+    ok(/The TV left/.test(rd.querySelector('.status').textContent) && /turned big-screen mode off/.test(rd.querySelector('#app').textContent), 'and the phone says so straight away');
     rclick('[data-c="leave"]'); await sleep(10);
     ok(!!rd.querySelector('#joinForm'), 'Leave on the phone goes back to the code box');
     const cin = rd.querySelector('#codeIn'); cin.value = 'ab1'; cin.dispatchEvent(new rw.Event('input', { bubbles: true }));

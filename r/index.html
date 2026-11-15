@@ -146,15 +146,16 @@ function rtRoom(code, on) { // the same small client as the player's: join, hear
   };
 }
 
-let code = null, room = null, st = null, heard = 0, view = 'remote', pinger = null, lost = false, lastErr = '';
+let code = null, room = null, st = null, heard = 0, view = 'remote', pinger = null, lost = false, gone = false, lastErr = '';
 const codeOf = h => { const c = String(h || '').replace(/^#/, '').trim().toUpperCase(); return /^[A-Z]{4}$/.test(c) ? c : null; };
 function cmd(c, extra) { if (!room || !room.live) { toast('Not connected yet…'); return; } room.send('cmd', Object.assign({ id: me, c }, extra || {})); try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} }
 function join(c) {
-  leave(true); code = c; st = null; heard = 0; lost = false; view = 'remote';
+  leave(true); code = c; st = null; heard = 0; lost = false; gone = false; view = 'remote';
   room = rtRoom(code, (ev, p) => {
     if (ev === 'open') { cmd('hello'); render(); }
     else if (ev === 'closed') render();
-    else if (ev === 'state' && p && p.code === code) { st = p; heard = Date.now(); lost = false; if (p.lists) lists = p.lists; render(); }
+    else if (ev === 'state' && p && p.code === code) { st = p; heard = Date.now(); lost = false; gone = false; if (p.lists) lists = p.lists; render(); }
+    else if (ev === 'bye' && p && p.code === code) { gone = true; st = null; heard = 0; render(); }
   });
   clearInterval(pinger);
   pinger = setInterval(() => { // still here; and ask again while the TV hasn't answered
@@ -180,12 +181,13 @@ function joinHTML() {
 }
 function statusHTML() {
   const live = room && room.live, ok = live && heard && !lost;
-  const txt = !live ? 'Connecting…' : !heard ? 'Looking for the TV…' : lost ? 'The TV went quiet…' : 'Connected';
+  const txt = !live ? 'Connecting…' : gone ? 'The TV left' : !heard ? 'Looking for the TV…' : lost ? 'The TV went quiet…' : 'Connected';
   return '<div class="status' + (ok ? ' on' : '') + '"><span class="dot" aria-hidden="true"></span><span>📺 <span class="code">' + esc(code) + '</span></span><span class="grow">' + txt + '</span>' +
     '<button class="btn small ghost" data-c="leave">Leave</button></div>';
 }
 function remoteHTML() {
   if (!st) {
+    if (gone) return statusHTML() + '<div class="card"><p class="hint" style="margin:0">The TV turned big-screen mode off. When it’s back on with the same code, this phone picks it up again; a new code needs <button class="btn small" data-c="leave">a new join</button>.</p></div>';
     return statusHTML() + '<div class="card"><p class="hint" style="margin:0">' + (room && room.live
       ? 'Waiting for the TV with code <b>' + esc(code) + '</b>. If nothing happens, check the code on the TV, or tap 📺 TV there again.'
       : 'Connecting to the room…') + '</p></div>';

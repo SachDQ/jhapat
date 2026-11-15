@@ -438,6 +438,27 @@ function makeDom(db, opts) {
     const q3 = d3.querySelector('#itemQ'); q3.value = 'Thing 1'; q3.dispatchEvent(new w3.Event('input', { bubbles: true })); await sleep(5);
     ok(d3.querySelectorAll('.itile').length === 9, 'search looks through all of them: ' + d3.querySelectorAll('.itile').length); }
 
+  // v41: words compare as they're read (बाटाे is बाटो, फ़ोन is फोन), and Auto-tag all takes estimates off words a spelling
+  // now rules out, while a tag timed by hand stays. Invented lines.
+  { const db6 = makeDb();
+    db6.items[0].words = ['paani', 'पानी', '-पानीपुरी'];
+    db6.items.push({ id: 'bato', name: 'Bato', dev: 'बाटो', words: ['बाटो'], note: null, sort: 2 }, { id: 'phone', name: 'Phone', dev: 'फोन', words: ['फोन'], note: null, sort: 3 });
+    db6.songs.push({ id: 'nm-song', title: 'Norm Song', artist: 'Test', status: 'auto', lrclib_id: null, duration: 60, notes: null,
+      lines: [[10, 'यो बाटाे लामो'], [20, 'पानीपुरी खाऊँ'], [30, 'पानीपुरी फेरि'], [40, 'पानी पर्यो फ़ोन आयो']].map(([t, x]) => ({ t, x })) });
+    db6.videos.push({ id: 60, song_id: 'nm-song', yt: 'GGGGGGGGGGG', kind: 'official', duration: 60, offset_s: 0, synced: true, embeddable: true, rank: 0 });
+    db6.tags.push({ id: 601, song_id: 'nm-song', item_id: 'paani', t: 20, line: 1, word: 0, rep: 1, source: 'estimate', checked: false },
+      { id: 602, song_id: 'nm-song', item_id: 'paani', t: 30.2, line: 2, word: 0, rep: 2, source: 'tap', checked: true },
+      { id: 603, song_id: 'nm-song', item_id: 'paani', t: 40, line: 3, word: 0, rep: 3, source: 'estimate', checked: false });
+    const { w: w6, d: d6 } = makeDom(db6, { signedIn: true, editor: true }); await sleep(80);
+    w6.location.hash = '#items'; await sleep(20);
+    d6.querySelector('[data-act="autoall"]').dispatchEvent(new w6.MouseEvent('click', { bubbles: true })); await sleep(200);
+    const mine = db6.tags.filter(t => t.song_id === 'nm-song');
+    ok(!mine.some(t => t.id === 601) && mine.some(t => t.id === 602) && mine.some(t => t.id === 603),
+      'Auto-tag all takes the estimate off पानीपुरी (ruled out) and keeps the one timed by hand: ' + mine.map(t => t.id + ':' + t.item_id + '@' + t.line).join(' '));
+    ok(mine.some(t => t.item_id === 'bato' && t.line === 0 && t.word === 1) && mine.some(t => t.item_id === 'phone' && t.line === 3 && t.word === 2),
+      'बाटाे counts as बाटो and फ़ोन as फोन');
+    ok(/1 estimate taken off words that no longer count/.test(d6.querySelector('#autoAllMsg').textContent), 'and says so: ' + d6.querySelector('#autoAllMsg').textContent); }
+
   // Drop points by line: every line with room gets one; the same word close behind itself doesn't; a word close behind
   // another item drops alone, and its line's roomy repeat is the drop point when that item is out too. Invented lines.
   { const db5 = makeDb();

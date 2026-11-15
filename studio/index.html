@@ -349,7 +349,10 @@ const r2 = x => Math.round(x * 100) / 100;
 const plural = (n, w) => Number(n || 0).toLocaleString('en') + ' ' + w + (n === 1 ? '' : 's');
 const day = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null; };
 const slug = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'song';
-const norm = s => String(s || '').normalize('NFC').toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+/* Compare words as they're read, not as they were typed: no nukta, ा+े written for ो (and ा+ै for ौ, अ+ो for ओ, अ+ौ for औ),
+   and chandrabindu and anusvara alike, so बाटाे is बाटो and फ़ोन is फोन. */
+const norm = s => String(s || '').normalize('NFC').toLowerCase().replace(/\u093c/g, '').replace(/\u093e\u0947/g, '\u094b').replace(/\u093e\u0948/g, '\u094c')
+  .replace(/\u0905\u094b/g, '\u0913').replace(/\u0905\u094c/g, '\u0914').replace(/\u0901/g, '\u0902').replace(/[^\p{L}\p{M}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
 let toastTimer = null;
 /* The fun: good news gets a ding and a burst of emoji (the burst is off with reduced motion). */
 const reduced = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
@@ -392,7 +395,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 40; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 41; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -612,8 +615,22 @@ async function writeFixes(fixes) {
     part.forEach(f => Object.assign(f.tag, f.patch));
   }
 }
-async function autoTag(c) { // returns how many tags it added
-  const fixes = placeFixes(c); if (fixes.length) await writeFixes(fixes);
+/* Estimated tags whose word no longer counts for their item (a spelling was ruled out or taken away). Tags timed or
+   checked by hand stay, even then: someone heard them. */
+function staleTags(c) {
+  const out = [];
+  for (const outs of c.byLine.values()) for (const o of outs) if (o.w == null && o.tag.source === 'estimate' && !o.tag.checked) out.push(o.tag);
+  return out;
+}
+async function autoTag(c) { // returns how many tags it added; c.dropped and c.placed count what else it did
+  c.dropped = 0; c.placed = 0;
+  const stale = staleTags(c);
+  if (stale.length) {
+    const ids = stale.map(t => t.id);
+    const { error } = await sb.from('tags').delete().in('id', ids); if (error) throw error;
+    c.tags = c.tags.filter(t => !ids.includes(t.id)); assign(c); c.dropped = ids.length;
+  }
+  const fixes = placeFixes(c); if (fixes.length) { await writeFixes(fixes); c.placed = fixes.length; }
   const rows = missingRows(c); if (!rows.length) return 0;
   const { data, error } = await sb.from('tags').insert(rows).select(); if (error) throw error;
   c.tags = c.tags.concat(data).sort((a, b) => a.t - b.t); assign(c);
@@ -801,16 +818,16 @@ function checkHTML() {
 /* ---------- auto-tag every song (Items page) ---------- */
 async function autoAll() {
   const list = songs.filter(s => s.hasLines), msg = t => { const el = $('#autoAllMsg'); if (el) el.textContent = t; };
-  let added = 0, placed = 0;
+  let added = 0, placed = 0, dropped = 0;
   for (let k = 0; k < list.length; k++) {
     msg('Song ' + (k + 1) + ' of ' + list.length + '…');
     const { data, error } = await sb.from('songs').select('id,lines,tags(*)').eq('id', list[k].id).single();
     if (error) throw error;
     const c = prepLines({ s: data, tags: (data.tags || []).sort((a, b) => a.t - b.t) });
-    const fx = placeFixes(c); if (fx.length) { await writeFixes(fx); placed += fx.length; }
-    const n = await autoTag(c); added += n; Object.assign(list[k], rowOf({ ...list[k], tags: c.tags }));
+    const n = await autoTag(c); added += n; placed += c.placed; dropped += c.dropped; Object.assign(list[k], rowOf({ ...list[k], tags: c.tags }));
   }
-  msg('Done: ' + added + ' new tags in ' + list.length + ' songs' + (placed ? ', ' + placed + ' placed on their lines' : '') + '.');
+  msg('Done: ' + plural(added, 'new tag') + ' in ' + plural(list.length, 'song') + (dropped ? ', ' + plural(dropped, 'estimate') + ' taken off words that no longer count' : '') +
+    (placed ? ', ' + placed + ' placed on their lines' : '') + '.');
   return added;
 }
 
@@ -1283,7 +1300,7 @@ function itemEdHTML() {
 function itemsHTML() {
   const timed = songs.filter(x => x.hasLines).length;
   return '<div class="pagehead"><h1>Items<span class="count">' + items.length + '</span></h1>' +
-    '<button class="btn" data-act="autoall" title="Every item word without a tag, in all ' + timed + ' songs with timed lyrics, gets an estimated tag. Tags already there stay put.">Auto-tag all songs</button>' +
+    '<button class="btn" data-act="autoall" title="Every item word without a tag, in all ' + timed + ' songs with timed lyrics, gets an estimated tag, and estimates on words that no longer count come off. Tags timed or checked by hand stay put.">Auto-tag all songs</button>' +
     '<button class="btn primary" data-act="newitem">New item</button></div>' +
     '<p class="small" id="autoAllMsg" aria-live="polite"></p>' +
     (itemEd !== null ? itemEdHTML() : '') +

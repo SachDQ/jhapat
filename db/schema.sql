@@ -559,3 +559,32 @@ revoke execute on function public.spotify_list(text, text), public.wish_songs(js
 grant execute on function public.spotify_list(text, text), public.wish_songs(jsonb), public.save_list(jsonb), public.get_list(text), public.tally(jsonb) to anon, authenticated;
 grant select on public.wishes, public.lists to authenticated;
 grant update on public.wishes to authenticated;
+
+-- ---------- v42, 15 Nov 2026: big-screen mode ----------
+-- A TV (jhapat.live with 📺 TV on) and the phones that drive it talk through Supabase Realtime broadcast on the channel
+-- jhapat-tv-<four-letter code>: messages pass straight through and nothing is stored, so no table is needed (public channels,
+-- the publishable key). tally() as in v40, taking "tv" too: k = start when big-screen mode is turned on, phone when a phone joins.
+create or replace function public.tally(e jsonb) returns int
+language plpgsql volatile security definer set search_path = '' as $$
+declare x jsonb; v_ev text; v_k text; v_n int; v_day date; cnt int := 0;
+begin
+  if jsonb_typeof(e) is distinct from 'array' or jsonb_array_length(e) > 40 then raise exception 'send at most 40 events'; end if;
+  for x in select value from jsonb_array_elements(e) loop
+    if jsonb_typeof(x) is distinct from 'array' then continue; end if;
+    v_ev := x->>0; v_k := coalesce(x->>1, '');
+    v_n := case when jsonb_typeof(x->2) = 'number' then least(greatest((x->>2)::numeric, 1), 50)::int else 1 end;
+    if v_ev is null or v_ev not in ('visit', 'new', 'start', 'party', 'drops', 'song', 'share', 'ytlist', 'list', 'hide', 'install', 'tv') then continue; end if;
+    if v_k !~ '^[A-Za-z0-9_+./:-]{0,64}$' then v_k := '?'; end if;
+    v_day := case when v_ev = 'song' then date_trunc('week', now() at time zone 'utc')::date else (now() at time zone 'utc')::date end;
+    if not exists (select 1 from public.stats s where s.day = v_day and s.ev = v_ev and s.k = v_k)
+       and (select count(*) from public.stats s where s.day = v_day and s.ev = v_ev) >= (case when v_ev = 'song' then 3000 else 300 end) then
+      v_k := '?';
+    end if;
+    insert into public.stats as s (day, ev, k, n) values (v_day, v_ev, v_k, v_n)
+      on conflict (day, ev, k) do update set n = s.n + excluded.n;
+    cnt := cnt + 1;
+  end loop;
+  return cnt;
+end $$;
+revoke execute on function public.tally(jsonb) from public;
+grant execute on function public.tally(jsonb) to anon, authenticated;

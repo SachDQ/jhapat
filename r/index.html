@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F0B1E">
+<title>Jhapat remote</title>
+<meta name="description" content="Your phone as the remote for Jhapat on a TV: Next, Pause, Show the word, and what's on the table.">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="../img/icon-32.png">
+<link rel="apple-touch-icon" href="../img/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Yatra+One&display=swap" media="print" onload="this.media='all'">
+<style>
+:root{
+  --bg:#0F0B1E; --surface:#1D1636; --raise:#2A2050; --line:#3A2F66; --line-2:#4A3F85;
+  --ink:#FFF4E0; --muted:#B9AED6; --gold:#FFD25E; --gold-fill:#FFA41B; --gold-ink:#1A1206; --saffron:#F26B1D; --ok:#7EE2A8; --red:#FF5A6E;
+  --display:"Yatra One", "Mukta", system-ui, sans-serif;
+  --body:"Mukta", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{margin:0;min-height:100dvh;background:radial-gradient(120% 60% at 50% 0%,#2B1B4E 0%,var(--bg) 60%) fixed;color:var(--ink);font:16px/1.45 var(--body);
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));-webkit-tap-highlight-color:transparent}
+main{max-width:520px;margin:0 auto}
+.top{display:flex;align-items:center;gap:10px;max-width:520px;margin:0 auto 6px}
+.top img{width:55px;height:40px}
+.top .word{font:400 26px/1 var(--display);color:var(--gold)}
+.top .sub{font:800 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-fill);margin-left:auto}
+h1{font:400 30px/1.1 var(--display);margin:18px 0 6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:12px}
+.kicker{font:800 12px/1 var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--gold-fill);margin-bottom:7px}
+.hint{color:var(--muted);margin:0 0 12px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:700 16px/1.1 var(--body);border-radius:16px;min-height:52px;padding:10px 14px;
+  display:inline-flex;align-items:center;justify-content:center;gap:.4em;cursor:pointer;touch-action:manipulation;transition:transform .12s ease,background-color .2s}
+.btn:active{transform:scale(.96)}
+.btn:disabled{opacity:.45}
+.btn.primary{background:linear-gradient(180deg,var(--gold-fill),var(--saffron));color:var(--gold-ink);border-color:transparent;font-size:22px;min-height:76px;border-radius:22px;box-shadow:0 10px 30px rgba(242,107,29,.35)}
+.btn[aria-pressed="true"]{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
+.btn.ghost{background:transparent}
+.btn.small{min-height:38px;font-size:14px;border-radius:12px;padding:6px 12px}
+.i{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.grid2{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:10px;margin-top:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.grid4 .btn{flex-direction:column;gap:2px;font-size:13px;min-height:62px;padding:6px 4px}
+.grid4 .btn .em{font-size:20px;line-height:1}
+.codein{width:100%;font:400 44px/1 var(--display);letter-spacing:.3em;text-align:center;text-transform:uppercase;padding:14px 8px;border-radius:18px;border:2px solid var(--line-2);
+  background:var(--bg);color:var(--gold);outline:none}
+.codein:focus{border-color:var(--gold-fill)}
+.err{color:var(--red);min-height:1.4em;margin:8px 0 0}
+.status{display:flex;align-items:center;gap:8px;font-weight:700}
+.status .dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+.status.on .dot{background:var(--ok);box-shadow:0 0 0 4px rgba(126,226,168,.18)}
+.status .code{font:400 22px/1 var(--display);color:var(--gold);letter-spacing:.12em}
+.status .grow{flex:1}
+.now .title{font:400 28px/1.1 var(--display);margin:2px 0 4px;text-wrap:balance}
+.now .title.hid{color:var(--muted)}
+.now .meta{color:var(--muted);font-size:15px}
+.now .word{margin-top:8px;font-size:18px}
+.now .word b{color:var(--gold)}
+.nowrow{display:flex;gap:12px;align-items:center}
+.nowrow img{width:96px;height:54px;object-fit:cover;border-radius:10px;flex:none}
+.plbar{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--raise);border:1px solid var(--line-2);border-radius:16px;padding:10px 12px;color:var(--ink);font:inherit;cursor:pointer}
+.fan{display:flex;flex:none}
+.fan img{width:44px;height:44px;object-fit:cover;border-radius:9px;border:2px solid var(--surface)}
+.fan img+img{margin-left:-22px}
+.fan.none{width:44px;height:44px;border-radius:10px;background:var(--surface);display:grid;place-items:center;font-size:22px}
+.pli{display:flex;flex-direction:column;min-width:0;flex:1}
+.pli .pn{font-weight:800;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pli .ps{color:var(--muted);font-size:13px}
+.plgo{display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--gold)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.tile{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;border:1.5px solid var(--line-2);background:transparent;color:var(--ink);
+  border-radius:14px;padding:8px 10px;font:inherit;cursor:pointer;touch-action:manipulation}
+.tile .em{font-size:22px}
+.tile .nm{font-weight:800;line-height:1.1;display:block}
+.tile .d{color:var(--muted);font-size:13px}
+.tile .n{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.tile[aria-pressed="true"]{background:var(--gold-fill);border-color:var(--gold-fill);color:var(--gold-ink)}
+.tile[aria-pressed="true"] .d,.tile[aria-pressed="true"] .n{color:var(--gold-ink)}
+.lists{display:grid;gap:8px;margin-top:10px}
+.lbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:10px 12px;color:var(--ink);font:inherit;cursor:pointer}
+.lbtn[aria-current="true"]{border-color:var(--gold-fill);box-shadow:0 0 0 2px var(--gold-fill) inset}
+.drops{color:var(--muted);text-align:center;margin-top:12px}
+.foot{color:var(--muted);text-align:center;font-size:13px;margin-top:22px}
+.foot a{color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;transition:.25s;background:var(--raise);border:1px solid var(--line-2);
+  padding:10px 16px;border-radius:14px;max-width:min(92vw,420px);text-align:center;z-index:9}
+#toast.on{opacity:1;transform:translateX(-50%)}
+@media (prefers-reduced-motion: reduce){.btn,#toast{transition:none}.btn:active{transform:none}}
+</style>
+</head>
+<body>
+<header class="top"><img src="../img/jhapat-mark.webp" width="55" height="40" alt=""><span class="word">Jhapat</span><span class="sub">Remote</span></header>
+<main id="app" aria-live="polite"></main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(() => {
+'use strict';
+/* The phone remote for big-screen mode (v42). The TV (jhapat.live with 📺 TV on) plays; this page sends what its buttons say
+   and shows what the TV sends back. Messages go through Supabase Realtime broadcast on the room named by the four-letter code. */
+const KEY = 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T';
+const RT_URL = 'wss://hckzkaprxywohazohmcu.supabase.co/realtime/v1/websocket?apikey=' + KEY + '&vsn=1.0.0';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const svgI = (d, fill) => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"' + (fill ? ' style="fill:currentColor;stroke:none"' : '') + '>' + d + '</svg>';
+const ICON = {
+  play: svgI('<path d="M7 4.5v15l12.5-7.5z"/>', 1), pause: svgI('<path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/>', 1), next: svgI('<path d="M4.5 5v14l10-7zM16 5h3v14h-3z"/>', 1),
+  replay: svgI('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'), eye: svgI('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  list: svgI('<path d="M4 6h16M4 12h16M4 18h10"/>'), back: svgI('<path d="M15 5l-7 7 7 7"/>')
+};
+const thumb = id => 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg';
+let me = ''; try { me = sessionStorage.getItem('jhapat.remote') || ''; } catch (e) {}
+if (!/^[a-z0-9]{8,16}$/.test(me)) { me = Math.random().toString(36).slice(2, 12).padEnd(10, '0'); try { sessionStorage.setItem('jhapat.remote', me); } catch (e) {} }
+
+function rtRoom(code, on) { // the same small client as the player's: join, heartbeat, reconnect
+  const topic = 'realtime:jhapat-tv-' + code;
+  let ws = null, ref = 0, joined = false, beat = null, closed = false, wait = 1000;
+  const raw = o => { try { ws.send(JSON.stringify(o)); } catch (e) {} };
+  function open() {
+    if (closed) return;
+    try { ws = new WebSocket(RT_URL); } catch (e) { return retry(); }
+    ws.onopen = () => {
+      wait = 1000; raw({ topic, event: 'phx_join', payload: { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, private: false } }, ref: String(++ref), join_ref: '1' });
+      clearInterval(beat); beat = setInterval(() => raw({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) }), 25000);
+    };
+    ws.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+      if (!m || m.topic !== topic) return;
+      if (m.event === 'phx_reply' && !joined && m.payload && m.payload.status === 'ok') { joined = true; on('open', {}); }
+      else if (m.event === 'broadcast' && m.payload) on(m.payload.event, m.payload.payload || {});
+      else if (m.event === 'phx_error' || m.event === 'phx_close') { try { ws.close(); } catch (x) {} }
+    };
+    ws.onclose = () => { const was = joined; joined = false; clearInterval(beat); if (was) on('closed', {}); retry(); };
+    ws.onerror = () => {};
+  }
+  function retry() { if (closed) return; setTimeout(open, wait); wait = Math.min(wait * 2, 15000); }
+  open();
+  return {
+    send(event, payload) { if (joined) raw({ topic, event: 'broadcast', payload: { type: 'broadcast', event, payload }, ref: String(++ref), join_ref: '1' }); },
+    close() { closed = true; joined = false; clearInterval(beat); try { if (ws) ws.close(); } catch (e) {} },
+    get live() { return joined; }
+  };
+}
+
+let code = null, room = null, st = null, heard = 0, view = 'remote', pinger = null, lost = false, lastErr = '';
+const codeOf = h => { const c = String(h || '').replace(/^#/, '').trim().toUpperCase(); return /^[A-Z]{4}$/.test(c) ? c : null; };
+function cmd(c, extra) { if (!room || !room.live) { toast('Not connected yet…'); return; } room.send('cmd', Object.assign({ id: me, c }, extra || {})); try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) {} }
+function join(c) {
+  leave(true); code = c; st = null; heard = 0; lost = false; view = 'remote';
+  room = rtRoom(code, (ev, p) => {
+    if (ev === 'open') { cmd('hello'); render(); }
+    else if (ev === 'closed') render();
+    else if (ev === 'state' && p && p.code === code) { st = p; heard = Date.now(); lost = false; if (p.lists) lists = p.lists; render(); }
+  });
+  clearInterval(pinger);
+  pinger = setInterval(() => { // still here; and ask again while the TV hasn't answered
+    if (!room || !room.live) return;
+    cmd(heard ? 'ping' : 'hello');
+    if (heard && Date.now() - heard > 65000 && !lost) { lost = true; render(); }
+    if (!heard) render();
+  }, window.__pingGap || 20000);
+  setTimeout(() => { if (room && !heard) render(); }, window.__findGap || 6000);
+  render();
+}
+let lists = null;
+function leave(quiet) {
+  if (room) room.close(); room = null; clearInterval(pinger); st = null; lists = null;
+  if (!quiet) { code = null; try { history.replaceState(null, '', location.pathname); } catch (e) {} render(); }
+}
+function fan(th, e) { const t = (th || []).filter(Boolean).slice(0, 3); return t.length ? '<span class="fan" aria-hidden="true">' + t.map(id => '<img src="' + thumb(id) + '" alt="" loading="lazy">').join('') + '</span>' : '<span class="fan none" aria-hidden="true">' + esc(e || '🎶') + '</span>'; }
+function joinHTML() {
+  return '<h1>Join the big screen</h1><p class="hint">Type the four letters on the TV. No TV yet? Open <b>jhapat.live</b> on a laptop or TV browser and tap <b>📺 TV</b>.</p>' +
+    '<form id="joinForm" class="card"><label class="kicker" for="codeIn">Room code</label><input id="codeIn" class="codein" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="ABCD" value="">' +
+    '<p class="err" id="joinErr">' + esc(lastErr) + '</p><button class="btn primary" type="submit" style="width:100%">Join</button></form>' +
+    '<p class="foot"><a href="../">Play on this phone instead</a> · <a href="../tips/#tv">How big-screen mode works</a></p>';
+}
+function statusHTML() {
+  const live = room && room.live, ok = live && heard && !lost;
+  const txt = !live ? 'Connecting…' : !heard ? 'Looking for the TV…' : lost ? 'The TV went quiet…' : 'Connected';
+  return '<div class="status' + (ok ? ' on' : '') + '"><span class="dot" aria-hidden="true"></span><span>📺 <span class="code">' + esc(code) + '</span></span><span class="grow">' + txt + '</span>' +
+    '<button class="btn small ghost" data-c="leave">Leave</button></div>';
+}
+function remoteHTML() {
+  if (!st) {
+    return statusHTML() + '<div class="card"><p class="hint" style="margin:0">' + (room && room.live
+      ? 'Waiting for the TV with code <b>' + esc(code) + '</b>. If nothing happens, check the code on the TV, or tap 📺 TV there again.'
+      : 'Connecting to the room…') + '</p></div>';
+  }
+  if (view === 'lists') return statusHTML() + listsHTML();
+  const n = st.now, started = st.started;
+  const nowCard = '<section class="card now"><div class="kicker">' + (n ? 'Now playing' : 'Ready') + '</div>' +
+    (n ? (n.t ? '<div class="nowrow">' + (n.img ? '<img src="' + esc(n.img) + '" alt="">' : '') + '<div><div class="title">' + esc(n.t) + '</div><div class="meta">' + esc(n.a) + ' · dropped in at ' + esc(n.at) + '</div></div></div>'
+      : '<div class="title hid">🙈 Hidden song</div><div class="meta">Dropped in at ' + esc(n.at) + '</div>')
+      : '<div class="title">Put the items out, then Start</div>') +
+    (st.word ? '<div class="word">Word: <b>' + esc((st.word.e ? st.word.e + ' ' : '') + st.word.n) + '</b></div>' : '') +
+    (st.soon ? '<div class="meta">Next song in a moment…</div>' : '') + '</section>';
+  const big = '<div class="grid2"><button class="btn primary" data-c="next">' + (started ? ICON.next + 'Next' : ICON.play + 'Start') + '</button>' +
+    '<button class="btn" data-c="pause"' + (started ? '' : ' disabled') + '>' + (st.playing ? ICON.pause + 'Pause' : ICON.play + 'Play') + '</button></div>';
+  const small = '<div class="grid4"><button class="btn" data-c="show"' + (n && !st.word ? '' : ' disabled') + '><span class="em">' + ICON.eye + '</span>Show</button>' +
+    '<button class="btn" data-c="replay"' + (n ? '' : ' disabled') + '><span class="em">' + ICON.replay + '</span>Replay</button>' +
+    '<button class="btn" data-c="hide" aria-pressed="' + !!st.blind + '"><span class="em">🙈</span>Hide</button>' +
+    '<button class="btn" data-c="sound" aria-pressed="' + !!st.sound + '"><span class="em">' + (st.sound ? '🔊' : '🔇') + '</span>Effects</button></div>' +
+    '<div class="grid4" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn" data-c="vol" data-d="-1"><span class="em">🔉</span>Quieter</button><button class="btn" data-c="vol" data-d="1"><span class="em">🔊</span>Louder' + (st.vol != null ? ' · ' + st.vol : '') + '</button></div>';
+  const pl = st.pl ? '<button class="plbar" data-c="lists">' + fan(st.pl.th, st.pl.e) + '<span class="pli"><span class="kicker" style="margin:0">Playlist</span><span class="pn">' + esc(st.pl.n) + '</span><span class="ps">' + st.pl.songs + ' song' + (st.pl.songs === 1 ? '' : 's') + '</span></span><span class="plgo">' + ICON.list + 'Switch</span></button>' : '';
+  const items = (st.items || []).slice().sort((a, b) => (b.on - a.on) || (b.c - a.c));
+  const table = '<section class="card"><div class="kicker">On the table</div>' + pl + '<p class="hint" style="margin:10px 0 0">Tap what you’ve put out.</p><div class="tiles">' +
+    items.map(it => '<button class="tile" data-c="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span class="em" aria-hidden="true">' + esc(it.e || '•') + '</span><span><span class="nm">' + esc(it.n) + '</span><span class="d" lang="ne">' + esc(it.d) + '</span></span><span class="n">' + it.c + '</span></button>').join('') + '</div></section>';
+  return statusHTML() + nowCard + big + small + table + (st.drops ? '<p class="drops">🔥 ' + st.drops + ' drop' + (st.drops === 1 ? '' : 's') + ' tonight</p>' : '');
+}
+function listsHTML() {
+  const L = lists || [];
+  return '<section class="card"><div class="kicker">Playlists</div><button class="btn small" data-c="back">' + ICON.back + 'Back</button>' +
+    (L.length ? '<div class="lists">' + L.map(x => '<button class="lbtn" data-c="pl" data-arg="' + esc(x.id) + '" aria-current="' + !!(st.pl && st.pl.id === x.id) + '">' + fan(x.th, x.e) +
+      '<span class="pli"><span class="pn">' + esc(x.n) + '</span><span class="ps">' + x.songs + ' song' + (x.songs === 1 ? '' : 's') + '</span></span></button>').join('') + '</div>'
+      : '<p class="hint" style="margin-top:10px">Getting the list from the TV…</p>') + '</section>';
+}
+function render() {
+  const app = $('#app');
+  if (!code) { app.innerHTML = joinHTML(); const i = $('#codeIn'); if (i && !('ontouchstart' in window)) i.focus(); return; }
+  app.innerHTML = remoteHTML();
+}
+let toastT = null;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-c]'); if (!b || b.disabled) return;
+  const c = b.dataset.c, arg = b.dataset.arg;
+  if (c === 'leave') return leave();
+  if (c === 'lists') { view = 'lists'; if (!lists) cmd('lists'); render(); return; }
+  if (c === 'back') { view = 'remote'; render(); return; }
+  if (c === 'pl') { cmd('pl', { arg }); view = 'remote'; render(); return; }
+  if (c === 'item' && st) { const it = (st.items || []).find(x => x.id === arg); if (it) { it.on = !it.on; render(); } } // the TV's answer follows
+  cmd(c, arg != null ? { arg } : b.dataset.d ? { d: Number(b.dataset.d) } : null);
+});
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'joinForm') return; e.preventDefault();
+  const c = codeOf($('#codeIn').value);
+  if (!c) { lastErr = 'The code is four letters, like TGRS.'; $('#joinErr').textContent = lastErr; return; }
+  lastErr = ''; try { history.replaceState(null, '', '#' + c); } catch (x) {} join(c);
+});
+document.addEventListener('input', e => { if (e.target.id === 'codeIn') { const v = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4); if (v !== e.target.value) e.target.value = v; } });
+window.addEventListener('hashchange', () => { const c = codeOf(location.hash); if (c && c !== code) join(c); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && room && room.live) cmd('hello'); });
+const first = codeOf(location.hash);
+if (first) join(first); else render();
+})();
+</script>
+</body>
+</html>

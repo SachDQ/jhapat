@@ -38,7 +38,8 @@ function fakeSb(db, opts) {
       insert(rows) { st.op = 'insert'; st.rows = Array.isArray(rows) ? rows : [rows]; return api; },
       update(p) { st.op = 'update'; st.patch = p; return api; },
       delete() { st.op = 'delete'; return api; },
-      then(res, rej) { return (db.delay ? new Promise(r => setTimeout(r, db.delay)) : Promise.resolve()).then(run).then(res, rej); },
+      then(res, rej) { if (db.dropNext && db.dropNext(table, st)) { db.dropNext = null; return Promise.resolve({ data: null, error: { message: 'TypeError: Failed to fetch' } }).then(res, rej); }
+        return (db.delay ? new Promise(r => setTimeout(r, db.delay)) : Promise.resolve()).then(run).then(res, rej); },
     };
     const match = r => st.filters.every(f => f(r));
     const embed = r => {
@@ -450,6 +451,7 @@ function makeDom(db, opts) {
       { id: 602, song_id: 'nm-song', item_id: 'paani', t: 30.2, line: 2, word: 0, rep: 2, source: 'tap', checked: true },
       { id: 603, song_id: 'nm-song', item_id: 'paani', t: 40, line: 3, word: 0, rep: 3, source: 'estimate', checked: false });
     const { w: w6, d: d6 } = makeDom(db6, { signedIn: true, editor: true }); await sleep(80);
+    w6.__retryGap = 5; db6.dropNext = (table, st) => table === 'songs' && st.single; // the first song's request fails once
     w6.location.hash = '#items'; await sleep(20);
     d6.querySelector('[data-act="autoall"]').dispatchEvent(new w6.MouseEvent('click', { bubbles: true })); await sleep(200);
     const mine = db6.tags.filter(t => t.song_id === 'nm-song');
@@ -457,7 +459,8 @@ function makeDom(db, opts) {
       'Auto-tag all takes the estimate off पानीपुरी (ruled out) and keeps the one timed by hand: ' + mine.map(t => t.id + ':' + t.item_id + '@' + t.line).join(' '));
     ok(mine.some(t => t.item_id === 'bato' && t.line === 0 && t.word === 1) && mine.some(t => t.item_id === 'phone' && t.line === 3 && t.word === 2),
       'बाटाे counts as बाटो and फ़ोन as फोन');
-    ok(/1 estimate taken off words that no longer count/.test(d6.querySelector('#autoAllMsg').textContent), 'and says so: ' + d6.querySelector('#autoAllMsg').textContent); }
+    ok(/1 estimate taken off words that no longer count/.test(d6.querySelector('#autoAllMsg').textContent) && !db6.dropNext && !/couldn’t be reached/.test(d6.querySelector('#autoAllMsg').textContent),
+      'and says so, after trying again when a request failed: ' + d6.querySelector('#autoAllMsg').textContent); }
 
   // Drop points by line: every line with room gets one; the same word close behind itself doesn't; a word close behind
   // another item drops alone, and its line's roomy repeat is the drop point when that item is out too. Invented lines.
@@ -580,7 +583,8 @@ function makeDom(db, opts) {
       { day: iso(0), ev: 'new', k: 'qr', n: 3 }, { day: iso(0), ev: 'new', k: '', n: 2 },
       { day: iso(0), ev: 'party', k: 'party-mix', n: 2 }, { day: iso(1), ev: 'party', k: 'all', n: 1 }, { day: iso(0), ev: 'start', k: 'party-mix', n: 3 },
       { day: iso(0), ev: 'drops', k: 'party-mix', n: 80 }, { day: iso(0), ev: 'song', k: 'old', n: 9 },
-      { day: iso(0), ev: 'share', k: 'qr', n: 4 }, { day: iso(0), ev: 'share', k: 'native', n: 2 }, { day: iso(0), ev: 'hide', k: '', n: 1 }];
+      { day: iso(0), ev: 'share', k: 'qr', n: 4 }, { day: iso(0), ev: 'share', k: 'native', n: 2 }, { day: iso(0), ev: 'hide', k: '', n: 1 },
+      { day: iso(0), ev: 'tv', k: 'start', n: 2 }, { day: iso(0), ev: 'tv', k: 'phone', n: 5 }];
     const { w, d } = makeDom(db, { signedIn: true, editor: true });
     const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
     await sleep(60);
@@ -591,8 +595,8 @@ function makeDom(db, opts) {
     ok(/\+200% on the 30 days before/.test(d.querySelector('.kpi').textContent), 'with the change on the 30 days before: ' + d.querySelector('.kpi').textContent);
     ok(d.querySelectorAll('.bars .bar').length === 30 && d.querySelectorAll('.bars .bar i').length === 2, 'a bar a day, with the parties inside');
     const t = d.querySelector('.statgrid').textContent;
-    ok(/Nepali Party Mix\s*2/.test(t) && /Old Song/.test(t) && /Asia\/Kathmandu\s*11/.test(t) && /Scanned the QR code\s*3/.test(t) && /Shared from the phone\s*2/.test(t) && /Hide turned on\s*1/.test(t),
-      'top lists: playlists, songs, time zones, how new phones arrived, sharing and features');
+    ok(/Nepali Party Mix\s*2/.test(t) && /Old Song/.test(t) && /Asia\/Kathmandu\s*11/.test(t) && /Scanned the QR code\s*3/.test(t) && /Shared from the phone\s*2/.test(t) && /Hide turned on\s*1/.test(t) && /Big screen turned on\s*2/.test(t) && /Phones used as remotes\s*5/.test(t),
+      'top lists: playlists, songs, time zones, how new phones arrived, sharing and features (big screen too)');
     c('[data-act="statdays"][data-arg="7"]'); await sleep(20);
     ok(d.querySelectorAll('.bars .bar').length === 7 && [...d.querySelectorAll('.kpi b')][0].textContent === '15', 'the last 7 days, too'); }
 

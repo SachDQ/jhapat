@@ -948,9 +948,88 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const vis = [...dd.querySelectorAll('.picker .lists > li')].filter(li => !li.hidden).map(li => li.querySelector('.t').textContent);
     ok(vis.join() === 'Dashain Nights' && !!dd.querySelector('#mkForm'), 'typing shows only the playlists that match, and Make your own stays: ' + vis.join()); }
 
-  // 35. The intro says how to skip YouTube's ads, and so does the footer
-  ok(/ad blocker skips them/.test(d.querySelector('#intro .introtip').textContent) && /Messenger/.test(d.querySelector('#intro .introtip').textContent) && /Best with an ad blocker/.test(d.querySelector('.foot2').textContent),
-    'the intro and the footer say it’s best with an ad blocker, or opened from Messenger');
+  // 35. Tips (v42): the intro and the footer point at the Tips page, where the ad and big-screen guides live (not a footer sentence)
+  ok(d.querySelector('#intro .introtip a[href="tips/"]') && d.querySelector('.foot a[href="tips/"]') && !/ad blocker/i.test(d.querySelector('.foot').textContent),
+    'the intro and the footer link to Tips; the footer no longer carries the ad-blocker sentence');
+
+  // 36. Big screen (v42): the TV opens a room; a phone joins it at /r and drives the night. Both pages talk through a stand-in for
+  //     Supabase Realtime that passes broadcasts between the sockets in one room.
+  { const hub = { socks: [] };
+    class FakeWS {
+      constructor(url) { this.url = url; this.topics = new Set(); hub.socks.push(this); setTimeout(() => this.onopen && this.onopen(), 0); }
+      send(raw) { const m = JSON.parse(raw); hub.sent = (hub.sent || 0) + 1;
+        if (m.event === 'phx_join') { this.topics.add(m.topic); setTimeout(() => this.onmessage && this.onmessage({ data: JSON.stringify({ topic: m.topic, event: 'phx_reply', payload: { status: 'ok', response: {} }, ref: m.ref }) }), 0); }
+        else if (m.event === 'broadcast') hub.socks.filter(s => s !== this && s.topics.has(m.topic) && !s.closed).forEach(s => setTimeout(() => s.onmessage && s.onmessage({ data: JSON.stringify({ topic: m.topic, event: 'broadcast', payload: m.payload, ref: null }) }), 0)); }
+      close() { this.closed = true; setTimeout(() => this.onclose && this.onclose(), 0); }
+    }
+    const songs = [0, 1, 2].map(k => ({ id: 'tv' + k, title: 'Party Song ' + k, artist: 'Band ' + k, videos: [{ yt: ('tvsong' + k + 'xxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags: [['maya', 30], ['paani', 60]] }));
+    const C = { items: [{ id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️' }, { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧' }],
+      playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['tv0', 'tv1', 'tv2'] }, { id: 'hits', name: 'Nepali Hits', songs: ['tv1', 'tv2'] }], songs };
+    const tvDom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+      beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => C }); win.scrollTo = () => {}; win.WebSocket = FakeWS; } });
+    await sleep(60);
+    const tw = tvDom.window, td = tw.document;
+    const tclick = sel => td.querySelector(sel).dispatchEvent(new tw.MouseEvent('click', { bubbles: true }));
+    tclick('[data-act="introgo"]');
+    tclick('.now [data-act="tv"]'); await sleep(30);
+    const code = (td.querySelector('.tvcode') || {}).textContent || '';
+    ok(td.body.classList.contains('tv') && /^[A-HJ-NP-Z]{4}$/.test(code) && new URL(tw.location.href).searchParams.get('tv') === code,
+      '📺 TV turns on big-screen mode with a four-letter room code (no I or O), kept in the address: ' + code);
+    const qr = td.querySelector('#tvjoin svg.tvqr');
+    ok(!!qr && qr.getAttribute('viewBox') === '0 0 37 37' && qr.querySelector('path').getAttribute('d').split('M').length > 150 && /jhapat\.live\/r/.test(td.querySelector('#tvjoin').textContent),
+      'the TV shows a QR code (version 3, 29 modules and the quiet zone) and jhapat.live/r to type the code');
+    ok(/Waiting for a phone/.test(td.querySelector('.tvphones').textContent), 'and waits for a phone');
+
+    const remoteHtml = fs.readFileSync(require('path').join(__dirname, '..', 'r', 'index.html'), 'utf8');
+    const rDom = new JSDOM(remoteHtml, { runScripts: 'dangerously', url: 'https://jhapat.live/r/#' + code, pretendToBeVisual: true,
+      beforeParse(win) { win.WebSocket = FakeWS; win.__pingGap = 60000; } });
+    const rw = rDom.window, rd = rw.document;
+    const rclick = sel => { const el = rd.querySelector(sel); if (!el) throw new Error('remote: missing ' + sel); el.dispatchEvent(new rw.MouseEvent('click', { bubbles: true })); };
+    await sleep(400);
+    ok(/Connected/.test(rd.querySelector('.status').textContent) && rd.querySelector('.status .code').textContent === code, 'the phone joins the room from the link and hears the TV');
+    ok(rd.querySelectorAll('.tile').length === 2 && rd.querySelector('.plbar .pn').textContent === 'Nepali Party Mix' && /Start/.test(rd.querySelector('[data-c="next"]').textContent),
+      'the phone shows the playlist, the table (2 items) and Start');
+    ok(/1 phone connected/.test(td.querySelector('.tvphones').textContent), 'the TV counts the phone');
+    rclick('[data-c="next"]'); await sleep(400);
+    const nowT = td.querySelector('.now .title').textContent;
+    ok(/^Party Song \d$/.test(nowT) && rd.querySelector('.now .title').textContent === nowT && /Next/.test(rd.querySelector('[data-c="next"]').textContent),
+      'Start on the phone drops a song on the TV, and the phone shows it: ' + nowT);
+    rclick('[data-c="show"]'); await sleep(300);
+    ok(!!td.querySelector('.now .reveal') && /Word: .*(Maya|Paani)/.test(rd.querySelector('.now .word').textContent), 'Show on the phone shows the word on both');
+    rclick('[data-c="hide"]'); await sleep(300);
+    ok(td.body.classList.contains('blind') && rd.querySelector('[data-c="hide"]').getAttribute('aria-pressed') === 'true', 'Hide on the phone hides the TV’s video');
+    rclick('[data-c="next"]'); await sleep(400);
+    ok(/Hidden song/.test(rd.querySelector('.now').textContent) && !/Party Song/.test(rd.querySelector('.now').textContent), 'in Hide mode the phone doesn’t get the song’s name either');
+    const pOn = () => JSON.parse(tw.localStorage.getItem('jhapat.v1')).items.find(i => i.id === 'paani').on;
+    const was = pOn(); rclick('[data-c="item"][data-arg="paani"]'); await sleep(300);
+    ok(pOn() === !was && rd.querySelector('[data-c="item"][data-arg="paani"]').getAttribute('aria-pressed') === String(!was), 'an item tapped on the phone goes on or off on the TV');
+    rclick('[data-c="lists"]'); await sleep(300);
+    ok(rd.querySelectorAll('.lbtn').length === 2, 'Switch on the phone lists the TV’s playlists');
+    rclick('.lbtn[data-arg="hits"]'); await sleep(400);
+    ok(JSON.parse(tw.localStorage.getItem('jhapat.v1')).playlist.id === 'hits' && rd.querySelector('.plbar .pn').textContent === 'Nepali Hits', 'picking one on the phone switches the TV’s playlist');
+    tclick('[data-act="tvoff"]'); await sleep(30);
+    ok(!td.body.classList.contains('tv') && !new URL(tw.location.href).searchParams.has('tv') && !td.querySelector('#tvjoin'), 'Exit TV leaves big-screen mode');
+    rclick('[data-c="leave"]'); await sleep(10);
+    ok(!!rd.querySelector('#joinForm'), 'Leave on the phone goes back to the code box');
+    const cin = rd.querySelector('#codeIn'); cin.value = 'ab1'; cin.dispatchEvent(new rw.Event('input', { bubbles: true }));
+    ok(cin.value === 'AB', 'the code box takes letters only, in capitals');
+    rd.querySelector('#joinForm').dispatchEvent(new rw.Event('submit', { bubbles: true, cancelable: true }));
+    ok(/four letters/.test(rd.querySelector('#joinErr').textContent), 'a short code gets a hint instead of a join');
+    tw.close(); rw.close(); }
+
+  // 37. The Tips page: guides with anchors, and what to put out for every item, from the database (minus the ruled-out spellings)
+  { const tipsHtml = fs.readFileSync(require('path').join(__dirname, '..', 'tips', 'index.html'), 'utf8');
+    const items = [{ id: 'raat', name: 'Raat', dev: 'रात', emoji: '🔦', note: 'a torch', words: ['raat', 'रात', 'night', '-रातो'], sort: 0 }, { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧', note: 'a glass of water', words: ['पानी'], sort: 1 }];
+    const tdom = new JSDOM(tipsHtml, { runScripts: 'dangerously', url: 'https://jhapat.live/tips/', pretendToBeVisual: true,
+      beforeParse(win) { win.fetch = async url => { win.__asked = url; return { ok: true, json: async () => items }; }; } });
+    await sleep(40);
+    const pd = tdom.window.document;
+    ok(['ads', 'tv', 'props', 'rules', 'privacy'].every(id => pd.getElementById(id)) && /Messenger/.test(pd.getElementById('ads').textContent) && /jhapat\.live\/r/.test(pd.getElementById('tv').textContent),
+      'the Tips page has the ad, big-screen, props, rules and privacy guides');
+    const raat = pd.getElementById('item-raat');
+    ok(!!raat && /A torch/.test(raat.textContent) && /Or a sleep mask/.test(raat.textContent) && /Counts: raat, रात, night/.test(raat.textContent) && !/रातो/.test(raat.textContent) && raat.classList.contains('abstract'),
+      'each item shows its prop, more ideas for the words you can’t hold, and the spellings that count (not the ruled-out ones)');
+    ok(/items\?select=/.test(tdom.window.__asked), 'the items come from the database'); tdom.window.close(); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

@@ -262,6 +262,7 @@ img.broken{visibility:hidden}
 .miss .ph{width:64px;height:36px;display:grid;place-items:center;border-radius:6px;background:var(--raise);color:var(--muted)}
 .miss li i{display:block;font-style:normal;font-size:12.5px;color:var(--muted)}
 .introtip{grid-area:tip;margin:0;font-size:13.5px;line-height:1.4;color:var(--muted);text-align:left}
+.introtip a{color:var(--gold)}
 .switch{display:flex;align-items:center;gap:10px;font-weight:600}
 .switch input{width:22px;height:22px;accent-color:var(--gold-fill)}
 
@@ -349,6 +350,25 @@ textarea{margin:10px 0 8px;resize:vertical}
   .stage:not(.off)~main#view{grid-column:3}
   .stage.off~main#view{width:100%;max-width:760px;justify-self:center}
   .stage:not(.small):not(.off) .screen{max-height:calc(100vh - 40px);border-radius:24px}
+}
+/* v42: big-screen mode. A laptop on the TV plays; phones are the remotes (jhapat.live/r). */
+.pill.tvp[aria-pressed="true"]{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
+.tvjoin{display:flex;gap:16px;align-items:center}
+.tvqr{width:clamp(112px,9vw,168px);height:auto;flex:none;border-radius:14px;box-shadow:0 0 0 3px var(--gold-fill),0 10px 28px rgba(242,107,29,.35)}
+.tvj{min-width:0;flex:1}
+.tvcode{font:400 clamp(34px,3.4vw,58px)/1 var(--display);letter-spacing:.16em;color:var(--gold);margin:2px 0 6px}
+.tvj .hint{margin:0 0 10px;font-size:14.5px}
+.tvj .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tvphones{font-weight:700;color:var(--muted);margin-right:auto}
+.tvphones.on{color:var(--ok)}
+body.tv .tabs,body.tv .foot{display:none}
+body.tv .now .title{font-size:clamp(30px,2.9vw,54px)}
+body.tv .now .meta{font-size:17px}
+body.tv .reveal{font-size:20px}
+@media (min-width:1100px){
+  body.tv{grid-template-columns:minmax(16px,.35fr) minmax(0,1fr) minmax(400px,500px) minmax(16px,.35fr)}
+  body.tv .stage:not(.off){margin-right:22px}
+  body.tv .stage:not(.small):not(.off) .screen{max-height:calc(100vh - 28px)}
 }
 @media (prefers-reduced-motion: reduce){.floor i::before,.dhaka::before,.brand .mark,.brand .word{animation:none}#stamp,.drift{display:none}
   .btn:hover,.chip:hover,.listbtn:hover,.btn:active,.chip:active,.listbtn:active{transform:none}}
@@ -475,7 +495,7 @@ body.introopen{overflow:hidden}
       <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
       <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
     </ol>
-    <p class="introtip">💡 YouTube sometimes plays an ad before a song. An ad blocker skips them, and so does opening Jhapat from a Messenger chat.</p>
+    <p class="introtip">💡 Ads before songs, or a TV to play on? <a href="tips/">See the tips</a>.</p>
     <div class="introbtns"><button class="btn primary big" data-act="introgo">Let’s go</button><button class="btn big" data-act="share"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Share</button></div>
   </div>
 </div>
@@ -489,7 +509,7 @@ body.introopen{overflow:hidden}
     <button class="btn ghost small" data-act="shareclose">Close</button>
   </div>
 </div>
-<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <button class="linkbtn" data-act="share">Share</button><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up. Best with an ad blocker, or opened from a Messenger chat. Jhapat counts drops, never who.</p></footer>
+<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <a href="tips/">Tips</a> · <button class="linkbtn" data-act="share">Share</button><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up. Jhapat counts drops, never who.</p></footer>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -497,7 +517,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 41; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 42; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -777,6 +797,7 @@ function togglePause() {
 function onState(e) {
   const st = e.data;
   if (st === 1) keepAwake(true);
+  if (st === 1 || st === 2 || st === 0) tvPush();
   if (st === 0 && mode === 'game' && S.settings.autoNext) {
     nextTimer = setTimeout(() => { nextTimer = null; nextRound(); }, 3000);
     renderNow();
@@ -1133,10 +1154,19 @@ document.addEventListener('pointerdown', e => {
 });
 /* Hide mode: whoever holds the phone plays too. The video is covered and the title, reel and artist stay hidden until Show. */
 function applyBlind() { document.body.classList.toggle('blind', !!S.settings.blind); }
+function toggleBlind() { S.settings.blind = !S.settings.blind; save(); applyBlind(); renderNow(); if (S.settings.blind) tally('hide'); }
+function toggleSound() { S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('on'); renderNow(); }
+function revealWord() { revealed = true; revealAt = Date.now(); renderNow(); sfx('show'); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } }
+function toggleItem(id) {
+  const it = itemById(id); if (!it) return;
+  it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
+  const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6);
+}
 const hideName = () => !!S.settings.blind && !revealed;
 function pillsHTML() { // Hide and sound, at the top of the Now card
   return '<span class="pills"><button class="pill hide" data-act="blind" aria-pressed="' + !!S.settings.blind + '" title="Hide the song and video so you can play too">🙈 Hide</button>' +
     '<button class="pill" data-act="sound" aria-pressed="' + sfxOn() + '" aria-label="Sound effects" title="Sound effects">' + (sfxOn() ? '🔊' : '🔇') + '</button>' +
+    '<button class="pill tvp" data-act="tv" aria-pressed="' + !!tv + '" title="Play on a TV, with phones as the remotes">📺 TV</button>' +
     '<button class="pill" data-act="intro" aria-label="How to play" title="How to play">?</button></span>';
 }
 /* Sounds, made in the browser (no files). Since v40 they're quieter and fewer: a soft madal dhin on every drop and ta-dhin as the
@@ -1309,22 +1339,26 @@ function plBarHTML() {
 const CHIP_CAP = 8;
 let moreItems = false, settingsOpen = false;
 const touched = new Set(); // items tapped here stay in view when the list folds, so a chip never vanishes under a finger
+function tableInfo() { // each item's songs with a drop point (and its drop points), and the items this playlist can offer
+  const stats = new Map(S.items.map(it => [it.id, { songs: 0, pts: 0 }]));
+  S.songs.forEach(s => { if (!s.broken) dpOf(s).forEach((n, id) => { const x = stats.get(id); if (x) { x.songs++; x.pts += n; } }); });
+  const shown = S.source === 'db' ? S.items.filter(it => stats.get(it.id).songs > 0) : S.items; // a playlist only offers the items its songs have
+  return { stats, shown };
+}
 function renderPlay() {
   if (picking || needPick()) return renderPicker();
   const el = eligible().filter(s => dropsFor(s).list.length); // songs the game can drop into with this table
   const left = el.reduce((a, s) => a + dropsFor(s).list.filter(x => !done().has(ptKey(s.id, x.tag))).length, 0); // their lines not dropped yet
-  const stats = new Map(S.items.map(it => [it.id, { songs: 0, pts: 0 }])); // each item's songs with a drop point, and its drop points
-  S.songs.forEach(s => { if (!s.broken) dpOf(s).forEach((n, id) => { const x = stats.get(id); if (x) { x.songs++; x.pts += n; } }); });
+  const { stats, shown } = tableInfo();
   const songsWith = id => stats.get(id).songs; // songs where the item has a drop point, so the count is what can actually play
   const fromDb = S.source === 'db';
-  const shown = fromDb ? S.items.filter(it => songsWith(it.id) > 0) : S.items; // a playlist only offers the items its songs have
   const long = shown.length > CHIP_CAP + 2; // fold only when it would hide more than a couple
   const vis = long && !moreItems ? shown.filter((it, k) => k < CHIP_CAP || it.on || touched.has(it.id)) : shown;
   const hidden = shown.length - vis.length;
   const chip = it => { const n = songsWith(it.id), p = stats.get(it.id).pts;
     return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="' + n + ' song' + (n === 1 ? '' : 's') + ', ' + p + ' drop point' + (p === 1 ? '' : 's') + '">' + emoHTML(it.id) +
       '<span class="nm">' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
-  return '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
+  return tvJoinHTML() + '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
     '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? ICON.next + 'Next' : ICON.play + 'Start') + '</button>' +
     (current ? '<button class="btn big" data-act="pause" data-pausebtn data-l="Pause">' + ICON.pause + 'Pause</button>' : '') + '</div>' + reportHTML() +
     '<section class="card" id="table">' +
@@ -1452,9 +1486,9 @@ function render() {
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
   $('#view').innerHTML = tab === 'play' ? renderPlay() : tab === 'items' ? renderItems() : (songId ? renderSong() : renderSongs());
   const pb = document.querySelector('.pool b'); if (pb) { if (lastMatch != null && pb.textContent !== lastMatch) replay(pb, 'tick'); lastMatch = pb.textContent; }
-  tick();
+  tick(); tvPush();
 }
-function renderNow() { const n = document.querySelector('.now'); if (n && tab === 'play') n.innerHTML = nowHTML(); }
+function renderNow() { const n = document.querySelector('.now'); if (n && tab === 'play') n.innerHTML = nowHTML(); tvPush(); }
 function tick() {
   const c = document.getElementById('clock'); if (c) c.textContent = fmt(now());
   const st = state();
@@ -1486,17 +1520,19 @@ document.addEventListener('click', async e => {
   switch (act) {
     case 'tab': tab = arg; songId = null; syncing = null; render(); break;
     case 'next': nextRound(); break;
-    case 'blind': S.settings.blind = !S.settings.blind; save(); applyBlind(); renderNow(); if (S.settings.blind) tally('hide'); break;
-    case 'sound': S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('on'); renderNow(); break;
+    case 'blind': toggleBlind(); break;
+    case 'sound': toggleSound(); break;
+    case 'tv': if (tv) tvStop(); else tvStart(null, true); break;
+    case 'tvfull': tvFull(!document.fullscreenElement); break;
+    case 'tvoff': tvStop(); break;
     case 'moreitems': moreItems = !moreItems; render(); break;
     case 'settings': settingsOpen = !settingsOpen; render(); break;
     case 'update': location.href = location.pathname + '?v=' + (b.dataset.v || Date.now()) + location.hash; break;
     case 'pause': case 'ttoggle': togglePause(); setTimeout(tick, 120); break;
-    case 'reveal': revealed = true; revealAt = Date.now(); renderNow(); sfx('show'); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } break;
+    case 'reveal': revealWord(); break;
     case 'replay': replayDrop(); break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
-    case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
-      const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6); } break; }
+    case 'item': toggleItem(arg); break;
     case 'lists': picking = true; render(); filterPicker(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': pickPlaylist(arg); break;
@@ -2062,6 +2098,226 @@ function readRef() {
   } catch (e) { return ''; }
 }
 
+/* ---------- big screen (v42): a laptop on the TV plays, phones are the remotes ----------
+   📺 TV opens a room with a four-letter code. Phones join at jhapat.live/r (the QR code goes straight there) and send what their
+   buttons say; the TV is the only player, and after every change it sends the phones what's on. Supabase Realtime carries the
+   messages (broadcast only: nothing is stored, and the publishable key is enough). ?tv=CODE keeps the room across a reload. */
+const RT_URL = 'wss://hckzkaprxywohazohmcu.supabase.co/realtime/v1/websocket?apikey=' + DB.key + '&vsn=1.0.0';
+function rtRoom(code, on) { // join a broadcast room; on(event, payload) hears 'open', 'closed' and every broadcast. Reconnects by itself.
+  const topic = 'realtime:jhapat-tv-' + code;
+  let ws = null, ref = 0, joined = false, beat = null, closed = false, wait = 1000;
+  const raw = o => { try { ws.send(JSON.stringify(o)); } catch (e) {} };
+  function open() {
+    if (closed) return;
+    try { ws = new WebSocket(RT_URL); } catch (e) { return retry(); }
+    ws.onopen = () => {
+      wait = 1000; raw({ topic, event: 'phx_join', payload: { config: { broadcast: { self: false, ack: false }, presence: { key: '' }, private: false } }, ref: String(++ref), join_ref: '1' });
+      clearInterval(beat); beat = setInterval(() => raw({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++ref) }), 25000);
+    };
+    ws.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+      if (!m || m.topic !== topic) return;
+      if (m.event === 'phx_reply' && !joined && m.payload && m.payload.status === 'ok') { joined = true; on('open', {}); }
+      else if (m.event === 'broadcast' && m.payload) on(m.payload.event, m.payload.payload || {});
+      else if (m.event === 'phx_error' || m.event === 'phx_close') { try { ws.close(); } catch (x) {} }
+    };
+    ws.onclose = () => { const was = joined; joined = false; clearInterval(beat); if (was) on('closed', {}); retry(); };
+    ws.onerror = () => {};
+  }
+  function retry() { if (closed) return; setTimeout(open, wait); wait = Math.min(wait * 2, 15000); }
+  open();
+  return {
+    send(event, payload) { if (joined) raw({ topic, event: 'broadcast', payload: { type: 'broadcast', event, payload }, ref: String(++ref), join_ref: '1' }); },
+    close() { closed = true; joined = false; clearInterval(beat); try { if (ws) ws.close(); } catch (e) {} },
+    get live() { return joined; }
+  };
+}
+/* A QR code for a short link (byte mode, error correction M, versions 1–6, the mask with the lowest penalty). qrModules(text) → rows of 0/1. */
+function qrModules(text, force) {
+  const data = (encodeURIComponent(text).match(/%[0-9A-F]{2}|[^%]/gi) || []).map(c => (c.length === 3 ? parseInt(c.slice(1), 16) : c.charCodeAt(0))); // UTF-8 bytes
+  // [error-correction codewords per block, blocks, data codewords per block] for level M, versions 1–6
+  const SPEC = [null, [10, 1, 16], [16, 1, 28], [26, 1, 44], [18, 2, 32], [24, 2, 43], [16, 4, 27]];
+  const ALIGN = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34]];
+  let v = 1; while (v < 6 && SPEC[v][1] * SPEC[v][2] < data.length + 2) v++;
+  if (force && force.version) v = force.version;
+  const [ecn, nb, dpb] = SPEC[v], cap = nb * dpb;
+  if (data.length + 2 > cap) throw new Error('too long for a QR code here');
+  const bits = []; const put = (x, n) => { for (let i = n - 1; i >= 0; i--) bits.push((x >>> i) & 1); };
+  put(4, 4); put(data.length, 8); data.forEach(b => put(b, 8));
+  for (let i = 0; i < 4 && bits.length < cap * 8; i++) bits.push(0);
+  while (bits.length % 8) bits.push(0);
+  const cw = []; for (let i = 0; i < bits.length; i += 8) cw.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+  for (let p = 0; cw.length < cap; p ^= 1) cw.push(p ? 0x11 : 0xec);
+  // Reed–Solomon over GF(256), polynomial 0x11d
+  const EXP = new Array(512), LOG = new Array(256);
+  for (let i = 0, x = 1; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 256) x ^= 0x11d; }
+  for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  const mul = (a, b) => (a && b ? EXP[LOG[a] + LOG[b]] : 0);
+  let gen = [1]; for (let i = 0; i < ecn; i++) { const g = new Array(gen.length + 1).fill(0); gen.forEach((c, j) => { g[j] ^= c; g[j + 1] ^= mul(c, EXP[i]); }); gen = g; }
+  const blocks = [], ecs = [];
+  for (let b = 0; b < nb; b++) {
+    const d = cw.slice(b * dpb, (b + 1) * dpb), r = d.concat(new Array(ecn).fill(0));
+    for (let i = 0; i < d.length; i++) { const c = r[i]; if (c) for (let j = 0; j < gen.length; j++) r[i + j] ^= mul(gen[j], c); }
+    blocks.push(d); ecs.push(r.slice(d.length));
+  }
+  const seq = []; for (let i = 0; i < dpb; i++) blocks.forEach(d => seq.push(d[i])); for (let i = 0; i < ecn; i++) ecs.forEach(e => seq.push(e[i]));
+  // the matrix: function patterns first
+  const n = 17 + 4 * v, M = [], F = [];
+  for (let i = 0; i < n; i++) { M.push(new Array(n).fill(0)); F.push(new Array(n).fill(false)); }
+  const set = (r, c, on) => { M[r][c] = on ? 1 : 0; F[r][c] = true; };
+  const finder = (r0, c0) => { for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++) { const rr = r0 + r, cc = c0 + c; if (rr < 0 || cc < 0 || rr >= n || cc >= n) continue;
+    const ring = Math.max(Math.abs(r - 3), Math.abs(c - 3)); set(rr, cc, r >= 0 && r <= 6 && c >= 0 && c <= 6 && ring !== 2); } };
+  finder(0, 0); finder(0, n - 7); finder(n - 7, 0);
+  for (let i = 8; i < n - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const al = ALIGN[v];
+  for (const r of al) for (const c of al) { if (F[r][c]) continue; for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) set(r + dr, c + dc, Math.max(Math.abs(dr), Math.abs(dc)) !== 1); }
+  for (let i = 0; i < 9; i++) { if (!F[8][i]) F[8][i] = true; if (!F[i][8]) F[i][8] = true; }
+  for (let i = 0; i < 8; i++) { F[8][n - 1 - i] = true; F[n - 1 - i][8] = true; }
+  set(n - 8, 8, 1); // the dark module
+  // data, in two-column strips from the bottom right, skipping the timing column
+  const all = []; seq.forEach(b => { for (let i = 7; i >= 0; i--) all.push((b >>> i) & 1); });
+  let k = 0;
+  for (let right = n - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < n; vert++) for (let j = 0; j < 2; j++) {
+      const c = right - j, up = ((right + 1) & 2) === 0, r = up ? n - 1 - vert : vert;
+      if (!F[r][c]) { M[r][c] = k < all.length ? all[k] : 0; k++; }
+    }
+  }
+  const MASKS = [(r, c) => (r + c) % 2 === 0, r => r % 2 === 0, (r, c) => c % 3 === 0, (r, c) => (r + c) % 3 === 0, (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+    (r, c) => (r * c) % 2 + (r * c) % 3 === 0, (r, c) => ((r * c) % 2 + (r * c) % 3) % 2 === 0, (r, c) => ((r + c) % 2 + (r * c) % 3) % 2 === 0];
+  const withMask = m => {
+    const Q = M.map((row, r) => row.map((x, c) => (!F[r][c] && MASKS[m](r, c) ? x ^ 1 : x)));
+    let f = (0 << 3) | m, rem = f << 10; for (let i = 14; i >= 10; i--) if ((rem >>> i) & 1) rem ^= 0x537 << (i - 10);
+    const fmt = ((f << 10) | rem) ^ 0x5412, bit = i => (fmt >>> i) & 1;
+    for (let i = 0; i <= 5; i++) Q[i][8] = bit(i);
+    Q[7][8] = bit(6); Q[8][8] = bit(7); Q[8][7] = bit(8);
+    for (let i = 9; i < 15; i++) Q[8][14 - i] = bit(i);
+    for (let i = 0; i < 8; i++) Q[8][n - 1 - i] = bit(i);
+    for (let i = 8; i < 15; i++) Q[n - 15 + i][8] = bit(i);
+    Q[n - 8][8] = 1;
+    return Q;
+  };
+  const penalty = Q => {
+    let p = 0;
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n; i++) { let run = 1;
+      for (let j = 1; j <= n; j++) { const a = j < n ? (pass ? Q[j][i] : Q[i][j]) : -1, b = pass ? Q[j - 1][i] : Q[i][j - 1];
+        if (a === b) run++; else { if (run >= 5) p += run - 2; run = 1; } } }
+    for (let r = 0; r < n - 1; r++) for (let c = 0; c < n - 1; c++) { const x = Q[r][c]; if (x === Q[r][c + 1] && x === Q[r + 1][c] && x === Q[r + 1][c + 1]) p += 3; }
+    const pat = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0], tap = pat.slice().reverse();
+    for (let i = 0; i < n; i++) for (let j = 0; j + 11 <= n; j++) for (const P of [pat, tap]) {
+      if (P.every((x, t) => Q[i][j + t] === x)) p += 40; if (P.every((x, t) => Q[j + t][i] === x)) p += 40; }
+    const dark = Q.reduce((a, row) => a + row.reduce((s, x) => s + x, 0), 0);
+    p += Math.floor(Math.abs(dark * 20 - n * n * 10) / (n * n)) * 10;
+    return p;
+  };
+  if (force && force.mask != null) return withMask(force.mask);
+  let best = null, bp = Infinity; for (let m = 0; m < 8; m++) { const Q = withMask(m), p = penalty(Q); if (p < bp) { bp = p; best = Q; } }
+  return best;
+}
+function qrSvg(text) { // dark modules as one path, with the quiet zone
+  const Q = qrModules(text), n = Q.length; let d = '';
+  Q.forEach((row, r) => row.forEach((x, c) => { if (x) d += 'M' + (c + 4) + ' ' + (r + 4) + 'h1v1h-1z'; }));
+  return '<svg class="tvqr" viewBox="0 0 ' + (n + 8) + ' ' + (n + 8) + '" role="img" aria-label="QR code" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path fill="#0F0B1E" d="' + d + '"/></svg>';
+}
+
+let tv = null; // { code, room, phones: Map(phone → last heard), pushT, vol, wantLists }
+const TV_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: they read as 1 and 0
+const tvCode = () => Array.from({ length: 4 }, () => TV_ABC[Math.floor(Math.random() * TV_ABC.length)]).join('');
+const remoteUrl = code => WEB_LINK + 'r/#' + code;
+function tvStart(code, tapped) {
+  if (tv) return;
+  code = /^[A-Z]{4}$/.test(code || '') ? code : tvCode();
+  tv = { code, phones: new Map(), pushT: null, vol: null, wantLists: true };
+  tv.room = rtRoom(code, tvHear);
+  document.body.classList.add('tv'); closeIntro();
+  try { const u = new URL(location.href); u.searchParams.set('tv', code); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {}
+  if (tapped) { tvFull(true); tally('tv', 'start'); }
+  keepAwake(true); render();
+}
+function tvStop() {
+  if (!tv) return;
+  tv.room.close(); clearTimeout(tv.pushT); tv = null;
+  document.body.classList.remove('tv');
+  try { const u = new URL(location.href); u.searchParams.delete('tv'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {}
+  tvFull(false); render();
+}
+function tvFull(on) {
+  try {
+    if (on && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+    else if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  } catch (e) {}
+}
+function tvVolume(d) {
+  let v = tv.vol == null ? 100 : tv.vol; try { v = player.getVolume(); } catch (e) {}
+  v = Math.max(0, Math.min(100, Math.round(v / 10) * 10 + (d > 0 ? 10 : -10)));
+  [P.A, P.B].forEach(p => { try { if (p) p.setVolume(v); } catch (e) {} }); tv.vol = v;
+}
+function tvHear(ev, p) { // a phone's button, or the room coming and going
+  if (!tv) return;
+  if (ev === 'open') { tvPush(0); renderTvJoin(); return; }
+  if (ev === 'closed') { renderTvJoin(); return; }
+  if (ev !== 'cmd' || !p || typeof p.c !== 'string') return;
+  const id = String(p.id || '').slice(0, 24), fresh = !!id && !tv.phones.has(id);
+  if (id) tv.phones.set(id, Date.now());
+  if (fresh) tally('tv', 'phone');
+  const arg = String(p.arg == null ? '' : p.arg).slice(0, 80);
+  switch (p.c) {
+    case 'next': nextRound(); break;
+    case 'pause': togglePause(); break;
+    case 'show': if (current) revealWord(); break;
+    case 'replay': replayDrop(); break;
+    case 'hide': toggleBlind(); break;
+    case 'sound': toggleSound(); break;
+    case 'vol': tvVolume(Number(p.d) || 0); break;
+    case 'item': toggleItem(arg); break;
+    case 'pl': if (arg) pickPlaylist(arg); break;
+    case 'hello': case 'lists': tv.wantLists = true; break;
+  }
+  tvPush(p.c === 'hello' || p.c === 'lists' || p.c === 'ping' ? 0 : 80);
+  if (fresh || p.c === 'hello') renderTvJoin();
+}
+const tvPhones = () => { if (!tv) return 0; const t = Date.now(); let n = 0; for (const [id, at] of tv.phones) { if (t - at < 60000) n++; else tv.phones.delete(id); } return n; };
+function tvState() { // what the phones show: the song (unless it's hidden), the word once shown, the playlist and the table
+  const s = current && byId(current.songId), hide = hideName(), st = state(), c = curCard(), { stats, shown } = tableInfo();
+  const out = {
+    code: tv.code, v: VERSION, started: !!current, playing: st === 1 || st === 3, blind: !!S.settings.blind, sound: sfxOn(), vol: tv.vol, soon: !!nextTimer,
+    now: s ? { t: hide ? '' : s.title, a: hide ? '' : s.artist || '', img: hide ? '' : thumbUrl(curVid(s)), at: fmt(current.start) } : null,
+    word: s && revealed ? { e: emo(current.tag.item), n: itemName(current.tag.item) } : null,
+    pl: S.playlist ? { id: S.playlist.id, n: S.playlist.name, songs: S.songs.length, th: ((c && c.thumbs) || []).slice(0, 3), e: (c && c.icon) || '' } : null,
+    items: shown.map(it => ({ id: it.id, n: it.name, d: it.dev || '', e: emo(it.id), on: !!it.on, c: stats.get(it.id).songs })),
+    drops: nightCount()
+  };
+  if (tv.wantLists && CAT) out.lists = (S.mine || []).map(m => mineCard(m)).concat(lists().filter(x => x.id !== ALL), lists().filter(x => x.id === ALL)).filter(x => x.songs)
+    .slice(0, 60).map(x => ({ id: x.id, n: x.name, songs: x.songs, th: (x.thumbs || []).slice(0, 3), e: x.icon || '' }));
+  return out;
+}
+function tvPush(ms) {
+  if (!tv) return;
+  clearTimeout(tv.pushT);
+  tv.pushT = setTimeout(() => { if (!tv || !tv.room.live) return; const st = tvState(); tv.room.send('state', st); if (st.lists) tv.wantLists = false; }, ms == null ? 150 : ms);
+}
+function tvJoinHTML() {
+  if (!tv) return '';
+  const n = tvPhones(), live = tv.room.live;
+  return '<section class="card tvjoin" id="tvjoin">' + qrSvg(remoteUrl(tv.code)) +
+    '<div class="tvj"><div class="kicker">Phones are the remotes</div><div class="tvcode" aria-label="Room code ' + tv.code.split('').join(' ') + '">' + tv.code + '</div>' +
+    '<p class="hint">Scan the code with a phone, or open <b>jhapat.live/r</b> and type it.</p>' +
+    '<div class="row"><span class="tvphones' + (n ? ' on' : '') + '">' + (!live ? 'Connecting…' : n ? '📱 ' + n + ' phone' + (n === 1 ? '' : 's') + ' connected' : 'Waiting for a phone…') + '</span>' +
+    '<button class="btn small" data-act="tvfull">Full screen</button><button class="btn small ghost" data-act="tvoff">Exit TV</button></div></div></section>';
+}
+function renderTvJoin() { const el = document.getElementById('tvjoin'); if (el && tv) el.outerHTML = tvJoinHTML(); }
+setInterval(() => { if (tv) renderTvJoin(); }, 20000); // phones that went quiet drop off the count
+document.addEventListener('keydown', e => { // a TV remote or a keyboard: → next, space pause, S show, R replay, H hide
+  if (!tv || e.metaKey || e.ctrlKey || e.altKey || /input|textarea|select/i.test((e.target && e.target.tagName) || '')) return;
+  const k = e.key;
+  if (k === 'ArrowRight' || k === 'MediaTrackNext' || k === 'n' || k === 'N') { e.preventDefault(); nextRound(); }
+  else if (k === ' ' || k === 'MediaPlayPause' || k === 'p' || k === 'P') { if (k === ' ' && e.target && e.target.closest && e.target.closest('button')) return; e.preventDefault(); togglePause(); }
+  else if ((k === 's' || k === 'S') && current) revealWord();
+  else if (k === 'r' || k === 'R') replayDrop();
+  else if (k === 'h' || k === 'H') toggleBlind();
+});
+
 /* The intro (v37): how to play in four lines, and Suju's TikTok, the party round that gave Sachin the idea. It opens on a phone's
    first visit and from How to play. TikTok's player loads only while the intro is open, with its description off. */
 const TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&loop=1&autoplay=1&muted=1';
@@ -2088,7 +2344,8 @@ $('#ver').textContent = 'v' + VERSION;
 render();
 { const ref = readRef(); if (!hadSave) tally('new', ref);
   const today = new Date().toISOString().slice(0, 10); if (S.seenDay !== today) { S.seenDay = today; save(); tally('visit', tz()); } }
-if (!S.introSeen) openIntro();
+{ let c = null; try { c = new URL(location.href).searchParams.get('tv'); } catch (e) {}
+  if (c != null) tvStart(String(c).toUpperCase()); else if (!S.introSeen) openIntro(); }
 loadDb();
 checkVersion();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });

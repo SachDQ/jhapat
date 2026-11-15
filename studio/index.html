@@ -395,7 +395,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 41; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 42; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -818,16 +818,24 @@ function checkHTML() {
 /* ---------- auto-tag every song (Items page) ---------- */
 async function autoAll() {
   const list = songs.filter(s => s.hasLines), msg = t => { const el = $('#autoAllMsg'); if (el) el.textContent = t; };
-  let added = 0, placed = 0, dropped = 0;
+  let added = 0, placed = 0, dropped = 0, missed = 0;
   for (let k = 0; k < list.length; k++) {
     msg('Song ' + (k + 1) + ' of ' + list.length + '…');
-    const { data, error } = await sb.from('songs').select('id,lines,tags(*)').eq('id', list[k].id).single();
-    if (error) throw error;
-    const c = prepLines({ s: data, tags: (data.tags || []).sort((a, b) => a.t - b.t) });
-    const n = await autoTag(c); added += n; placed += c.placed; dropped += c.dropped; Object.assign(list[k], rowOf({ ...list[k], tags: c.tags }));
+    for (let tries = 0; ; tries++) { // a dropped connection costs a retry, not the whole run (15 Nov: one blip stopped it at song 727)
+      try {
+        const { data, error } = await sb.from('songs').select('id,lines,tags(*)').eq('id', list[k].id).single();
+        if (error) throw error;
+        const c = prepLines({ s: data, tags: (data.tags || []).sort((a, b) => a.t - b.t) });
+        const n = await autoTag(c); added += n; placed += c.placed; dropped += c.dropped; Object.assign(list[k], rowOf({ ...list[k], tags: c.tags }));
+        break;
+      } catch (e) {
+        if (tries >= 2) { missed++; break; }
+        await new Promise(r => setTimeout(r, (window.__retryGap == null ? 1500 : window.__retryGap) * (tries + 1)));
+      }
+    }
   }
   msg('Done: ' + plural(added, 'new tag') + ' in ' + plural(list.length, 'song') + (dropped ? ', ' + plural(dropped, 'estimate') + ' taken off words that no longer count' : '') +
-    (placed ? ', ' + placed + ' placed on their lines' : '') + '.');
+    (placed ? ', ' + placed + ' placed on their lines' : '') + '.' + (missed ? ' ' + plural(missed, 'song') + ' couldn’t be reached: run it again to finish them.' : ''));
   return added;
 }
 
@@ -1722,7 +1730,8 @@ function uploadsCardHTML() {
 /* ---------- stats (v39): anonymous counts from the party player ----------
    The player sends events to tally() (db/schema.sql): visit (once a day per phone, with its time zone), new (a phone's first visit,
    with ?ref= from a QR code or shared link), start and party (the first and fifth drop of a night, by playlist), drops (by playlist),
-   song (by week), share, ytlist, hide and install. Days are UTC. Only editors can read them. */
+   song (by week), share, ytlist (list since v40), hide, install and tv (v42: start, and phone for each phone that joins a TV). Days are UTC.
+   Only editors can read them. */
 let stats = null, statsDays = 30, statsBusy = false;
 async function loadStats() {
   if (statsBusy) return; statsBusy = true;
@@ -1757,7 +1766,8 @@ function statsHTML() {
   const plName = id => ({ all: 'All songs', yt: 'From YouTube links', seed: 'Built-in songs (no database)' })[id] || esc((playlists.find(p => p.id === id) || {}).name || id);
   const songName = id => { const x = songs.find(y => y.id === id); return x ? '<a href="#song:' + encodeURIComponent(id) + '">' + esc(x.title) + '</a> <span class="muted">' + esc(x.artist || '') + '</span>' : esc(id); };
   const feats = [['Hide turned on', sum(cur, 'hide')], ['Playlists made from YouTube', sum(cur, 'list', 'yt') + sum(cur, 'ytlist', 'paste')], ['Playlists made from Spotify', sum(cur, 'list', 'sp')],
-    ['Playlists made from a typed list', sum(cur, 'list', 'text')], ['Playlists opened from a link', sum(cur, 'list', k => k.startsWith('link')) + sum(cur, 'ytlist', 'link')], ['Added to a home screen', sum(cur, 'install')]].filter(x => x[1]);
+    ['Playlists made from a typed list', sum(cur, 'list', 'text')], ['Playlists opened from a link', sum(cur, 'list', k => k.startsWith('link')) + sum(cur, 'ytlist', 'link')], ['Added to a home screen', sum(cur, 'install')],
+    ['Big screen turned on', sum(cur, 'tv', 'start')], ['Phones used as remotes', sum(cur, 'tv', 'phone')]].filter(x => x[1]);
   return '<div class="pagehead"><h1>Stats</h1><div class="segs" role="group" aria-label="Days">' + [7, 30].map(n => '<button class="seg" data-act="statdays" data-arg="' + n + '" aria-pressed="' + (D === n) + '">' + n + ' days</button>').join('') +
     '<button class="seg" data-act="statsreload">Refresh</button></div></div>' +
     '<p class="muted small statnote">Anonymous counts from the party player since v39 (15 Nov 2026): no accounts, no IDs, nothing typed. A phone counts once a day; a party is a night that reached 5 drops. Days are UTC.</p>' +

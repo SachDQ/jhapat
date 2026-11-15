@@ -353,6 +353,7 @@ textarea{margin:10px 0 8px;resize:vertical}
 }
 /* v42: big-screen mode. A laptop on the TV plays; phones are the remotes (jhapat.live/r). */
 .pill.tvp[aria-pressed="true"]{background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
+@media (max-width:430px){.pill.tvp .tvw{display:none}} /* a phone is the remote, so its TV pill is just the icon */
 .tvjoin{display:flex;gap:16px;align-items:center}
 .tvqr{width:clamp(112px,9vw,168px);height:auto;flex:none;border-radius:14px;box-shadow:0 0 0 3px var(--gold-fill),0 10px 28px rgba(242,107,29,.35)}
 .tvj{min-width:0;flex:1}
@@ -517,7 +518,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 43; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 44; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1166,7 +1167,7 @@ const hideName = () => !!S.settings.blind && !revealed;
 function pillsHTML() { // Hide and sound, at the top of the Now card
   return '<span class="pills"><button class="pill hide" data-act="blind" aria-pressed="' + !!S.settings.blind + '" title="Hide the song and video so you can play too">🙈 Hide</button>' +
     '<button class="pill" data-act="sound" aria-pressed="' + sfxOn() + '" aria-label="Sound effects" title="Sound effects">' + (sfxOn() ? '🔊' : '🔇') + '</button>' +
-    '<button class="pill tvp" data-act="tv" aria-pressed="' + !!tv + '" title="Play on a TV, with phones as the remotes">📺 TV</button>' +
+    '<button class="pill tvp" data-act="tv" aria-pressed="' + !!tv + '" title="Play on a TV, with phones as the remotes" aria-label="TV: play on a big screen, with phones as the remotes">📺<span class="tvw"> TV</span></button>' +
     '<button class="pill" data-act="intro" aria-label="How to play" title="How to play">?</button></span>';
 }
 /* Sounds, made in the browser (no files). Since v40 they're quieter and fewer: a soft madal dhin on every drop and ta-dhin as the

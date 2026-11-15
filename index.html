@@ -518,7 +518,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 45; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 46; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1332,7 +1332,7 @@ function refreshMine(m) { // after a song is looked up: just this playlist's car
 }
 function plBarHTML() {
   const c = curCard(), n = S.songs.length, m = mineOf(S.playlist.id), soon = m ? (m.missing || []).filter(x => x.kind === 'auto' || x.kind === 'timing' || x.kind === 'tagging').length : 0;
-  return '<button class="plbar" data-act="lists" aria-label="Playlist: ' + esc(S.playlist.name) + ', ' + n + ' songs. Switch playlist">' + fanHTML(c && c.thumbs, c && c.icon) +
+  return '<button class="plbar" data-act="lists" aria-label="Playlist: ' + esc(S.playlist.name) + ', ' + n + ' song' + (n === 1 ? '' : 's') + '. Switch playlist">' + fanHTML(c && c.thumbs, c && c.icon) +
     '<span class="pli"><span class="kicker">Playlist</span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + n + ' song' + (n === 1 ? '' : 's') + (soon ? ' · ' + soon + ' on the way' : '') + '</span></span>' +
     '<span class="plgo">' + ICON.list + 'Switch</span></button>';
 }
@@ -1580,7 +1580,7 @@ document.addEventListener('click', async e => {
     case 'tnudge': if (song) { const [i, d] = arg.split(':'); const t = song.tags[i]; if (t) { t.t = Math.max(0, Math.round((t.t + Number(d)) * 100) / 100); t.src = 'tap'; sortTags(song); save(); render(); } } break;
     case 'tdel': if (song) { song.tags.splice(Number(arg), 1); save(); render(); } break;
     case 'delsong':
-      if (song && confirm('Delete “' + song.title + '” and its ' + song.tags.length + ' tags?')) {
+      if (song && confirm('Delete “' + song.title + '” and its ' + song.tags.length + ' tag' + (song.tags.length === 1 ? '' : 's') + '?')) {
         S.songs = S.songs.filter(x => x.id !== song.id); S.played = S.played.filter(x => x !== song.id); S.donePts = (S.donePts || []).filter(k => !k.startsWith(song.id + '|')); DONE = null;
         if (current && current.songId === song.id) current = null;
         songId = null; save(); render(); toast('Deleted.');
@@ -1588,7 +1588,7 @@ document.addEventListener('click', async e => {
     case 'delitem': {
       const it = itemById(arg); if (!it) break;
       const n = S.songs.reduce((a, s) => a + s.tags.filter(t => t.item === it.id).length, 0);
-      if (confirm('Delete ' + it.name + (n ? ' and its ' + n + ' tags' : '') + '?')) {
+      if (confirm('Delete ' + it.name + (n ? ' and its ' + n + ' tag' + (n === 1 ? '' : 's') : '') + '?')) {
         S.items = S.items.filter(x => x.id !== it.id);
         S.songs.forEach(s => { s.tags = s.tags.filter(t => t.item !== it.id); });
         save(); render();
@@ -1611,7 +1611,7 @@ document.addEventListener('click', async e => {
       try {
         const d = JSON.parse(raw);
         if (!d || d.v !== 1 || !Array.isArray(d.songs) || !Array.isArray(d.items)) throw new Error('shape');
-        if (!confirm('Replace everything here with this backup (' + d.songs.length + ' songs)?')) break;
+        if (!confirm('Replace everything here with this backup (' + d.songs.length + ' song' + (d.songs.length === 1 ? '' : 's') + ')?')) break;
         S = upgrade(d); S.songs.forEach(sortTags); current = null; songId = null; save(); render(); toast('Backup loaded.');
       } catch (err) { toast('That isn’t a Jhapat backup. Paste the whole text you copied.'); }
       break;

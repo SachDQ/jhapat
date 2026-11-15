@@ -395,7 +395,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 45; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 46; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -1181,7 +1181,7 @@ function renderSide() { if (cur) $('#sidePanel').innerHTML = sideHTML(); }
 function songHTML() {
   const s = cur.s;
   let h = '<div class="row" style="padding-block:6px 10px"><a class="btn small ghost" href="#">← Songs</a><span class="grow"></span>' +
-    (confirmDel ? '<span class="small">Delete this song and its ' + cur.tags.length + ' tags?</span><button class="btn small danger" data-act="delsong">Delete</button><button class="btn small" data-act="nodel">Keep</button>'
+    (confirmDel ? '<span class="small">Delete this song and its ' + plural(cur.tags.length, 'tag') + '?</span><button class="btn small danger" data-act="delsong">Delete</button><button class="btn small" data-act="nodel">Keep</button>'
       : '<button class="btn small ghost danger" data-act="askdel">Delete song</button>') + '</div>' +
     '<div class="card"><div class="row"><div class="grow"><h1>' + esc(s.title) + '</h1><p class="muted">' + esc(s.artist || '') + (s.duration ? ' · lyrics timed to a ' + fmt(s.duration).replace(/\.\d$/, '') + ' recording' : '') + '</p></div><span class="pill ' + s.status + '">' + s.status + '</span></div>' +
     (s.notes ? '<p class="small muted">' + esc(s.notes) + '</p>' : '') +
@@ -1962,7 +1962,7 @@ function impRowHTML(r, k, plan) {
   const len = typeof r.len === 'number' ? r.len : null;
   const head = (r.yt ? thumbHTML(r.yt, 'sm fl') : '') + '<b>' + esc(r.title) + '</b>' + (r.artist ? ' · ' + esc(r.artist) : '') + '<br><span class="meta">' +
     (r.yt ? 'youtu.be/' + esc(r.yt) + ' · ' + (len ? fmtLen(len) : r.len === 'blocked' ? 'won’t play outside YouTube' : r.cands ? 'length unknown' : 'measuring…') : 'no upload') + '</span>';
-  if (r.done) return '<div class="res imp"><span>' + head + '<div class="small okc">Added as ' + esc(r.made.status) + (r.made.tags ? ' with ' + r.made.tags + ' tags' : '') + '.</div></span><a class="btn small" href="#song:' + esc(r.done) + '">Open</a></div>';
+  if (r.done) return '<div class="res imp"><span>' + head + '<div class="small okc">Added as ' + esc(r.made.status) + (r.made.tags ? ' with ' + plural(r.made.tags, 'tag') : '') + '.</div></span><a class="btn small" href="#song:' + esc(r.done) + '">Open</a></div>';
   if (r.dupe) return '<div class="res imp"><span>' + head + '<div class="small muted">Already in the studio.</div></span><a class="btn small ghost" href="#song:' + esc(r.dupe.id) + '">Open</a></div>';
   if (r.failed) return '<div class="res imp"><span>' + head + '<div class="small warnc">LRCLIB was busy and didn’t answer. Press Find again in a minute; this one won’t be added until then.</div></span></div>';
   if (!r.cands) return '<div class="res imp"><span>' + head + '</span><span class="small muted">Looking…</span></div>';

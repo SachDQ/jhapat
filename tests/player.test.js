@@ -352,7 +352,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(b8 === '11 songs · it0 11 · it1 10 · it2 9 · it3 8 · +7', 'a card says its song count, then its 4 most common items and how many more: ' + b8); }
   c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
   ok(st5().playlist.id === 'love' && st5().chosen === true && !!d5.querySelector('[data-act="next"]'), 'picking a playlist loads it and opens the Play screen');
-  ok(chips5().join(' ') === 'phool+1 maya+2', 'only the items in that playlist, with how many of its songs have each; Maya, in every song, starts on: ' + chips5().join(' '));
+  ok(chips5().join(' ') === 'maya+2 phool+1', 'only the items in that playlist, most songs first, with how many of its songs have each; Maya, in every song, starts on: ' + chips5().join(' '));
   ok(d5.querySelector('.plbar').textContent.includes('Love Songs') && !!d5.querySelector('[data-act="lists"]'), 'the Play screen names the playlist and offers Change');
   c5('[data-act="item"][data-arg="phool"]'); await sleep(10);
   ok(st5().tables.love.includes('maya') && !st5().tables.love.includes('phool') && !st5().tables['party-mix'], 'turning Phool off is remembered for Love Songs only (the party mix that loaded first wasn’t chosen)');
@@ -364,15 +364,15 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani+2 phool-1 maya+1', 'a playlist opened for the first time starts with what was on the table: ' + chips5().join(' '));
   c5('[data-act="item"][data-arg="paani"]'); await sleep(10);
   c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
-  ok(chips5().join(' ') === 'phool-1 maya+2', 'back on Love Songs, its own table choices come back: ' + chips5().join(' '));
+  ok(chips5().join(' ') === 'maya+2 phool-1', 'back on Love Songs, its own table choices come back: ' + chips5().join(' '));
   online = false;
   c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
   ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani-2 phool-1 maya+1', 'offline: a playlist opened before still loads from the phone, with its table: ' + chips5().join(' '));
   c5('[data-act="lists"]'); await sleep(10);
   ok(d5.querySelectorAll('[data-act="pickpl"]').length === 3, 'offline: the playlist list still shows');
   c5('[data-act="pickpl"][data-arg="all"]'); await sleep(20);
-  ok(st5().playlist.id === 'all' && /All songs\s*4 songs/.test(d5.querySelector('.plbar').textContent) && chips5().join(' ') === 'paani-2 phool-2 maya+3',
-    'offline too, All songs opens with every song and every item they have: ' + chips5().join(' '));
+  ok(st5().playlist.id === 'all' && /All songs\s*4 songs/.test(d5.querySelector('.plbar').textContent) && chips5().join(' ') === 'maya+3 paani-2 phool-2',
+    'offline too, All songs opens with every song and every item they have, Maya (in 3 of them) first: ' + chips5().join(' '));
   const keep5 = w5.localStorage.getItem('jhapat.v1'), cat5 = w5.localStorage.getItem('jhapat.cat');
   ok(JSON.parse(keep5).songs.length === 0 && JSON.parse(cat5).songs.length === 4 && !JSON.parse(keep5).bundles, 'songs are left out of the save: the stored catalog has them');
   const dom6 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
@@ -1029,9 +1029,67 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(['ads', 'tv', 'props', 'rules', 'privacy'].every(id => pd.getElementById(id)) && /Messenger/.test(pd.getElementById('ads').textContent) && /jhapat\.live\/r/.test(pd.getElementById('tv').textContent),
       'the Tips page has the ad, big-screen, props, rules and privacy guides');
     const raat = pd.getElementById('item-raat');
-    ok(!!raat && /A torch/.test(raat.textContent) && /Or a sleep mask/.test(raat.textContent) && /Counts: raat, रात, night/.test(raat.textContent) && !/रातो/.test(raat.textContent) && raat.classList.contains('abstract'),
+    ok(!!raat && /A torch/.test(raat.textContent) && /Or anything black/.test(raat.textContent) && /Counts: raat, रात, night/.test(raat.textContent) && !/रातो/.test(raat.textContent) && raat.classList.contains('abstract'),
       'each item shows its prop, more ideas for the words you can’t hold, and the spellings that count (not the ruled-out ones)');
-    ok(/items\?select=/.test(tdom.window.__asked), 'the items come from the database'); tdom.window.close(); }
+    ok(/items\?select=/.test(tdom.window.__asked), 'the items come from the database'); tdom.window.close();
+    // every prop and every other idea names a different thing, so a table never holds two of the same
+    const ideas = []; tipsHtml.replace(/const MORE = \{([\s\S]*?)\n\};/, (m, b) => { b.replace(/'([^']+)'/g, (x, v) => { ideas.push(v); }); });
+    const dup = ideas.filter((v, k) => ideas.indexOf(v) !== k);
+    ok(ideas.length > 30 && !dup.length && !/glass of water|cup of tea|shot glass/.test(tipsHtml), 'the Tips page’s other ideas are all different, and nothing breaks, spills or burns: ' + (dup.join(', ') || ideas.length + ' ideas')); }
+
+  // 38. The table's order (v45): a playlist's items by the songs with a drop point for each and how easy its prop is to find at home
+  //     (√ share of the top item's songs × ease ÷ 5); a phone's first table turns on the top five. Phones that played before and
+  //     never chose a table move to the new five once and are told; a table someone chose stays.
+  { const E = { maya: 3, ghar: 5, mutu: 3, sapana: 5, aankha: 4, raat: 4, khushi: 4, paani: 5, phool: 4, bato: 4, chiya: 5, rakshi: 2 };
+    const N = { maya: 12, mutu: 6, aankha: 5, sapana: 4, raat: 4, khushi: 4, ghar: 3, paani: 3, phool: 3, bato: 2, chiya: 1, rakshi: 1 }; // songs with each
+    const ids = Object.keys(E);
+    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: '•', ease: E[id], note: id === 'ghar' ? 'a key' : 'a thing' }));
+    const sg = []; for (let k = 0; k < 12; k++) sg.push({ id: 'rk' + k, title: 'Rank ' + k, artist: 'A', videos: [{ yt: ('rank' + k + 'xxxxxxxxx').slice(0, 11), offset: 0, synced: true }],
+      tags: ids.filter(id => k < N[id]).map((id, j) => [id, 20 + j * 12]) });
+    const C = { items: its, songs: sg, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: sg.map(s => s.id) }] };
+    const WANT = 'maya sapana aankha ghar paani raat khushi mutu phool bato chiya rakshi';
+    const mk = save => new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+      beforeParse(win) { if (save) { win.localStorage.setItem('jhapat.v1', JSON.stringify(save)); win.localStorage.setItem('jhapat.cat', JSON.stringify(C)); } win.fetch = async () => ({ ok: true, json: async () => C }); win.scrollTo = () => {}; } });
+    const rd = mk(null); await sleep(80);
+    const rw = rd.window, rdoc = rw.document, sv = () => JSON.parse(rw.localStorage.getItem('jhapat.v1'));
+    ok(sv().items.map(i => i.id).join(' ') === WANT, 'items are ranked by songs and how easy they are to find at home: Maya leads, a key (3 songs) beats Mutu’s apple (6), Rakshi comes last: ' + sv().items.map(i => i.id).join(' '));
+    ok(sv().items.filter(i => i.on).map(i => i.id).join(' ') === 'maya sapana aankha ghar paani', 'a first table turns on the top five: ' + sv().items.filter(i => i.on).map(i => i.id).join(' '));
+    const chipsR = [...rdoc.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg);
+    ok(chipsR.join(' ') === WANT.split(' ').slice(0, 8).join(' ') && /\+4 more/.test(rdoc.querySelector('[data-act="moreitems"]').textContent), 'the table shows the best eight first, then “+4 more”');
+    ok(/^Put out a key · 3 songs, 3 drop points$/.test(rdoc.querySelector('[data-act="item"][data-arg="ghar"]').title) && rdoc.querySelector('#table .hint a[href="tips/#props"]'),
+      'each item says what to put out when you hover it, and the table links to the props guide: ' + rdoc.querySelector('[data-act="item"][data-arg="ghar"]').title);
+    rw.close();
+    // a phone that played before v45 and never chose: the five every phone started with, no table remembered
+    const old = { v: 1, seedV: 4, settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false, blind: false, sound: true }, played: [], songs: [],
+      source: 'db', playlist: { id: 'party-mix', name: 'Nepali Party Mix' }, items: ['paani', 'phool', 'chiya', 'paisa', 'chithi', 'maya', 'rakshi'].map((id, k) => ({ id, name: id, on: k < 5 })) };
+    const od = mk(old); await sleep(1700);
+    const osv = JSON.parse(od.window.localStorage.getItem('jhapat.v1'));
+    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'maya sapana aankha ghar paani' && /top five: Maya, Sapana, Aankha, Ghar, Paani/.test(od.window.document.querySelector('#toast').textContent),
+      'a phone that never chose moves to the new top five once, and is told: ' + od.window.document.querySelector('#toast').textContent);
+    od.window.close();
+    const chose = Object.assign({}, old, { tables: { 'party-mix': ['chiya', 'rakshi'] } });
+    const cd = mk(chose); await sleep(120);
+    ok(JSON.parse(cd.window.localStorage.getItem('jhapat.v1')).items.filter(i => i.on).map(i => i.id).join(' ') === 'chiya rakshi', 'a table someone chose stays as it was');
+    cd.window.close();
+    // the phone remote keeps the TV's order (a tile never moves under a finger) and folds a long table the same way
+    const socks = [];
+    class WS2 { constructor() { socks.push(this); setTimeout(() => this.onopen && this.onopen(), 0); }
+      send(raw) { const m = JSON.parse(raw); if (m.event === 'phx_join') { this.topic = m.topic; setTimeout(() => this.onmessage({ data: JSON.stringify({ topic: m.topic, event: 'phx_reply', payload: { status: 'ok', response: {} }, ref: m.ref }) }), 0); } }
+      close() {} }
+    const remoteHtml2 = fs.readFileSync(require('path').join(__dirname, '..', 'r', 'index.html'), 'utf8');
+    const qd = new JSDOM(remoteHtml2, { runScripts: 'dangerously', url: 'https://jhapat.live/r/#ABCD', pretendToBeVisual: true, beforeParse(win) { win.WebSocket = WS2; win.__pingGap = 60000; } });
+    await sleep(60);
+    const qdoc = qd.window.document, qclick = sel => qdoc.querySelector(sel).dispatchEvent(new qd.window.MouseEvent('click', { bubbles: true }));
+    const order = WANT.split(' '), stQ = { code: 'ABCD', v: 45, started: false, playing: false, blind: false, sound: true, vol: 100, soon: false, now: null, word: null,
+      pl: { id: 'party-mix', n: 'Nepali Party Mix', songs: 12, th: [], e: '' }, items: order.map((id, k) => ({ id, n: id, d: '', e: '•', on: k < 5, c: 12 - k })), drops: 0 };
+    socks[0].onmessage({ data: JSON.stringify({ topic: socks[0].topic, event: 'broadcast', payload: { type: 'broadcast', event: 'state', payload: stQ } }) }); await sleep(10);
+    const tilesQ = () => [...qdoc.querySelectorAll('.tile[data-c="item"]')].map(b => b.dataset.arg).join(' ');
+    ok(tilesQ() === order.slice(0, 8).join(' ') && /\+4 more/.test(qdoc.querySelector('.tile.more').textContent), 'the phone shows the TV’s order, its first eight, then “+4 more”: ' + tilesQ());
+    qclick('.tile[data-arg="aankha"]'); await sleep(10);
+    ok(tilesQ() === order.slice(0, 8).join(' ') && qdoc.querySelector('.tile[data-arg="aankha"]').getAttribute('aria-pressed') === 'false', 'a tile tapped off stays where it was');
+    qclick('.tile.more'); await sleep(5); qclick('.tile[data-arg="chiya"]'); await sleep(5); qclick('.tile.more'); await sleep(5);
+    ok(tilesQ() === order.slice(0, 8).concat('chiya').join(' ') && /\+3 more/.test(qdoc.querySelector('.tile.more').textContent), 'and one tapped further down stays in view when the table folds again: ' + tilesQ());
+    qd.window.close(); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

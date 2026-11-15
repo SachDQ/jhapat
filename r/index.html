@@ -81,6 +81,7 @@ h1{font:400 30px/1.1 var(--display);margin:18px 0 6px}
 .tile .n{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 .tile[aria-pressed="true"]{background:var(--gold-fill);border-color:var(--gold-fill);color:var(--gold-ink)}
 .tile[aria-pressed="true"] .d,.tile[aria-pressed="true"] .n{color:var(--gold-ink)}
+.tile.more{display:block;text-align:center;font-weight:800;color:var(--gold);border-style:dashed}
 .lists{display:grid;gap:8px;margin-top:10px}
 .lbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:10px 12px;color:var(--ink);font:inherit;cursor:pointer}
 .lbtn[aria-current="true"]{border-color:var(--gold-fill);box-shadow:0 0 0 2px var(--gold-fill) inset}
@@ -168,6 +169,7 @@ function join(c) {
   render();
 }
 let lists = null;
+const CAP = 8, touched = new Set(); let more = false; // the table's fold, as on the TV
 function leave(quiet) {
   if (room) room.close(); room = null; clearInterval(pinger); st = null; lists = null;
   if (!quiet) { code = null; try { history.replaceState(null, '', location.pathname); } catch (e) {} render(); }
@@ -208,9 +210,13 @@ function remoteHTML() {
     '<button class="btn" data-c="sound" aria-pressed="' + !!st.sound + '"><span class="em">' + (st.sound ? '🔊' : '🔇') + '</span>Effects</button></div>' +
     '<div class="grid4" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn" data-c="vol" data-d="-1"><span class="em">🔉</span>Quieter</button><button class="btn" data-c="vol" data-d="1"><span class="em">🔊</span>Louder' + (st.vol != null ? ' · ' + st.vol : '') + '</button></div>';
   const pl = st.pl ? '<button class="plbar" data-c="lists">' + fan(st.pl.th, st.pl.e) + '<span class="pli"><span class="kicker" style="margin:0">Playlist</span><span class="pn">' + esc(st.pl.n) + '</span><span class="ps">' + st.pl.songs + ' song' + (st.pl.songs === 1 ? '' : 's') + '</span></span><span class="plgo">' + ICON.list + 'Switch</span></button>' : '';
-  const items = (st.items || []).slice().sort((a, b) => (b.on - a.on) || (b.c - a.c));
+  // the TV's order (most songs and easiest to find at home first), so a tile never moves under a finger; like the TV, a long
+  // table shows its first 8, plus any that are on or were tapped here, and "+N more"
+  const all = st.items || [], long = all.length > CAP + 2;
+  const items = long && !more ? all.filter((it, k) => k < CAP || it.on || touched.has(it.id)) : all, hidden = all.length - items.length;
   const table = '<section class="card"><div class="kicker">On the table</div>' + pl + '<p class="hint" style="margin:10px 0 0">Tap what you’ve put out.</p><div class="tiles">' +
-    items.map(it => '<button class="tile" data-c="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span class="em" aria-hidden="true">' + esc(it.e || '•') + '</span><span><span class="nm">' + esc(it.n) + '</span><span class="d" lang="ne">' + esc(it.d) + '</span></span><span class="n">' + it.c + '</span></button>').join('') + '</div></section>';
+    items.map(it => '<button class="tile" data-c="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '"><span class="em" aria-hidden="true">' + esc(it.e || '•') + '</span><span><span class="nm">' + esc(it.n) + '</span><span class="d" lang="ne">' + esc(it.d) + '</span></span><span class="n">' + it.c + '</span></button>').join('') +
+    (more && long ? '<button class="tile more" data-c="more" aria-expanded="true">Fewer</button>' : hidden ? '<button class="tile more" data-c="more" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div></section>';
   return statusHTML() + nowCard + big + small + table + (st.drops ? '<p class="drops">🔥 ' + st.drops + ' drop' + (st.drops === 1 ? '' : 's') + ' tonight</p>' : '');
 }
 function listsHTML() {
@@ -234,7 +240,8 @@ document.addEventListener('click', e => {
   if (c === 'lists') { view = 'lists'; if (!lists) cmd('lists'); render(); return; }
   if (c === 'back') { view = 'remote'; render(); return; }
   if (c === 'pl') { cmd('pl', { arg }); view = 'remote'; render(); return; }
-  if (c === 'item' && st) { const it = (st.items || []).find(x => x.id === arg); if (it) { it.on = !it.on; render(); } } // the TV's answer follows
+  if (c === 'more') { more = !more; render(); return; }
+  if (c === 'item' && st) { touched.add(arg); const it = (st.items || []).find(x => x.id === arg); if (it) { it.on = !it.on; render(); } } // the TV's answer follows
   cmd(c, arg != null ? { arg } : b.dataset.d ? { d: Number(b.dataset.d) } : null);
 });
 document.addEventListener('submit', e => {

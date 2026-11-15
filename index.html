@@ -9,13 +9,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Jhapat">
 <title>Jhapat (झपट) · the Nepali party song game</title>
-<meta name="description" content="A Nepali party game: put paani, phool, chiya and paisa on the table, play a song, and grab the item the moment its word is sung. Free, no sign-up, nearly 1,000 Nepali songs.">
+<meta name="description" content="A Nepali party game: put paani, phool, chiya and paisa on the table, play a song, and grab the item the moment its word is sung. Free, no sign-up, over 1,200 Nepali songs.">
 <link rel="canonical" href="https://jhapat.live/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Jhapat">
 <meta property="og:url" content="https://jhapat.live/">
 <meta property="og:title" content="Jhapat (झपट) · the Nepali party song game">
-<meta property="og:description" content="Songs play. A word drops. Grab it first! 🐯 Free, no sign-up, nearly 1,000 Nepali songs.">
+<meta property="og:description" content="Songs play. A word drops. Grab it first! 🐯 Free, no sign-up, over 1,200 Nepali songs.">
 <meta property="og:image" content="https://jhapat.live/img/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -491,7 +491,7 @@ body.introopen{overflow:hidden}
       <p class="introsub">Songs play. A word drops. Grab it first. 🐯</p></div></div>
     <figure class="tt"><div class="ttbox"></div><figcaption><a href="https://www.tiktok.com/@suzupah" target="_blank" rel="noopener">@suzupah</a></figcaption></figure>
     <ol class="introsteps">
-      <li><b aria-hidden="true">🧺</b><span>Put things on the table, then tap the same ones here.</span></li>
+      <li><b aria-hidden="true">🧺</b><span>Put things on the table, then tap the same ones here. The first ones are in the most songs and easy to find at home.</span></li>
       <li><b aria-hidden="true">▶️</b><span>Start. A song drops in a few seconds before one of their words.</span></li>
       <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
       <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
@@ -518,7 +518,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 44; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 45; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1357,14 +1357,14 @@ function renderPlay() {
   const vis = long && !moreItems ? shown.filter((it, k) => k < CHIP_CAP || it.on || touched.has(it.id)) : shown;
   const hidden = shown.length - vis.length;
   const chip = it => { const n = songsWith(it.id), p = stats.get(it.id).pts;
-    return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="' + n + ' song' + (n === 1 ? '' : 's') + ', ' + p + ' drop point' + (p === 1 ? '' : 's') + '">' + emoHTML(it.id) +
+    return '<button class="chip" data-act="item" data-arg="' + esc(it.id) + '" aria-pressed="' + !!it.on + '" title="' + (it.note ? 'Put out ' + esc(it.note) + ' · ' : '') + n + ' song' + (n === 1 ? '' : 's') + ', ' + p + ' drop point' + (p === 1 ? '' : 's') + '">' + emoHTML(it.id) +
       '<span class="nm">' + esc(it.name) + '</span><span class="d" lang="ne">' + esc(it.dev || '') + '</span><span class="n">' + n + '</span></button>'; };
   return tvJoinHTML() + '<section class="card now" aria-live="polite">' + nowHTML() + '</section>' +
     '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? ICON.next + 'Next' : ICON.play + 'Start') + '</button>' +
     (current ? '<button class="btn big" data-act="pause" data-pausebtn data-l="Pause">' + ICON.pause + 'Pause</button>' : '') + '</div>' + reportHTML() +
     '<section class="card" id="table">' +
     (fromDb && S.playlist && CAT ? plBarHTML() : '') +
-    '<h2>On the table</h2><p class="hint">Tap what you’ve put out.</p>' +
+    '<h2>On the table</h2><p class="hint">Tap what you’ve put out. <a href="tips/#props">What to put out?</a></p>' +
     '<div class="chips">' + vis.map(chip).join('') +
     (moreItems && long ? '<button class="chip more" data-act="moreitems" aria-expanded="true">Fewer</button>'
       : hidden ? '<button class="chip more" data-act="moreitems" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div>' +
@@ -1672,7 +1672,19 @@ function applySmall() { document.querySelector('.stage').classList.toggle('small
    on every visit and stays on the phone, so All songs and every playlist open straight away and work without signal once
    it has loaded here. If the database has never answered on this phone, the songs built into this page are used instead. */
 const DB = { rest: 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', key: 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T', playlist: 'party-mix' };
-const ON_BY_DEFAULT = ['paani', 'phool', 'chiya', 'paisa', 'chithi'];
+/* The table's order (v45): a playlist's items by how many of its songs have a drop point for each and how easy its prop is to
+   find at home (items.ease, 1–5): the square root of the item's share of the top item's songs, times ease / 5. So Maya, in most
+   songs, leads though its heart has to be drawn; a key or a pillow outranks a word in twice the songs whose prop has to be made;
+   and Rakshi, in a handful of songs, comes last. A phone's first table turns on the top five. */
+const DEFAULT_ON = 5, OLD_ON = 'chithi,chiya,paani,paisa,phool'; // before v45 every phone started with these five on
+const easeOf = it => { const e = Number(it && it.ease); return e >= 1 && e <= 5 ? e : 3; };
+function rankItems(items, songs) { // [{ it, n }], best spot first; n: the songs with a drop point for the item
+  const n = new Map(items.map(it => [it.id, 0]));
+  songs.forEach(s => { if (!s.broken) dpOf(s).forEach((c, id) => { if (n.has(id)) n.set(id, n.get(id) + 1); }); });
+  const top = Math.max(1, ...n.values());
+  return items.map((it, k) => ({ it, k, n: n.get(it.id), s: n.get(it.id) ? Math.sqrt(n.get(it.id) / top) * easeOf(it) / 5 : -1 }))
+    .sort((a, b) => b.s - a.s || a.k - b.k);
+}
 function atVideo(song) { // a song moved to its next upload: use that upload's own offset
   if (song.offsets) { song.offset = song.offsets[song.vi || 0] || 0; song.sync = (song.synced || [])[song.vi || 0] ? 'ok' : 'check'; }
   else if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
@@ -1708,14 +1720,20 @@ function buildCat() {
 const mineOf = id => (S.mine || []).find(m => m.id === id);
 const listed = id => lists().some(c => c.id === id) || !!(mineOf(id) && songsIn(mineOf(id)).length);
 const pidFor = pid => [pid, DB.playlist, ALL].find(id => id && listed(id)) || ALL; // that playlist while it's still there, else the party mix
-/* Open All songs, a playlist, or one made from a YouTube link. One opened for the first time starts with what's on the table now, plus any item all of its songs have. */
+/* Open All songs, a playlist, or one made from a YouTube link, its items in their spot for it (rankItems). One opened for the
+   first time starts with what's on the table now, plus any item all of its songs have. A phone that never chose a table (it
+   still has the five every phone started with before v45) gets this playlist's top five instead. */
 function useList(pid, quiet) {
   const p = pid === ALL ? null : CAT.playlists.find(x => x.id === pid) || mineOf(pid);
   const songs = p ? songsIn(p) : [...songMap.values()];
-  const wasOn = new Map(S.items.map(i => [i.id, i.on])), mem = (S.tables || {})[pid];
+  const first = !Object.keys(S.tables || {}).length && S.items.filter(i => i.on).map(i => i.id).sort().join(',') === OLD_ON, wasDb = S.source === 'db';
+  const wasOn = first ? new Map() : new Map(S.items.map(i => [i.id, i.on])), mem = (S.tables || {})[pid];
   const inAll = id => songs.length > 0 && songs.every(s => s.tags.some(t => t.item === id));
-  S.items = CAT.items.map(i => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '',
-    on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : ON_BY_DEFAULT.includes(i.id)) }));
+  const ranked = rankItems(CAT.items, songs), top = ranked.filter(x => x.n).slice(0, DEFAULT_ON).map(x => x.it.id);
+  S.items = ranked.map(({ it: i }) => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '', ease: easeOf(i),
+    on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : top.includes(i.id)) }));
+  if (first && wasDb) setTimeout(() => toast('Items are now in order of most songs and easiest to find at home. Your table starts with the top five: ' +
+    top.map(itemName).join(', ') + '.'), 1500); // a phone that played before v45 without ever choosing
   S.songs = songs; S.source = 'db'; S.playlist = { id: pid, name: p ? p.name : 'All songs' };
   const ids = new Set(songs.map(s => s.id)); S.played = S.played.filter(id => ids.has(id)); S.donePts = (S.donePts || []).filter(k => ids.has(k.slice(0, k.indexOf('|')))); DONE = null;
   save(); if (!quiet) render(); schedulePreload(1200, true);

@@ -8,7 +8,7 @@ create table if not exists public.items (
   dev        text,                                -- the name in Devanagari
   emoji      text,                                -- shown on the item's chip, e.g. 💧
   words      text[] not null default '{}',        -- every spelling that counts, roman and Devanagari
-  note       text,                                -- e.g. "use an envelope"
+  note       text,                                -- the prop to put out, e.g. "an envelope"
   sort       int not null default 0,
   created_at timestamptz not null default now()
 );
@@ -588,3 +588,78 @@ begin
 end $$;
 revoke execute on function public.tally(jsonb) from public;
 grant execute on function public.tally(jsonb) to anon, authenticated;
+
+-- ---------- v45, 16 Nov 2026: the table's order ----------
+-- ease: how easy an item's prop is to find at home, 1 (has to be made, or few homes have it) to 5 (every home, at hand).
+-- The player ranks a playlist's items by both: the square root of its share of the top item's songs (songs with a drop point
+-- for it), times ease / 5. The top five go on for a phone's first table. sort is the same rank over all songs, for the
+-- studio's tiles and the Tips page. Props were rewritten so no two items share one and nothing is glass, hot or precious.
+alter table public.items add column if not exists ease smallint not null default 3 check (ease between 1 and 5);
+update public.items i set ease = v.ease, note = v.note, sort = v.sort
+from (values
+  ('maya', 3, 'a heart: a card, a sticker or one drawn on paper', 0),
+  ('sapana', 5, 'a pillow', 1),
+  ('aankha', 4, 'sunglasses or glasses', 2),
+  ('phool', 4, 'a flower, real or plastic', 3),
+  ('ghar', 5, 'a key', 4),
+  ('khushi', 4, 'a sweet or a chocolate', 5),
+  ('raat', 4, 'a torch', 6),
+  ('mutu', 3, 'a red apple', 7),
+  ('paani', 5, 'a bottle of water, cap on', 8),
+  ('bato', 4, 'a shoe or a chappal', 9),
+  ('sansar', 3, 'a ball', 10),
+  ('samaya', 4, 'a watch', 11),
+  ('jun', 4, 'a round biscuit', 12),
+  ('geet', 4, 'earphones or headphones', 13),
+  ('aansu', 4, 'a tissue', 14),
+  ('haat', 3, 'a glove', 15),
+  ('ohth', 4, 'a lipstick or lip balm', 16),
+  ('kesh', 5, 'a comb', 17),
+  ('hawa', 3, 'a hand fan', 18),
+  ('paisa', 5, 'a coin or a note', 19),
+  ('ghaam', 3, 'a lemon, or anything yellow', 20),
+  ('jhari', 4, 'an umbrella, folded', 21),
+  ('aago', 4, 'a matchbox', 22),
+  ('aakash', 2, 'a balloon or a kite', 23),
+  ('chithi', 4, 'an envelope', 24),
+  ('photo', 3, 'a printed photo', 25),
+  ('naam', 2, 'a name written on a card', 26),
+  ('rumal', 4, 'a handkerchief', 27),
+  ('badal', 2, 'cotton wool', 28),
+  ('tara', 2, 'a star sticker or a paper star', 29),
+  ('phone', 4, 'an old phone or the TV remote', 30),
+  ('chiya', 5, 'an empty tea cup', 31),
+  ('chari', 2, 'a shuttlecock or a feather', 32),
+  ('batti', 4, 'a candle, unlit', 33),
+  ('chura', 3, 'a bangle', 34),
+  ('topi', 4, 'a topi or any cap', 35),
+  ('rakshi', 2, 'an empty can', 36),
+  ('aunthi', 3, 'a ring', 37)
+) as v(id, ease, note, sort)
+where i.id = v.id;
+-- प्रेमपत्र (a love letter) is a letter: Chithi lists it, and Maya's प्रेम no longer catches it whatever the order.
+update public.items set words = array_append(words, '-प्रेमपत्र') where id = 'maya' and not ('-प्रेमपत्र' = any(words));
+
+-- catalog() as in v39, with each item's ease
+create or replace function public.catalog() returns jsonb
+language sql stable security invoker set search_path = '' as $$
+  select jsonb_build_object(
+    'stamp', (select m.v from public.meta m where m.k = 'catalog'),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note, 'emoji', i.emoji, 'ease', i.ease) order by i.sort, i.id), '[]'::jsonb)
+              from public.items i),
+    'songs', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', s.id, 'title', s.title, 'artist', s.artist,
+                'videos', (select coalesce(jsonb_agg(jsonb_build_object('yt', v.yt, 'offset', v.offset_s, 'synced', v.synced) order by v.rank, v.id), '[]'::jsonb)
+                           from public.videos v where v.song_id = s.id and v.embeddable),
+                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t, t.rep) order by t.t), '[]'::jsonb) -- [item, lyric time, repeat group]
+                         from public.tags t where t.song_id = s.id)
+              ) order by s.title, s.id), '[]'::jsonb)
+              from public.songs s where s.status <> 'draft'),
+    'playlists', (select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'description', p.description,
+                'songs', (select coalesce(jsonb_agg(ps.song_id order by ps.position, ps.song_id), '[]'::jsonb)
+                          from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
+                          where ps.playlist_id = p.id)
+              ) order by p.sort, p.name), '[]'::jsonb)
+              from public.playlists p where p.owner is null and p.is_public));
+$$;
+grant execute on function public.catalog() to anon, authenticated;

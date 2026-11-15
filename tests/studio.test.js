@@ -439,6 +439,25 @@ function makeDom(db, opts) {
     const q3 = d3.querySelector('#itemQ'); q3.value = 'Thing 1'; q3.dispatchEvent(new w3.Event('input', { bubbles: true })); await sleep(5);
     ok(d3.querySelectorAll('.itile').length === 9, 'search looks through all of them: ' + d3.querySelectorAll('.itile').length); }
 
+  // v45: how easy each item's prop is to find at home, and Re-order: the player's order over all public songs (drafts don't count)
+  { const db7 = makeDb(); db7.items[0].ease = 4; db7.items[1].ease = 5; // paani: in one public song and four drafts; chithi: in one public song
+    db7.songs.push({ id: 'c1', title: 'Chithi Song', artist: 'X', status: 'auto', lrclib_id: null, duration: 100, notes: null, lines: null });
+    db7.tags.push({ id: 70, song_id: 'c1', item_id: 'chithi', t: 30, line: null, word: null, source: 'estimate', checked: false });
+    for (let k = 0; k < 4; k++) { db7.songs.push({ id: 'dr' + k, title: 'Draft ' + k, artist: 'X', status: 'draft', lrclib_id: null, duration: 100, notes: null, lines: null });
+      db7.tags.push({ id: 71 + k, song_id: 'dr' + k, item_id: 'paani', t: 30, line: null, word: null, source: 'estimate', checked: false }); }
+    const { w: w7, d: d7 } = makeDom(db7, { signedIn: true, editor: true }); await sleep(80);
+    const c7 = sel => d7.querySelector(sel).dispatchEvent(new w7.MouseEvent('click', { bubbles: true }));
+    w7.location.hash = '#items'; await sleep(20);
+    c7('[data-act="reorder"]'); await sleep(40);
+    ok(db7.items.find(i => i.id === 'chithi').sort === 0 && db7.items.find(i => i.id === 'paani').sort === 1 && d7.querySelector('.itile').dataset.arg === 'chithi' && /Re-ordered 2 items/.test(d7.querySelector('#toast').textContent),
+      'Re-order puts the easier find first when the public songs are even (drafts don’t count): ' + db7.items.map(i => i.id + ':' + i.sort).join(' '));
+    c7('[data-act="edititem"][data-arg="chithi"]'); await sleep(10);
+    const es = d7.querySelector('#itemEd [data-f="ease"]');
+    ok(!!es && es.value === '5' && /every home/i.test(es.options[es.selectedIndex].textContent), 'the editor shows how easy its prop is to find at home: ' + (es && es.options[es.selectedIndex].textContent));
+    es.value = '1'; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
+    ok(db7.items.find(i => i.id === 'chithi').ease === 1 && db7.items.find(i => i.id === 'paani').sort === 0 && d7.querySelector('.itile').dataset.arg === 'paani',
+      'a new ease saves and moves the item: Chithi, now hard to find, goes after Paani: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.ease).join(' ')); }
+
   // v41: words compare as they're read (बाटाे is बाटो, फ़ोन is फोन), and Auto-tag all takes estimates off words a spelling
   // now rules out, while a tag timed by hand stays. Invented lines.
   { const db6 = makeDb();

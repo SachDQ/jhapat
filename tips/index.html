@@ -123,6 +123,7 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
   <div class="kicker">What to put out</div>
   <h2>Something on the table for every word</h2>
   <p>Each item is a word sung in the songs. Turn on the items you’ve put out, and the game only drops into those words. For the words you can’t hold, like <b>raat</b>, <b>aansu</b> or <b>khushi</b>, put out something that stands for them.</p>
+  <p>They’re in order: the first ones are sung in the most songs and are the easiest to find at home, so start from the top. No two share a prop, and nothing here breaks, spills or burns when ten hands grab it.</p>
   <div class="props" id="props-list" aria-live="polite"><p class="muted">Loading the items…</p></div>
   <p class="note">The words under each item are the ones that count when they’re sung: Jhapat also counts the usual other words for the same thing, like प्रेम and <i>love</i> for Maya.</p>
 </article>
@@ -155,16 +156,19 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
 <script>
 (() => {
 'use strict';
-/* The items and what to put out for each, from the same database the player uses. More ideas for the words you can't hold live
-   here, by item id; the studio's note on an item (Items › an item › Prop) is the first idea. */
+/* The items and what to put out for each, from the same database the player uses, in its order (items.sort: most songs and
+   easiest to find at home first). Another idea for each lives here, by item id; the studio's note on an item (Items › an item ›
+   Put out) is the first. No object appears twice across all of them, so the table never has two of the same thing. */
 const REST = 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', KEY = 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T';
 const MORE = {
-  raat: 'a sleep mask or anything with stars on it', aansu: 'a small bottle of eye drops, or a sad-face card', khushi: 'a party popper or a balloon',
-  sapana: 'a sleep mask or a soft toy', samaya: 'a phone with its clock showing, or an alarm clock', naam: 'a sticky note with someone’s name',
-  geet: 'a spoon held like a microphone', sansar: 'an orange, round like the world', hawa: 'a folded paper fan', jun: 'a white plate',
-  aakash: 'anything sky blue', badal: 'a white sock rolled into a ball', ghaam: 'an orange or a yellow ball', tara: 'a star cut from paper',
-  mutu: 'a red sweet in a heart shape', maya: 'a red ribbon tied in a bow', bato: 'a sandal or a slipper', ghar: 'a key ring',
-  aago: 'an unlit lighter or a red cloth', jhari: 'a raincoat or a water bottle', ohth: 'a lip balm', kesh: 'a hair clip', haat: 'a bracelet'
+  sapana: 'a sleep mask', aankha: 'a glasses case', phool: 'a flower drawn on paper', ghar: 'a house drawn on paper',
+  khushi: 'a smiley drawn on paper', raat: 'anything black, like a black sock', mutu: 'anything red and the size of a heart',
+  paani: 'an empty steel glass', bato: 'a toy car', sansar: 'a map', samaya: 'a small clock', jun: 'a small white plate',
+  geet: 'a spoon held like a microphone', aansu: 'a sad face drawn on paper', haat: 'a hand traced on paper', kesh: 'a hair clip',
+  hawa: 'paper folded into a fan', paisa: 'a wallet', ghaam: 'a sun drawn on paper', jhari: 'a raincoat', aago: 'a lighter, unlit',
+  aakash: 'anything sky blue', chithi: 'a folded letter or a postcard', photo: 'a photo frame', naam: 'a visiting card or a name tag',
+  rumal: 'a small cloth', badal: 'cotton balls or cotton buds', tara: 'anything with stars on it', chiya: 'a tea bag', chari: 'a toy bird',
+  batti: 'a birthday candle', chura: 'a bracelet', rakshi: 'a bottle cap', aunthi: 'a ring box'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ABSTRACT = new Set(['raat', 'aansu', 'khushi', 'sapana', 'samaya', 'naam', 'geet', 'sansar', 'hawa', 'jun', 'aakash', 'badal', 'ghaam', 'tara', 'maya', 'mutu']);
@@ -177,10 +181,14 @@ function propHTML(it) {
     (counts.length ? '<p class="counts">Counts: ' + counts.map(esc).join(', ') + '</p>' : '') + '</div>';
 }
 const FALLBACK = [
-  { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧', note: 'a glass of water' }, { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸', note: 'a flower' },
-  { id: 'chiya', name: 'Chiya', dev: 'चिया', emoji: '☕', note: 'a cup of tea' }, { id: 'paisa', name: 'Paisa', dev: 'पैसा', emoji: '💰', note: 'a coin or a note' },
-  { id: 'chithi', name: 'Chithi', dev: 'चिठी', emoji: '✉️', note: 'an envelope' }, { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️', note: 'a heart card or a heart plushie' },
-  { id: 'raat', name: 'Raat', dev: 'रात', emoji: '🔦', note: 'a torch' }, { id: 'aansu', name: 'Aansu', dev: 'आँसु', emoji: '🤧', note: 'a tissue' }
+  { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️', note: 'a heart: a card, a sticker or one drawn on paper' },
+  { id: 'sapana', name: 'Sapana', dev: 'सपना', emoji: '💤', note: 'a pillow' },
+  { id: 'aankha', name: 'Aankha', dev: 'आँखा', emoji: '🕶️', note: 'sunglasses or glasses' },
+  { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸', note: 'a flower, real or plastic' },
+  { id: 'ghar', name: 'Ghar', dev: 'घर', emoji: '🔑', note: 'a key' },
+  { id: 'khushi', name: 'Khushi', dev: 'खुशी', emoji: '😊', note: 'a sweet or a chocolate' },
+  { id: 'raat', name: 'Raat', dev: 'रात', emoji: '🔦', note: 'a torch' },
+  { id: 'mutu', name: 'Mutu', dev: 'मुटु', emoji: '💗', note: 'a red apple' }
 ];
 async function load() {
   const box = document.getElementById('props-list');

@@ -325,12 +325,21 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   await sleep(60);
   ok(asked.filter(a => !/version\.json/.test(a)).join(' ') === 'https://raw.githubusercontent.com/SachDQ/jhapat/catalog/catalog.json rpc/catalog_stamp rpc/catalog',
     'a first visit tries GitHub’s copy and the stamp, and with neither, one call brings every playlist: ' + asked.join(', '));
+  ok(!d5.querySelector('[data-act="pickpl"]') && !!d5.querySelector('[data-act="next"]') && st5().playlist.id === 'party-mix' && /Playlist\s*Nepali Party Mix\s*2 songs\s*Switch/.test(d5.querySelector('.plbar').textContent),
+    'a first visit goes straight to Play on the Party Mix, named at the top of the table with Switch: ' + d5.querySelector('.plbar').textContent);
+  ok(d5.querySelector('.plbar').tagName === 'BUTTON' && d5.querySelector('.plbar').dataset.act === 'lists' && /Switch playlist/.test(d5.querySelector('.plbar').getAttribute('aria-label')) && d5.querySelectorAll('.plbar .fan img').length === 2,
+    'the whole bar is the Switch button, with the playlist’s covers as its icon');
+  c5('.plbar'); await sleep(10);
   const cards5 = [...d5.querySelectorAll('[data-act="pickpl"]')];
-  ok(cards5.map(c => c.dataset.arg).join(' ') === 'all party-mix love' && d5.body.textContent.includes('Pick a playlist') && !d5.querySelector('[data-act="next"]'),
-    'first visit: the playlist list comes first, with All songs on top (the empty playlist is left out)');
-  ok(cards5[1].textContent.includes('2 songs') && cards5[1].textContent.includes('Paani 2') && cards5[1].textContent.includes('The big one'), 'each playlist shows its song count, item counts and description');
-  ok(cards5[0].textContent.includes('All songs') && cards5[0].textContent.includes('4 songs') && cards5[0].textContent.includes('Maya 3'), 'All songs counts every song once: ' + cards5[0].textContent);
-  const fan5 = [...cards5[0].querySelectorAll('.fan img')].map(i => i.getAttribute('src'));
+  ok(cards5.map(c => c.dataset.arg).join(' ') === 'party-mix love all' && /Playlists/.test(d5.querySelector('.pickhead').textContent) && !d5.querySelector('[data-act="next"]'),
+    'Switch opens the list: Jhapat’s playlists with All songs last (the empty playlist is left out)');
+  ok(d5.querySelector('.pickhead [data-act="keeppl"]') && /Nepali Party Mix/.test(d5.querySelector('.pickhead [data-act="keeppl"]').textContent) && d5.querySelector('.picker').firstElementChild.classList.contains('pickhead'),
+    'Back to the playlist playing sits at the top, so there’s no scrolling to keep it');
+  ok(cards5[0].getAttribute('aria-current') === 'true' && /Playing/.test(cards5[0].textContent) && !/Playing/.test(cards5[1].textContent), 'the one playing is marked');
+  ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('💧 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, its items as emoji with counts, and its description');
+  ok(cards5[2].textContent.includes('All songs') && cards5[2].textContent.includes('4 songs') && cards5[2].textContent.includes('❤️ 3'), 'All songs counts every song once: ' + cards5[2].textContent);
+  ok(!!d5.querySelector('#mkForm #mkIn') && !d5.querySelector('#plFind'), 'Make your own sits above the playlists; the search box waits until there are more than 8');
+  const fan5 = [...cards5[2].querySelectorAll('.fan img')].map(i => i.getAttribute('src'));
   ok(fan5.length === 2 && fan5[0].includes('/p1xxxxxxxxx/') && fan5[1].includes('/l1xxxxxxxxx/'), 'its covers are each playlist’s first song');
   { const its = []; for (let k = 0; k < 11; k++) its.push({ id: 'it' + k, name: 'it' + k, dev: '' }); // a playlist with 11 items lists its 8 most common, then "+3 more"
     const sg = []; for (let j = 0; j < 11; j++) sg.push(mkSong('q' + j, its.slice(0, 11 - j).map((it, k) => [it.id, 20 + k * 15]))); // it0 is in 11 songs, it1 in 10 … it10 in 1
@@ -338,8 +347,9 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const d8 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) {
       win.fetch = async () => ({ ok: true, json: async () => C }); } });
     await sleep(60);
-    const b8 = [...d8.window.document.querySelectorAll('[data-act="pickpl"][data-arg="love"] .badge')].map(x => x.textContent);
-    ok(b8.length === 10 && b8[1] === 'it0 11' && b8[9] === '+3 more', 'a long item list shows the 8 most common and “+3 more”: ' + [b8[1], b8[9]].join(', ')); }
+    d8.window.document.querySelector('.plbar').dispatchEvent(new d8.window.MouseEvent('click', { bubbles: true })); await sleep(10);
+    const b8 = d8.window.document.querySelector('[data-act="pickpl"][data-arg="love"] .its').textContent;
+    ok(b8 === '11 songs · it0 11 · it1 10 · it2 9 · it3 8 · +7', 'a card says its song count, then its 4 most common items and how many more: ' + b8); }
   c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
   ok(st5().playlist.id === 'love' && st5().chosen === true && !!d5.querySelector('[data-act="next"]'), 'picking a playlist loads it and opens the Play screen');
   ok(chips5().join(' ') === 'phool+1 maya+2', 'only the items in that playlist, with how many of its songs have each; Maya, in every song, starts on: ' + chips5().join(' '));
@@ -413,6 +423,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   await sleep(60);
   const w8 = dom8.window, d8 = w8.document, c8 = sel => d8.querySelector(sel).dispatchEvent(new w8.MouseEvent('click', { bubbles: true }));
   ok(!d8.querySelector('#update').hidden && d8.querySelector('#update').textContent.includes('v' + (VER + 1)), 'a newer version on the site offers a reload');
+  c8('.plbar'); await sleep(10); // Switch: the playlist list
   const fan = [...d8.querySelectorAll('[data-arg="party-mix"] .fan img')].map(i => i.getAttribute('src'));
   ok(fan.length === 3 && fan[0] === 'https://i.ytimg.com/vi/m1xxxxxxxxx/mqdefault.jpg' && fan[2].includes('/m3xxxxxxxxx/'), 'a playlist card fans out its first three song covers');
   ok(d8.querySelectorAll('[data-arg="love"] .fan img').length === 1 && !d8.querySelector('[data-arg="all"]'), 'a one-song playlist shows one cover, and All songs stays away when it would add no songs');
@@ -543,7 +554,8 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     'a playlist taken out of the studio hands over to the party mix, with its own table');
   ok(st12.played.join() === 'e1', 'songs already played stay played');
 
-  // 23. A YouTube playlist: read by YouTube's player, matched by upload and then by name, asked for, shared, and rebuilt from a link
+  // 23. Your own playlist from a YouTube link: read by YouTube's player, matched by upload and then by name (each Jhapat song once,
+  //     in Jhapat's own version), the rest looked up on LRCLIB and asked for automatically, shared, and rebuilt from a link
   const IT23 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'paani', name: 'Paani', dev: 'पानी' }];
   const mk23 = (id, title, artist, yt) => ({ id, title, artist, videos: [{ yt, offset: 0, synced: true }], tags: [['maya', 30, 1], ['paani', 70, 2]] });
   const cat23 = { items: IT23, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['sasto', 'kaha', 'timi', 'other'] }],
@@ -552,15 +564,18 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const OE23 = { v2xxxxxxxxx: { title: 'Kaha Hola Ghar Bara - Karma Band Official Music Video', author_name: 'Karma Band' }, // another upload of a Jhapat song
     v3xxxxxxxxx: { title: 'Timi ra ma', author_name: 'Salin Magar' },     // the same title as a Jhapat song, by someone else
     v5xxxxxxxxx: { title: 'Naya Geet', author_name: 'Someone - Topic' } }; // not in Jhapat; v4 won't play outside YouTube (401)
-  const posts23 = []; let copied23 = null;
+  // LRCLIB (invented lines): Salin Magar's Timi ra ma has timed Nepali lyrics; Naya Geet isn't there
+  const LRC23 = { 'Timi ra ma Salin Magar': [{ id: 111, trackName: 'Timi Ra Ma', artistName: 'Salin Magar', duration: 201, syncedLyrics: '[00:10.00] timi mero sathi chhau\n[00:14.00] malai kina birse', plainLyrics: 'x' }] };
+  const posts23 = [], lrc23 = []; let copied23 = null;
   const net23 = async (url, o) => {
     if (/oembed/.test(url)) { const u = decodeURIComponent(url.split('url=')[1]), v = (u.match(/v=([\w-]{11})/) || [])[1];
       if (/playlist\?list=/.test(u)) return { ok: true, json: async () => ({ title: 'Dashain Party', author_name: 'Me' }) };
       return OE23[v] ? { ok: true, json: async () => OE23[v] } : { ok: false, status: 401, json: async () => ({}) }; }
-    if (/rpc\/request_songs/.test(url)) { posts23.push(JSON.parse(o.body)); return { ok: true, json: async () => JSON.parse(o.body).vids.length }; }
+    if (/lrclib\.net/.test(url)) { const q = new URL(url).searchParams.get('q') || ''; lrc23.push(q); return { ok: true, status: 200, json: async () => LRC23[q] || [] }; }
+    if (/rpc\/wish_songs/.test(url)) { posts23.push(JSON.parse(o.body)); return { ok: true, json: async () => JSON.parse(o.body).w.length }; }
     if (/rpc\/catalog/.test(url)) return { ok: true, json: async () => JSON.parse(JSON.stringify(cat23)) };
     return { ok: true, json: async () => ({}) }; };
-  const setup23 = win => { win.fetch = net23; win.scrollTo = () => {};
+  const setup23 = win => { win.fetch = net23; win.scrollTo = () => {}; win.__lrcGap = 0;
     Object.defineProperty(win.navigator, 'clipboard', { value: { writeText: async t => { copied23 = t; } } });
     win.YT = { Player: function (id, o) { const me = this; me.pl = null;
       me.cuePlaylist = x => { me.pl = PL23[x.list] || null; setTimeout(() => (me.pl ? o.events.onStateChange({ data: 5, target: me }) : o.events.onError({ data: 100, target: me })), 5); };
@@ -570,49 +585,60 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
       setTimeout(() => o.events.onReady({ target: me }), 0); } }; };
   const dom23 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse: setup23 });
   await sleep(60);
-  const w23 = dom23.window, d23 = w23.document, st23 = () => JSON.parse(w23.localStorage.getItem('jhapat.v1'));
+  const w23 = dom23.window, d23 = w23.document, st23 = () => JSON.parse(w23.localStorage.getItem('jhapat.v1')), mine23 = () => JSON.parse(w23.localStorage.getItem('jhapat.mine') || '[]');
   const c23 = sel => { const el = d23.querySelector(sel); if (!el) throw new Error('missing ' + sel); el.dispatchEvent(new w23.MouseEvent('click', { bubbles: true })); };
-  const send23 = async link => { d23.querySelector('#ytLink').value = link; d23.querySelector('#ytForm').dispatchEvent(new w23.Event('submit', { bubbles: true, cancelable: true })); await sleep(250); };
+  const send23 = async (text, name) => { d23.querySelector('#mkIn').value = text; d23.querySelector('#mkName').value = name || ''; d23.querySelector('#mkForm').dispatchEvent(new w23.Event('submit', { bubbles: true, cancelable: true })); await sleep(250); };
   c23('[data-act="lists"]'); await sleep(10);
-  ok(!!d23.querySelector('#ytForm') && /Use a YouTube playlist/.test(d23.body.textContent), 'with one playlist, Change still opens the list, which offers Use a YouTube playlist');
+  ok(!!d23.querySelector('#mkForm') && /Make your own/.test(d23.body.textContent) && /YouTube or Spotify playlist link, or type songs one per line/.test(d23.body.textContent), 'with one playlist, Switch still opens the list, which offers Make your own');
   await send23('https://example.com/watch?v=abc');
-  ok(/isn’t a YouTube playlist link/.test(d23.querySelector('#toast').textContent) && !st23().mine, 'a link that isn’t a YouTube playlist is refused');
+  ok(/Paste a YouTube or Spotify playlist link/.test(d23.querySelector('#toast').textContent) && !mine23().length, 'a link that isn’t a playlist is refused');
   await send23('https://youtube.com/playlist?list=PLtest1234567&si=xyz');
-  const m23 = (st23().mine || [])[0] || {};
-  ok(m23.id === 'yt-PLtest1234567' && m23.name === 'Dashain Party' && (m23.songs || []).join() === 'sasto,kaha' && JSON.stringify(m23.n) === '{"upload":1,"name":1,"gone":1}',
-    'its songs match by upload (Sasto Mutu), then by name and artist (another upload of Kaha Hola Ghar); a duplicate counts once: ' + JSON.stringify(m23.n));
-  ok((m23.missing || []).map(x => x.yt + ':' + x.title).join() === 'v3xxxxxxxxx:Timi ra ma,v5xxxxxxxxx:Naya Geet', 'the same title by another artist isn’t taken for a Jhapat song; those two wait to be asked for');
-  const card23 = d23.querySelector('[data-act="pickpl"][data-arg="yt-PLtest1234567"]'), sum23 = (d23.querySelector('.minesum') || {}).textContent;
-  ok(card23 && /Dashain Party/.test(card23.textContent) && /2 songs/.test(card23.textContent) && sum23 === '2 in Jhapat (1 matched by name) · 2 not in Jhapat yet · 1 won’t play outside YouTube',
-    'its card sits under From YouTube with what matched: ' + sum23);
-  ok(d23.querySelectorAll('.miss li').length === 2 && /Naya Geet/.test(d23.querySelector('.miss').textContent), 'the videos not in Jhapat yet are listed with their covers');
-  c23('[data-act="ytask"]'); await sleep(30);
-  ok(posts23.length === 1 && posts23[0].vids.map(v => v.yt + '|' + v.title + '|' + v.channel).join() === 'v3xxxxxxxxx|Timi ra ma|Salin Magar,v5xxxxxxxxx|Naya Geet|Someone - Topic',
-    'Ask sends the missing videos with their titles to request_songs');
-  ok(st23().asked.join() === 'v3xxxxxxxxx,v5xxxxxxxxx' && !d23.querySelector('[data-act="ytask"]') && /Asked for 2/.test(d23.body.textContent), 'and this phone remembers it asked, so it can’t ask twice');
-  c23('[data-act="ytshare"]'); await sleep(10);
+  const m23 = mine23()[0] || {};
+  ok(m23.id === 'yt-PLtest1234567' && m23.src === 'yt' && m23.name === 'Dashain Party' && (m23.songs || []).join() === 'sasto,kaha' && JSON.stringify(m23.n) === '{"upload":1,"name":1,"gone":1}',
+    'its songs match by upload (Sasto Mutu), then by name and artist (another upload of Kaha Hola Ghar plays as Jhapat’s own); a duplicate counts once: ' + JSON.stringify(m23.n));
+  ok((m23.missing || []).map(x => x.yt + ':' + x.title).join() === 'v3xxxxxxxxx:Timi ra ma,v5xxxxxxxxx:Naya Geet' && !st23().mine, 'the same title by another artist isn’t taken for a Jhapat song; your playlists live under their own key');
+  ok(lrc23.join('|') === 'Timi ra ma Salin Magar|Naya Geet Someone', 'the songs Jhapat doesn’t have are looked up on LRCLIB, by title and artist: ' + lrc23.join('|'));
+  const mx23 = mine23()[0].missing;
+  ok(mx23[0].kind === 'auto' && mx23[0].lrc === 111 && mx23[0].len === 201 && mx23[1].kind === 'tagging', 'timed Nepali lyrics: the studio can add it; nothing online: it needs tagging by hand');
+  ok(posts23.length === 1 && posts23[0].w.map(v => v.t + '|' + v.a + '|' + v.kind + '|' + v.lrc + '|' + v.yt).join() === 'Timi ra ma|Salin Magar|auto|111|v3xxxxxxxxx,Naya Geet|Someone|tagging|null|v5xxxxxxxxx',
+    'and the studio is asked for both, with what it needs to add them: ' + JSON.stringify(posts23[0] && posts23[0].w));
+  const card23 = d23.querySelector('[data-act="pickpl"][data-arg="yt-PLtest1234567"]'), sum23 = (d23.querySelector('.mine .minesum') || {}).textContent;
+  ok(card23 && /Dashain Party/.test(card23.textContent) && /From YouTube/.test(card23.textContent) && /2 songs/.test(card23.textContent) && sum23 === '2 ready · 1 we can add · 1 to tag by hand · 1 not supported yet',
+    'its card sits under Yours, with what’s ready and what’s coming: ' + sum23);
+  ok(/Asked the studio for 2/.test(d23.querySelector('.mine').textContent) && st23().asked.join() === 'lrc:111,yt:v5xxxxxxxxx', 'and this phone remembers it asked, so it never asks twice');
+  ok(d23.querySelectorAll('.miss li').length === 2 && /We can add these \(1\)/.test(d23.querySelector('.miss').textContent) && /won’t play outside YouTube/.test(d23.querySelector('.miss').textContent),
+    'the songs not ready yet are grouped by why');
+  c23('[data-act="plshare"]'); await sleep(10);
   ok(copied23 === 'https://sachdq.github.io/jhapat/#yt=PLtest1234567', 'Share copies a link that rebuilds it: ' + copied23);
   c23('[data-act="pickpl"][data-arg="yt-PLtest1234567"]'); await sleep(20);
-  ok(/Dashain Party\s*2 songs/.test(d23.querySelector('.plbar').textContent), 'picking it plays only its songs: ' + d23.querySelector('.plbar').textContent);
+  ok(/Dashain Party\s*2 songs · 2 on the way/.test(d23.querySelector('.plbar').textContent), 'picking it plays only its songs, and says how many are on the way: ' + d23.querySelector('.plbar').textContent);
   c23('[data-act="next"]'); await sleep(10);
   ok(['sasto', 'kaha'].includes(st23().lastSong), 'Start plays one of them, from Jhapat’s timed upload');
   // the asked-for song arrives in Jhapat: the next visit's catalog adds it to the playlist, with no need to read YouTube again
   cat23.songs.push(mk23('naya', 'Naya Geet', 'Someone', 'v5xxxxxxxxx'));
-  const keep23 = w23.localStorage.getItem('jhapat.v1'), kcat23 = w23.localStorage.getItem('jhapat.cat');
+  const keep23 = w23.localStorage.getItem('jhapat.v1'), kcat23 = w23.localStorage.getItem('jhapat.cat'), kmine23 = w23.localStorage.getItem('jhapat.mine');
   const dom24 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-    beforeParse(win) { setup23(win); win.localStorage.setItem('jhapat.v1', keep23); win.localStorage.setItem('jhapat.cat', kcat23); } });
+    beforeParse(win) { setup23(win); win.localStorage.setItem('jhapat.v1', keep23); win.localStorage.setItem('jhapat.cat', kcat23); win.localStorage.setItem('jhapat.mine', kmine23); } });
   await sleep(80);
-  const m24 = JSON.parse(dom24.window.localStorage.getItem('jhapat.v1')).mine[0];
+  const m24 = JSON.parse(dom24.window.localStorage.getItem('jhapat.mine'))[0];
   ok(m24.songs.join() === 'sasto,kaha,naya' && m24.missing.length === 1 && /Dashain Party\s*3 songs/.test(dom24.window.document.querySelector('.plbar').textContent),
     'a song asked for joins the playlist by itself once it’s in Jhapat');
+  await sleep(1300);
+  ok(/1 song you were waiting for joined your playlists/.test(dom24.window.document.querySelector('#toast').textContent), 'and the phone says so');
+  // a phone from v39 kept its playlists in the save: they move to their own key
+  const v39 = JSON.parse(keep23); v39.mine = JSON.parse(kmine23);
+  const dom24b = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+    beforeParse(win) { setup23(win); win.localStorage.setItem('jhapat.v1', JSON.stringify(v39)); win.localStorage.setItem('jhapat.cat', kcat23); } });
+  await sleep(60);
+  ok(JSON.parse(dom24b.window.localStorage.getItem('jhapat.mine')).length === 1 && !JSON.parse(dom24b.window.localStorage.getItem('jhapat.v1')).mine, 'a phone from v39 keeps its playlists, under their new key');
   // a shared link on a phone that has never seen it: read from YouTube and opened
   const dom25 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/#yt=PLtest1234567', pretendToBeVisual: true, beforeParse: setup23 });
   await sleep(300);
   const d25 = dom25.window.document;
   ok(/Dashain Party\s*3 songs/.test((d25.querySelector('.plbar') || {}).textContent || '') && !!d25.querySelector('[data-act="next"]') && dom25.window.location.hash === '',
     'a shared link reads the playlist from YouTube, opens it straight away and tidies the address');
-  c23('[data-act="lists"]'); await sleep(10); c23('[data-act="ytdel"]'); await sleep(10);
-  ok(!st23().mine.length && st23().playlist.id === 'party-mix', 'Remove takes it off the phone and goes back to the party mix');
+  c23('[data-act="lists"]'); await sleep(10); c23('[data-act="pldel"]'); await sleep(10);
+  ok(!mine23().length && st23().playlist.id === 'party-mix', 'Remove takes it off the phone and goes back to the party mix');
 
   // 24. Something off? under the song: the choice goes to the studio with the song, upload, word, run-up and version; without signal it waits
   const sent24 = []; let net24 = 'up'; // 'up', 'down' (no answer) or 'refuse' (the database says no)
@@ -668,14 +694,14 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const title28 = d28.querySelector('.now .title'), reel28 = [...d28.querySelectorAll('.reel .reelin div')].map(x => x.textContent);
   ok(title28.classList.contains('spinning') && reel28.length === 10 && reel28[9] === title28.textContent && B9.songs.some(x => x.title === title28.textContent),
     'Next spins a reel of ten titles that lands on the song that plays; the real title stays in the page: ' + title28.textContent);
-  ok(d28.querySelector('#pounce').classList.contains('go') && d28.querySelector('.brand .mark').classList.contains('leap') && d28.querySelector('[data-act="next"]').classList.contains('flare'),
-    'the drop lands with a paw swipe over the video, the logo leaps and the button flares');
+  ok(!d28.querySelector('#pounce') && !/pounce\{|class="claw/.test(html) && d28.querySelector('.brand .mark').classList.contains('leap') && d28.querySelector('[data-act="next"]').classList.contains('flare'),
+    'the drop lands with no claw swipe over the video (gone in v40); the logo leaps and the button flares');
   ok(d28.querySelector('#stamp').classList.contains('go') && d28.querySelector('#stamp').textContent === 'झपट!', 'and a झपट! stamp slams onto the video');
   ok(!!d28.querySelector('.dhaka') && !!d28.querySelector('.floor .sun') && !d28.querySelector('.garland') && !/diyo|tihar/i.test(html),
     'the look is Nepali, not religious: a Dhaka weave band and a grid floor to the Himalaya, no garland, no diyo');
   const lab28 = a => ((d28.querySelector('[data-act="' + a + '"]') || {}).textContent || '').trim();
-  ok(lab28('next') === 'Next' && lab28('pause') === 'Pause' && lab28('reveal') === 'Show' && lab28('replay') === 'Replay' && lab28('reportopen') === 'Report' && lab28('lists') === 'Change' &&
-    ['next', 'pause', 'reveal', 'replay', 'reportopen', 'lists'].every(a => !!d28.querySelector('[data-act="' + a + '"] svg.i')), 'every button is an icon and one word: Next, Pause, Show, Replay, Report, Change');
+  ok(lab28('next') === 'Next' && lab28('pause') === 'Pause' && lab28('reveal') === 'Show' && lab28('replay') === 'Replay' && lab28('reportopen') === 'Report' && d28.querySelector('.plbar .plgo').textContent.trim() === 'Switch' &&
+    ['next', 'pause', 'reveal', 'replay', 'reportopen', 'lists'].every(a => !!d28.querySelector('[data-act="' + a + '"] svg.i')), 'every button is an icon and one word: Next, Pause, Show, Replay, Report, and Switch on the playlist bar');
   ok(!!d28.querySelector('.chips .chip .em') && !!d28.querySelector('.chips .chip .nm') && !!d28.querySelector('.chips .chip .d') && !!d28.querySelector('.chips .chip .n'),
     'items on the table are tiles: an emoji box, the name over its Devanagari, and a count');
   ok(/🔥 5/.test(d28.querySelector('.streak').textContent) && d28.querySelector('.streak').classList.contains('bump'), 'the drops-tonight counter goes up: ' + d28.querySelector('.streak').textContent);
@@ -702,7 +728,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   const dom29 = await fun(true, 0), w29 = dom29.window, d29 = w29.document;
   d29.querySelector('[data-act="next"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(20);
   d29.querySelector('[data-act="reveal"]').dispatchEvent(new w29.MouseEvent('click', { bubbles: true })); await sleep(10);
-  ok(!d29.querySelector('.reel') && !d29.querySelector('.now .title.spinning') && !d29.querySelector('#pounce').classList.contains('go') && !d29.querySelector('#stamp').classList.contains('go') && !d29.querySelector('.burst') && !d29.querySelector('.reveal b.pop'),
+  ok(!d29.querySelector('.reel') && !d29.querySelector('.now .title.spinning') && !d29.querySelector('#stamp').classList.contains('go') && !d29.querySelector('.burst') && !d29.querySelector('.reveal b.pop'),
     'with motion turned down: no reel, no swipe, no bursts; the title and the word just show');
 
   // 26. Hide mode: whoever holds the phone can play too. The video is covered and the title, reel and artist stay hidden until Show.
@@ -722,13 +748,14 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     createOscillator() { win.__osc++; const f = { setValueAtTime() {}, exponentialRampToValueAtTime() {} }; return { type: '', frequency: f, connect() {}, start() {}, stop() {} }; }
     createGain() { return { gain: { value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} }; }
     createBuffer(ch, n) { return { getChannelData: () => new Float32Array(n) }; }
-    createBufferSource() { return { connect() {}, start() {} }; }
+    createBufferSource() { win.__src = (win.__src || 0) + 1; return { connect() {}, start() {} }; }
     createBiquadFilter() { return { type: '', frequency: { value: 0 }, connect() {} }; } }; };
   const dom30 = await fun(false, 0, audioStub), w30 = dom30.window, d30 = w30.document, c30 = sel => d30.querySelector(sel).dispatchEvent(new w30.MouseEvent('click', { bubbles: true }));
   c30('[data-act="next"]'); await sleep(20);
   const osc30 = w30.__osc;
   c30('.now [data-act="sound"]'); await sleep(10); w30.__osc = 0;
   c30('[data-act="item"][data-arg="chithi"]'); await sleep(10); c30('[data-act="reveal"]'); await sleep(10);
+  ok(osc30 >= 5 && osc30 <= 6 && !w30.__src, 'a drop is a soft dhin and ta-dhin: ' + osc30 + ' notes, no reel ticks or slaps');
   ok(osc30 >= 5 && w30.__osc === 0 && d30.querySelector('.now [data-act="sound"]').getAttribute('aria-pressed') === 'false' && d30.querySelector('.now [data-act="sound"]').textContent === '🔇',
     'a drop plays the madal (' + osc30 + ' notes); with sound off, items and Show make none');
 
@@ -851,6 +878,79 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(!dd.querySelector('#installWrap').hidden && e.defaultPrevented, 'once the browser offers it, the footer shows Install');
     dd.querySelector('[data-act="install"]').dispatchEvent(new wm.MouseEvent('click', { bubbles: true })); await sleep(5);
     ok(prompted === 1 && dd.querySelector('#installWrap').hidden, 'Install opens the browser’s prompt, once'); }
+
+  // 33. Your own playlist from Spotify or a typed list: each Jhapat song once in its own version, the rest looked up and sorted
+  //     (timed lyrics: can add; untimed: by hand; Hindi: not supported yet), and links that open it on another phone
+  { const IT33 = [{ id: 'maya', name: 'Maya', dev: 'माया' }, { id: 'phool', name: 'Phool', dev: 'फूल' }];
+    const sg = (id, title, artist) => ({ id, title, artist, videos: [{ yt: (id + 'xxxxxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags: [['maya', 30, 1], ['phool', 70, 2]] });
+    const cat33 = { items: IT33, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['sasto', 'kaha'] }],
+      songs: [sg('sasto', 'Sasto Mutu', 'Sajjan Raj Vaidya'), sg('kaha', 'Kaha Hola Ghar', 'Karma Band'), sg('phul', 'Phul Butte Sari', 'Ram Dutta Gautam'),
+        sg('maya1', 'Maya', 'Arthur Gunn'), sg('maya2', 'Maya', 'Bipul Chettri')] };
+    const SP = 'open.spotify.com/playlist/37i9dQZF1DXabcdefghijk?si=1', posts = [], saved = [], lrcAsk = []; let copied = null;
+    // invented lyrics only: a Hindi song, a Nepali one with untimed words, a Nepali one with timed words
+    const LRC = { 'Tum Hi Ho|Arijit Singh': [{ id: 7, trackName: 'Tum Hi Ho', artistName: 'Arijit Singh', duration: 260, syncedLyrics: '[00:10.00] tum hi ho mera dil hai\n[00:14.00] main kya karu nahi', plainLyrics: 'x' }],
+      'Naya Gaana|Band X': [{ id: 8, trackName: 'Naya Gaana', artistName: 'Band X', duration: 0, syncedLyrics: null, plainLyrics: 'timi mero hajur\nmalai kina birse' }],
+      'q:Khai K Ho Unknown Artist': [{ id: 9, trackName: 'Khai K Ho', artistName: 'Unknown Artist', duration: 199, syncedLyrics: '[00:05.00] timi chhau ki chhaina\n[00:09.00] mero maya', plainLyrics: 'x' }] };
+    const net = async (url, o) => {
+      if (/lrclib\.net/.test(url)) { const u = new URL(url), k = u.searchParams.get('q') != null ? 'q:' + u.searchParams.get('q') : u.searchParams.get('track_name') + '|' + u.searchParams.get('artist_name');
+        lrcAsk.push(k); return { ok: true, status: 200, json: async () => LRC[k] || [] }; }
+      if (/rpc\/spotify_list/.test(url)) { const b = JSON.parse(o.body); return b.sid === '37i9dQZF1DXabcdefghijk' && b.kind === 'playlist' ? { ok: true, json: async () => ({ name: 'Road Trip',
+        tracks: [{ t: 'Sasto Mutu', a: 'Sajjan Raj Vaidya', ms: 1 }, { t: 'Kaha Hola Ghar (Live)', a: 'Karma Band' }, { t: 'Tum Hi Ho', a: 'Arijit Singh' }, { t: 'Naya Gaana', a: 'Band X' }, { t: 'Sasto Mutu', a: 'Sajjan Raj Vaidya' }] }) }
+        : { ok: false, status: 400, json: async () => ({ message: 'no' }) }; }
+      if (/rpc\/wish_songs/.test(url)) { posts.push(JSON.parse(o.body).w); return { ok: true, json: async () => 1 }; }
+      if (/rpc\/save_list/.test(url)) { saved.push(JSON.parse(o.body).l); return { ok: true, json: async () => 'abc123def0' }; }
+      if (/rpc\/get_list/.test(url)) return { ok: true, json: async () => (JSON.parse(o.body).lid === 'abc123def0' ? { id: 'abc123def0', name: saved[0].name, items: saved[0].items } : null) };
+      if (/rpc\/catalog/.test(url)) return { ok: true, json: async () => JSON.parse(JSON.stringify(cat33)) };
+      return { ok: true, json: async () => ({}) }; };
+    const setup = win => { win.fetch = net; win.scrollTo = () => {}; win.__lrcGap = 0; Object.defineProperty(win.navigator, 'clipboard', { value: { writeText: async t => { copied = t; } } }); };
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse: setup });
+    await sleep(60);
+    const wm = dm.window, dd = wm.document, mine = () => JSON.parse(wm.localStorage.getItem('jhapat.mine') || '[]'), cl = sel => dd.querySelector(sel).dispatchEvent(new wm.MouseEvent('click', { bubbles: true }));
+    const make = async (text, name) => { dd.querySelector('#mkIn').value = text; dd.querySelector('#mkName').value = name || ''; dd.querySelector('#mkForm').dispatchEvent(new wm.Event('submit', { bubbles: true, cancelable: true })); await sleep(200); };
+    cl('.plbar'); await sleep(10);
+    await make('https://' + SP);
+    const sp = mine()[0] || {};
+    ok(sp.id === 'sp-37i9dQZF1DXabcdefghijk' && sp.src === 'sp' && sp.ref === 'playlist:37i9dQZF1DXabcdefghijk' && sp.name === 'Road Trip' && sp.songs.join() === 'sasto,kaha',
+      'a Spotify playlist: Jhapat’s songs once each, a live version taken as Jhapat’s own: ' + JSON.stringify(sp.songs));
+    const kinds = (sp.missing || []).map(x => x.t + ':' + x.kind + (x.why ? ' (' + x.why + ')' : '')).join(', ');
+    ok(kinds === 'Tum Hi Ho:foreign (A Hindi song), Naya Gaana:timing (Lyrics found, not timed)', 'the rest sorted by LRCLIB: ' + kinds);
+    ok(posts.length === 1 && posts[0].length === 1 && posts[0][0].t === 'Naya Gaana' && posts[0][0].kind === 'timing' && posts[0][0].src === 'sp', 'the studio is asked for the Nepali one only, never the Hindi one');
+    ok(/2 ready · 1 to tag by hand · 1 not supported yet/.test(dd.querySelector('li.mine .minesum').textContent) && /A Hindi song/.test(dd.querySelector('li.mine .miss').textContent), 'its card says what’s ready and why the rest isn’t');
+    cl('[data-act="plshare"]'); await sleep(10);
+    ok(copied === 'https://sachdq.github.io/jhapat/#sp=playlist:37i9dQZF1DXabcdefghijk', 'Share makes a link that reads it from Spotify again: ' + copied);
+    await make('1. Phul Butte Sari - Ram Dutta Gautam\nArthur Gunn - Maya\nMaya\nSasto Mutu\nKhai K Ho - Unknown Artist 3:45', 'Wedding night');
+    const tx = mine()[0] || {};
+    ok(tx.src === 'text' && tx.name === 'Wedding night' && tx.songs.join() === 'phul,maya1,sasto', 'a typed list: Title - Artist, Artist - Title, and a title only one song has all match: ' + tx.songs.join());
+    ok(tx.missing.map(x => x.t + ':' + x.kind).join() === 'Maya:tagging,Khai K Ho:auto' && tx.missing[1].lrc === 9, 'a title many songs share isn’t guessed; the rest is looked up: ' + tx.missing.map(x => x.t + ':' + x.kind).join());
+    ok(lrcAsk.includes('q:Khai K Ho Unknown Artist') && lrcAsk.includes('Tum Hi Ho|Arijit Singh'), 'typed lines and Spotify tracks are looked up by title and artist');
+    cl('li.mine[data-id="' + tx.id + '"] [data-act="plshare"]'); await sleep(20);
+    ok(saved.length === 1 && saved[0].name === 'Wedding night' && saved[0].items.length === 5 && copied === 'https://sachdq.github.io/jhapat/#list=abc123def0', 'Share keeps a typed list in Jhapat and copies its link: ' + copied);
+    const dl = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/#list=abc123def0', pretendToBeVisual: true, beforeParse: setup });
+    await sleep(250);
+    ok(/Wedding night\s*3 songs/.test((dl.window.document.querySelector('.plbar') || {}).textContent || '') && dl.window.location.hash === '', 'the list link opens it on another phone, ready to play');
+    const ds = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/#sp=playlist:37i9dQZF1DXabcdefghijk', pretendToBeVisual: true, beforeParse: setup });
+    await sleep(250);
+    ok(/Road Trip\s*2 songs/.test((ds.window.document.querySelector('.plbar') || {}).textContent || ''), 'and the Spotify link reads it from Spotify there');
+    await make('just some words, not a playlist link https://x.y');
+    ok(mine().length === 2, 'a line that is only a link to somewhere else makes nothing'); }
+
+  // 34. A crowded list: past 8 playlists a search box shows, and typing hides the ones that don't match
+  { const pls = []; for (let k = 0; k < 9; k++) pls.push({ id: 'pl' + k, name: ['Dashain Nights', 'Wedding', 'Road Trip', 'Throwbacks', 'Dohori', 'Teej Free', 'Hits', 'Love', 'Rock'][k], songs: ['s' + k] });
+    const C = { items: [{ id: 'maya', name: 'Maya', dev: 'माया' }], playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['s0', 's1'] }].concat(pls),
+      songs: pls.map((p, k) => ({ id: 's' + k, title: 'Song ' + k, artist: 'A', videos: [{ yt: ('s' + k + 'xxxxxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags: [['maya', 30]] })) };
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => C }); win.scrollTo = () => {}; } });
+    await sleep(60);
+    const wm = dm.window, dd = wm.document;
+    dd.querySelector('.plbar').dispatchEvent(new wm.MouseEvent('click', { bubbles: true })); await sleep(10);
+    const f = dd.querySelector('#plFind');
+    ok(!!f, 'a long list gets a search box');
+    f.value = 'dash'; f.dispatchEvent(new wm.Event('input', { bubbles: true })); await sleep(5);
+    const vis = [...dd.querySelectorAll('.picker .lists > li')].filter(li => !li.hidden).map(li => li.querySelector('.t').textContent);
+    ok(vis.join() === 'Dashain Nights' && !!dd.querySelector('#mkForm'), 'typing shows only the playlists that match, and Make your own stays: ' + vis.join()); }
+
+  // 35. The intro says how to skip YouTube's ads, and so does the footer
+  ok(/ad blocker skips them/.test(d.querySelector('#intro .introtip').textContent) && /Messenger/.test(d.querySelector('#intro .introtip').textContent) && /Best with an ad blocker/.test(d.querySelector('.foot2').textContent),
+    'the intro and the footer say it’s best with an ad blocker, or opened from Messenger');
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

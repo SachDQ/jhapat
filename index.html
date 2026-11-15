@@ -143,13 +143,6 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 @keyframes spin{from{transform:translateY(0)}to{transform:translateY(calc(-100% + 1.1em))}}
 @keyframes pop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:none}}
 .reveal b.pop{display:inline-block;animation:pop .45s cubic-bezier(.3,1.7,.5,1);text-shadow:0 0 14px rgba(255,210,94,.7)}
-/* the paw swipe over the video when a drop lands */
-#pounce{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0}
-#pounce svg{width:100%;height:100%;display:block}
-#pounce path{fill:#FFE7A8;stroke:var(--gold-fill);stroke-width:1.4;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(255,138,0,.95));transform-box:fill-box;transform-origin:0% 100%;transform:scale(0)}
-#pounce.go{animation:swipe .9s ease-out}
-#pounce.go path{animation:slash .26s cubic-bezier(.2,.9,.25,1) forwards}
-#pounce.go path:nth-child(2){animation-delay:.06s} #pounce.go path:nth-child(3){animation-delay:.12s}
 @keyframes slash{to{transform:none}}
 @keyframes swipe{0%{opacity:1;background:radial-gradient(circle at 75% 25%,rgba(255,210,94,.35),transparent 60%)}65%{opacity:1}100%{opacity:0}}
 .screen.shake{animation:shake .32s ease-out}
@@ -187,11 +180,16 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .leadrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
 .stepper{display:inline-flex;align-items:center;gap:6px}
 .stepper output{min-width:3ch;text-align:center;font:400 23px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--gold-fill)}
-.plbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.plbar span{min-width:0}
-.plbar .plr{display:flex;align-items:center;gap:8px;flex:none}
-.plbar .pn{font:400 20px/1.15 var(--display);display:block}
-.plbar .ps{color:var(--muted);font-size:14px}
+/* the playlist at the top of the table (v40): its covers, its name and Switch, all one button */
+.plbar{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin:-4px 0 16px;padding:10px 12px;border:1.5px solid var(--line-2);border-radius:16px;
+  background:var(--raise);color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.plbar .pli{display:grid;gap:1px;min-width:0}
+.plbar .kicker{margin:0;font-size:11px}
+.plbar .pn{font:400 19px/1.15 var(--display);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.plbar .ps{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plgo{display:inline-flex;align-items:center;gap:5px;font:800 13px/1 var(--body);color:var(--gold);border:1.5px solid var(--gold-fill);border-radius:999px;padding:7px 10px;white-space:nowrap}
+.plbar:hover,.plbar:focus-visible{border-color:var(--gold-fill);outline:none}
+.plbar:focus-visible{box-shadow:0 0 0 3px var(--gold-fill)}
 /* settings: one folded card under the table */
 .set{padding:0}
 .sethead{width:100%;display:flex;align-items:center;gap:10px;border:0;background:none;color:var(--ink);padding:16px 18px;cursor:pointer;text-align:left;font:inherit;border-radius:20px}
@@ -204,24 +202,29 @@ h2 .count{font:700 14px/1 var(--body);color:var(--muted);margin-left:4px}
 .setbody .hint{margin:-6px 0 0}
 .sethead:focus-visible{outline:3px solid var(--gold-fill);outline-offset:-3px}
 /* playlist cards: three song covers fanned out like photos on the table */
-.listbtn.has-fan{grid-template-columns:100px minmax(0,1fr);align-items:center;column-gap:14px}
-.listbtn .lb{display:grid;gap:7px;min-width:0}
-.fan{position:relative;width:100px;height:70px}
-.fan img{position:absolute;width:66px;height:37px;object-fit:cover;border-radius:6px;border:2px solid var(--ink);background:var(--raise);box-shadow:0 4px 12px rgba(0,0,0,.45)}
-.fan img:nth-child(1){left:0;top:24px;transform:rotate(-10deg)}
-.fan img:nth-child(2){left:17px;top:6px;transform:rotate(4deg)}
-.fan img:nth-child(3){left:32px;top:28px;transform:rotate(11deg)}
+.listbtn .lb{display:grid;gap:2px;min-width:0}
+/* a playlist's icon: three of its songs' covers fanned out (or its source's emoji when it has none yet) */
+.fan{position:relative;width:76px;height:52px;flex:none}
+.fan img{position:absolute;width:64%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:5px;border:2px solid var(--ink);background:var(--raise);box-shadow:0 3px 9px rgba(0,0,0,.45)}
+.fan img:nth-child(1){left:0;top:36%;transform:rotate(-10deg)}
+.fan img:nth-child(2){left:17%;top:6%;transform:rotate(4deg)}
+.fan img:nth-child(3){left:34%;top:40%;transform:rotate(11deg)}
+.fan.none{display:grid;place-items:center;font-size:26px;background:var(--bg);border-radius:12px}
+.plbar .fan{width:60px;height:42px}
 img.broken{visibility:hidden}
 /* version and update */
 .foot{color:var(--muted);font-size:13px;text-align:center;margin-top:22px;font-variant-numeric:tabular-nums}
 .foot a{color:var(--muted)}
 .update{display:block;margin:10px auto 0;border:1.5px solid var(--gold-fill);background:var(--raise);color:var(--ink);border-radius:999px;padding:8px 14px;font:700 14px/1.2 var(--body);cursor:pointer}
 .update b{color:var(--gold)}
-.lists{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.listbtn{width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:18px;padding:16px;cursor:pointer;display:grid;gap:7px}
-.listbtn .t{font:400 23px/1.15 var(--display)}
-.listbtn .a{color:var(--muted);font-size:15px}
-.listbtn .row{gap:6px}
+.lists{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.listbtn{width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:16px;padding:10px 12px;cursor:pointer;
+  display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;column-gap:12px}
+.listbtn .t{font:400 20px/1.15 var(--display);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.listbtn .a{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.listbtn .its{color:var(--muted);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.listbtn .its b{color:var(--ink)}
+.pill.on{height:auto;padding:3px 7px;font-size:11px;vertical-align:1px;background:var(--gold-fill);color:var(--gold-ink);border-color:var(--gold-fill)}
 .listbtn[aria-current="true"]{border-color:var(--gold-fill);box-shadow:inset 0 0 0 1px var(--gold-fill),var(--glow)}
 .report{margin-top:10px}
 .report.open{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:8px;justify-items:start}
@@ -239,9 +242,26 @@ img.broken{visibility:hidden}
 .miss li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;font-size:14px;color:var(--muted)}
 .miss li b{color:var(--ink);font-weight:600}
 .miss img{width:64px;height:36px;object-fit:cover;border-radius:6px;background:var(--raise)}
-.ytform{margin-top:6px}
-.ytform .row{flex-wrap:nowrap}
-.ytform input{flex:1;min-width:0}
+/* the playlists list (v40): Back on top, a search box once it's long, Make your own, yours, then Jhapat's */
+.pickhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-width:0}
+.pickhead h2{margin:0}
+.backbtn{min-width:0;max-width:62%}
+.backbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plfind{margin-bottom:12px}
+.picker .sub{margin:18px 0 8px}
+.maker{display:grid;gap:8px;background:var(--raise);border:1.5px dashed var(--gold-fill);border-radius:16px;padding:14px}
+.maker h3{margin:0;font:400 21px/1.15 var(--display)}
+.maker h3 label{display:inline-flex;align-items:center;gap:.35em}
+.maker .hint{margin:0}
+.maker textarea{margin:0;min-height:74px;font-size:15px}
+.maker .row{flex-wrap:nowrap}
+.maker input{flex:1;min-width:0}
+.mine .minesum{margin:6px 4px 0}
+.miss h4{margin:12px 0 2px;font:800 14px/1.3 var(--body);color:var(--ink)}
+.miss .hint{margin:0 0 6px}
+.miss .ph{width:64px;height:36px;display:grid;place-items:center;border-radius:6px;background:var(--raise);color:var(--muted)}
+.miss li i{display:block;font-style:normal;font-size:12.5px;color:var(--muted)}
+.introtip{grid-area:tip;margin:0;font-size:13.5px;line-height:1.4;color:var(--muted);text-align:left}
 .switch{display:flex;align-items:center;gap:10px;font-weight:600}
 .switch input{width:22px;height:22px;accent-color:var(--gold-fill)}
 
@@ -287,9 +307,8 @@ textarea{margin:10px 0 8px;resize:vertical}
   padding:12px 16px;border-radius:14px;font:600 15px/1.35 var(--body);width:max-content;max-width:min(92vw,560px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion: reduce){.tap.hit{animation:none;outline:3px solid var(--gold-fill)} #toast{transition:none} .btn.glow{animation:none} .screen,.sethead .chev{transition:none}
-  .lights::after,.brand .dev,.brand .mark.leap,.now.live .stripes,.chip.zap,.chip.dim,.reelin,.now .title.popin,.reveal b.pop,#pounce.go,#pounce.go path,.screen.shake,.burst span,.pool b.tick,.streak.bump,.btn.flare::after{animation:none!important}
-  .now .title.spinning{visibility:visible} .reel,.burst,#pounce{display:none}}
-@media (max-width:360px){.listbtn.has-fan{grid-template-columns:80px minmax(0,1fr)}.fan{transform:scale(.8);transform-origin:left center}}
+  .lights::after,.brand .dev,.brand .mark.leap,.now.live .stripes,.chip.zap,.chip.dim,.reelin,.now .title.popin,.reveal b.pop,.screen.shake,.burst span,.pool b.tick,.streak.bump,.btn.flare::after{animation:none!important}
+  .now .title.spinning{visibility:visible} .reel,.burst{display:none}}
 @media (max-width:380px){.tabs button{padding:9px 11px}.brand .word{font-size:29px}}
 
 /* v34: more party. A neon grid floor runs off to the Himalaya under a striped sun, behind the page. */
@@ -376,7 +395,7 @@ body.blind #tapHint{z-index:8}
 .linkbtn{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
 .intro{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:12px;background:rgba(15,11,30,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .introcard{width:min(100%,440px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;
-  padding:14px 14px 0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "vid" "steps" "btns";gap:12px;text-align:center;
+  padding:14px 14px 0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "vid" "steps" "tip" "btns";gap:12px;text-align:center;
   box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
 @keyframes introin{from{opacity:0;transform:translateY(24px) scale(.94)}}
 .ihead{grid-area:head;display:flex;align-items:center;justify-content:center;gap:10px;text-align:left}
@@ -394,7 +413,7 @@ body.blind #tapHint{z-index:8}
 .introsteps b{font-size:21px;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:var(--bg)}
 .introbtns{grid-area:btns;position:sticky;bottom:0;display:grid;padding:10px 0 14px;background:linear-gradient(rgba(29,22,54,0),var(--surface) 30%)}
 @media (min-width:760px){
-  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto auto 1fr;grid-template-areas:"vid ." "vid head" "vid steps" "vid btns" "vid .";column-gap:24px;row-gap:14px;padding:20px;text-align:left}
+  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto auto auto 1fr;grid-template-areas:"vid ." "vid head" "vid steps" "vid tip" "vid btns" "vid .";column-gap:24px;row-gap:14px;padding:20px;text-align:left}
   .ihead{justify-content:flex-start}
   .ttbox{width:calc(min(calc(100dvh - 90px),680px) * 325 / 578)}
   .introbtns{position:static;background:none;padding:4px 0 0}
@@ -412,13 +431,6 @@ body.introopen{overflow:hidden}
 .sheetbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:4px}
 .foot2{margin:6px 0 0;font-size:12.5px;opacity:.8}
 .cover .site{font:400 19px/1 var(--display);color:var(--gold);letter-spacing:.02em}
-@media (max-width:600px){ /* the covers sit beside the name, and the item counts use the card's whole width */
-  .listbtn.has-fan{grid-template-columns:84px minmax(0,1fr);column-gap:12px;row-gap:6px;align-items:start}
-  .listbtn.has-fan .lb{display:contents}
-  .listbtn.has-fan .fan{grid-row:1/3;align-self:center;transform:scale(.84);transform-origin:left center}
-  .listbtn.has-fan .t,.listbtn.has-fan .a{grid-column:2}
-  .listbtn.has-fan .row{grid-column:1/-1}
-}
 @media (prefers-reduced-motion: reduce){.sheetcard{animation:none}}
 </style>
 </head>
@@ -445,7 +457,6 @@ body.introopen{overflow:hidden}
       <div class="ytbox front" id="boxA"><div id="ytA"></div></div>
       <div class="ytbox" id="boxB"><div id="ytB"></div></div>
       <div class="cover" aria-hidden="true"><img src="img/jhapat-mark.webp" alt="" width="88" height="64" decoding="async"><span class="eq"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="lbl">🙈 Hidden</span><span class="site">jhapat.live</span></div>
-      <div id="pounce" aria-hidden="true"><svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice"><path d="M30 74 Q78 46 128 12 Q84 50 30 74Z"/><path d="M44 84 Q94 56 142 22 Q98 60 44 84Z"/><path d="M58 92 Q108 66 154 34 Q112 70 58 92Z"/></svg></div>
       <b id="stamp" aria-hidden="true">झपट!</b>
       <div id="tapHint" hidden></div>
       <div id="blocked" hidden></div>
@@ -464,6 +475,7 @@ body.introopen{overflow:hidden}
       <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
       <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
     </ol>
+    <p class="introtip">💡 YouTube sometimes plays an ad before a song. An ad blocker skips them, and so does opening Jhapat from a Messenger chat.</p>
     <div class="introbtns"><button class="btn primary big" data-act="introgo">Let’s go</button><button class="btn big" data-act="share"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Share</button></div>
   </div>
 </div>
@@ -477,7 +489,7 @@ body.introopen{overflow:hidden}
     <button class="btn ghost small" data-act="shareclose">Close</button>
   </div>
 </div>
-<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <button class="linkbtn" data-act="share">Share</button><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up, no ads. Jhapat counts drops, never who.</p></footer>
+<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <button class="linkbtn" data-act="share">Share</button><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up. Best with an ad blocker, or opened from a Messenger chat. Jhapat counts drops, never who.</p></footer>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -485,7 +497,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 39; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 40; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -580,9 +592,14 @@ const stored = k => { try { return localStorage.getItem(k); } catch (e) { return
 try { const c = JSON.parse(stored(CAT_KEY) || 'null'); if (goodCat(c)) { CAT = c; catSaved = true; } } catch (e) {}
 const hadSave = !!stored(KEY); // a phone's first visit (counted once, anonymously)
 let S = loadState() || seed();
+const MINE_KEY = 'jhapat.mine'; // your own playlists (v40): their own key, written only when they change, since the save is written on every drop
+let MINE0 = null; try { MINE0 = JSON.parse(stored(MINE_KEY) || 'null'); } catch (e) {}
+if (!Array.isArray(MINE0)) MINE0 = Array.isArray(S.mine) ? S.mine : []; // v31–v39 kept them in the save
 if (S.source === 'db' && !CAT && !S.songs.length) S = Object.assign(seed(), { settings: S.settings }); // its songs were in a catalog that's gone
-save(); // keep the stored copy in step with any upgrade that just ran
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S.source === 'db' && catSaved ? Object.assign({}, S, { songs: [] }) : S)); } catch (e) {} }
+S.mine = MINE0;
+saveMine(); save(); // keep the stored copies in step with any upgrade that just ran
+function save() { try { const o = Object.assign({}, S); if (S.source === 'db' && catSaved) o.songs = []; delete o.mine; localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+function saveMine() { try { localStorage.setItem(MINE_KEY, JSON.stringify(S.mine || [])); } catch (e) {} }
 const byId = id => S.songs.find(s => s.id === id);
 const itemById = id => S.items.find(i => i.id === id);
 const itemName = id => (itemById(id) || { name: id }).name;
@@ -611,6 +628,7 @@ const ICON = {
   flag: svgI('<path d="M5 21V4h12l-2.5 4.5L17 13H5"/>'), list: svgI('<path d="M4 6h16M4 12h16M4 18h10"/>'),
   keep: svgI('<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'), share: svgI('<path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/>'),
   plus: svgI('<path d="M12 5v14M5 12h14"/>'), trash: svgI('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
+  back: svgI('<path d="M15 5l-7 7 7 7"/>'),
   sliders: svgI('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>')
 };
 
@@ -845,7 +863,18 @@ const SHORT = 4.5;  // the shortest run-up a drop gets; a word sung closer than 
    table words close together the earlier gets the drop, while the later drops at its line's next roomy repeat if it has
    one. Every line with room is a drop point, so a song can drop in at several places, near the end too. The studio's red
    dots are this rule worked out for every mix of items on the table. */
-function dropsFor(song, want) { // this song's drop points with this table, earliest first, for one item or any table item
+/* Worked out once per song for the table that's out (v40): with 3,000 songs a drop asks for every song's drop points several times.
+   A catalog song's tags never change here, so its answers keep until an item goes on or off; a song being tagged on this phone isn't kept. */
+let memoTable = null, dropMemo = new WeakMap();
+function dropsFor(song, want) {
+  if (!catSongs.has(song)) return dropsCalc(song, want);
+  const table = S.items.filter(i => i.on).map(i => i.id).join(',');
+  if (table !== memoTable) { memoTable = table; dropMemo = new WeakMap(); }
+  let m = dropMemo.get(song); if (!m || m.off !== (song.offset || 0)) dropMemo.set(song, m = new Map()), m.off = song.offset || 0;
+  const k = want || ''; let r = m.get(k); if (!r) m.set(k, r = dropsCalc(song, want));
+  return r;
+}
+function dropsCalc(song, want) { // this song's drop points with this table, earliest first, for one item or any table item
   const on = onItems(), off = song.offset || 0;
   const tags = song.tags.filter(t => on.has(t.item)).sort((a, b) => a.t - b.t);
   // room = how far back the drop can start before this word without passing an earlier table word
@@ -1079,8 +1108,8 @@ function burst(chars, from, n, t) { // emoji flying out from an element (or the 
   document.body.appendChild(box); setTimeout(() => box.remove(), (t || 1) * 1000 + 150);
 }
 function replay(el, cls) { if (!el || reduced()) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
-function pounce() { // the jhapat moment: a paw swipes the video, the screen jolts and the logo leaps
-  sfx('drop'); replay($('#pounce'), 'go'); replay($('#stamp'), 'go'); replay(document.querySelector('.screen'), 'shake'); replay(document.querySelector('.brand .mark'), 'leap');
+function pounce() { // the jhapat moment: the stamp lands, the screen jolts and the logo leaps (the claw swipe went in v40)
+  sfx('drop'); replay($('#stamp'), 'go'); replay(document.querySelector('.screen'), 'shake'); replay(document.querySelector('.brand .mark'), 'leap');
   buzz([14, 40, 22]);
 }
 /* Now and then an item that's on the table floats up behind the page. */
@@ -1110,14 +1139,19 @@ function pillsHTML() { // Hide and sound, at the top of the Now card
     '<button class="pill" data-act="sound" aria-pressed="' + sfxOn() + '" aria-label="Sound effects" title="Sound effects">' + (sfxOn() ? '🔊' : '🔇') + '</button>' +
     '<button class="pill" data-act="intro" aria-label="How to play" title="How to play">?</button></span>';
 }
-/* Sounds, made in the browser (no files): a madal on every drop with slot-machine ticks while the reel spins, a ding when an item
-   goes on, a sparkle for Show, a pop for every emoji, a madal roll for the cheers. 🔊 in the Now card turns them off. */
+/* Sounds, made in the browser (no files). Since v40 they're quieter and fewer: a soft madal dhin on every drop and ta-dhin as the
+   reel lands (no ticking), a low tok when an item goes on or off, two soft notes for Show, a small pop, and three madal hits for a
+   cheer. Everything goes through one output at half volume with the highs taken off, and the same sound never fires twice
+   within 120 ms. 🔊 in the Now card turns them off. */
 const sfxOn = () => S.settings.sound !== false;
-let sfxCtx = null, sfxNoiseBuf = null;
+let sfxCtx = null, sfxOut = null;
+const sfxAt = {};
 function sfxAudio() {
   if (sfxCtx) return sfxCtx;
   const A = window.AudioContext || window.webkitAudioContext; if (!A) return null;
-  try { sfxCtx = new A(); } catch (e) { sfxCtx = null; }
+  try { sfxCtx = new A(); } catch (e) { sfxCtx = null; return null; }
+  try { const g = sfxCtx.createGain(), lp = sfxCtx.createBiquadFilter(); g.gain.value = 0.5; lp.type = 'lowpass'; lp.frequency.value = 2200; g.connect(lp); lp.connect(sfxCtx.destination); sfxOut = g; }
+  catch (e) { sfxOut = null; }
   return sfxCtx;
 }
 function unlockAudio() { if (!sfxOn()) return; const c = sfxAudio(); if (c && c.state === 'suspended' && c.resume) c.resume(); }
@@ -1126,29 +1160,23 @@ function sfxTone(c, f, t, dur, o) { // one note: a pitch (gliding to o.to), a qu
   osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(f, t);
   if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur * .8);
   g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(o.vol || .3, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-  osc.connect(g); g.connect(c.destination); osc.start(t); osc.stop(t + dur + .02);
+  osc.connect(g); g.connect(sfxOut || c.destination); osc.start(t); osc.stop(t + dur + .02);
 }
-function sfxNoise(c, t, vol, hp) { // a short burst of hiss: a hand slapping a drum head, or a reel tick
-  if (!sfxNoiseBuf) { const n = Math.round(c.sampleRate * .05); sfxNoiseBuf = c.createBuffer(1, n, c.sampleRate); const d = sfxNoiseBuf.getChannelData(0); for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / n); }
-  const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-  src.buffer = sfxNoiseBuf; f.type = 'highpass'; f.frequency.value = hp || 2000; g.gain.value = vol || .2;
-  src.connect(f); f.connect(g); g.connect(c.destination); src.start(t);
-}
-const madalDhin = (c, t) => { sfxTone(c, 150, t, .45, { to: 70, vol: .6 }); sfxTone(c, 300, t, .12, { to: 150, vol: .15, type: 'triangle' }); }; // the madal's big head
-const madalTa = (c, t) => { sfxTone(c, 420, t, .14, { to: 300, vol: .3, type: 'triangle' }); sfxNoise(c, t, .12, 2500); };                      // its small head
+const madalDhin = (c, t, v) => { v = v || 1; sfxTone(c, 140, t, .38, { to: 75, vol: .42 * v }); sfxTone(c, 280, t, .08, { to: 150, vol: .07 * v, type: 'triangle' }); }; // the madal's big head, soft
+const madalTa = (c, t, v) => { sfxTone(c, 380, t, .1, { to: 300, vol: .14 * (v || 1), type: 'triangle' }); };                                                    // its small head
 const SFX = {
-  drop(c, t) { // dhin with the claw swipe, ticks slowing through the reel, ta-dhin as it lands
-    const land = t + REEL_MS / 1000; madalDhin(c, t);
-    for (let at = t + .06, gap = .045; at < land - .06; at += gap, gap *= 1.17) sfxNoise(c, at, .1, 4000);
-    madalTa(c, land); madalDhin(c, land + .12);
-  },
-  on(c, t) { sfxTone(c, 880, t, .14, { vol: .2 }); sfxTone(c, 1320, t + .06, .18, { vol: .16 }); },
-  off(c, t) { sfxTone(c, 260, t, .12, { to: 160, vol: .25, type: 'triangle' }); },
-  show(c, t) { [660, 880, 1100, 1320].forEach((f, k) => sfxTone(c, f, t + k * .06, .2, { vol: .14 })); },
-  pop(c, t) { sfxTone(c, 500, t, .09, { to: 1400, vol: .3 }); sfxNoise(c, t, .08, 3000); },
-  cheer(c, t) { [0, .12, .2, .32, .4, .48, .56].forEach((d, k) => (k % 3 ? madalTa : madalDhin)(c, t + d)); SFX.show(c, t + .64); },
+  drop(c, t) { const land = t + REEL_MS / 1000; madalDhin(c, t, .8); madalTa(c, land); madalDhin(c, land + .1, .9); }, // dhin as it drops, ta-dhin as the reel lands
+  on(c, t) { sfxTone(c, 520, t, .1, { to: 440, vol: .12 }); },
+  off(c, t) { sfxTone(c, 300, t, .08, { to: 240, vol: .08, type: 'triangle' }); },
+  show(c, t) { sfxTone(c, 523, t, .22, { vol: .08 }); sfxTone(c, 784, t + .09, .3, { vol: .07 }); },
+  pop(c, t) { sfxTone(c, 420, t, .07, { to: 700, vol: .1 }); },
+  cheer(c, t) { madalDhin(c, t, .8); madalTa(c, t + .14); madalDhin(c, t + .24, .8); },
 };
-function sfx(name) { if (!sfxOn()) return; const c = sfxAudio(); if (!c) return; try { if (c.state === 'suspended' && c.resume) c.resume(); SFX[name](c, c.currentTime + .02); } catch (e) {} }
+function sfx(name) {
+  if (!sfxOn()) return; const c = sfxAudio(); if (!c) return;
+  const ms = Date.now(); if (sfxAt[name] && ms - sfxAt[name] < 120) return; sfxAt[name] = ms;
+  try { if (c.state === 'suspended' && c.resume) c.resume(); SFX[name](c, c.currentTime + .02); } catch (e) {}
+}
 /* Drops tonight: a counter that grows through the party, with a cheer at milestones. It starts again after 4 quiet hours. */
 const CHEERS = { 5: '5 drops in. Hands ready! 🐯', 10: '10 drops! The room is warming up 🔥', 25: '25 drops! This party has claws 🐯', 50: '50 drops! Legendary night ✨', 100: '100 drops! Someone call the neighbours 🎉' };
 const nightCount = () => (S.night && Date.now() - S.night.at < 4 * 3600e3 ? S.night.n : 0);
@@ -1186,49 +1214,96 @@ async function flushOutbox() { // reports made without signal; one the database 
   for (const r of S.outbox || []) { const res = await dbCall('rpc/report_drop', { r }); if (res.offline) keep.push(r); }
   S.outbox = keep; save();
 }
-/* All songs, then the official playlists: built from the catalog on the phone, so the list also shows offline. */
+/* ---------- the playlists (v40) ----------
+   The Play screen names the playlist at the top of the table, with its covers and Switch, all one button. Switch opens the list:
+   Back to the one playing sits at the top, then Make your own (a YouTube or Spotify link, or a list of songs), your playlists, and
+   Jhapat's, with All songs last; a search box shows once there are more than 8. Every card is one compact row: covers, name, a line
+   about it, its four most common items as emoji, and its song count. A new phone starts on the Party Mix; nobody has to pick first.
+   All of it is built from the catalog on the phone, so the list also shows offline. */
 const lists = () => (CARDS || []).filter(c => c.songs > 0);
-const needPick = () => S.source === 'db' && !S.chosen && !current && lists().length > 1; // never over a song that's playing
+const needPick = () => false; // until v39 a first visit had to pick a playlist before playing
 const thumbUrl = id => 'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg';
-function cardHTML(c, active) { // a playlist to pick: covers fanned out, song count, its 8 most common items (the rest show on the Play screen)
+const SRC_ICON = { yt: '▶️', sp: '🟢', text: '📝' }, SRC_NAME = { yt: 'From YouTube', sp: 'From Spotify', text: 'Your list' };
+let plQuery = '';
+function fanHTML(thumbs, icon) {
+  const th = (thumbs || []).filter(Boolean).slice(0, 3);
+  return th.length ? '<span class="fan" aria-hidden="true">' + th.map(id => '<img src="' + thumbUrl(id) + '" alt="" loading="lazy">').join('') + '</span>'
+    : '<span class="fan none" aria-hidden="true">' + esc(icon || '🎶') + '</span>';
+}
+function itemsLine(c) { // its four most common items as emoji and counts: "❤️ 201 · 🕶️ 85 · 💗 81 · 🔦 62 · +30"
   const its = Object.keys(c.items || {}).filter(k => c.items[k] > 0).sort((a, b) => c.items[b] - c.items[a]);
-  const th = (c.thumbs || []).slice(0, 3);
-  return '<button class="listbtn' + (th.length ? ' has-fan' : '') + '" data-act="pickpl" data-arg="' + esc(c.id) + '" aria-current="' + !!(S.chosen && c.id === active) + '"' + (c.songs ? '' : ' disabled') + '>' +
-    (th.length ? '<span class="fan" aria-hidden="true">' + th.map(id => '<img src="' + thumbUrl(id) + '" alt="" loading="lazy">').join('') + '</span>' : '') +
-    '<span class="lb"><span class="t">' + esc(c.name) + '</span>' +
-    (c.description ? '<span class="a">' + esc(c.description) + '</span>' : '') +
-    '<span class="row"><span class="badge ok">' + c.songs + ' song' + (c.songs === 1 ? '' : 's') + '</span>' +
-    its.slice(0, 8).map(k => '<span class="badge">' + (emo(k) ? esc(emo(k)) + ' ' : '') + esc(itemName(k)) + ' ' + c.items[k] + '</span>').join('') +
-    (its.length > 8 ? '<span class="badge">+' + (its.length - 8) + ' more</span>' : '') + '</span></span></button>';
+  return its.slice(0, 4).map(k => '<span title="' + esc(itemName(k)) + '">' + esc(emo(k) || itemName(k)) + ' ' + c.items[k] + '</span>').join(' · ') + (its.length > 4 ? ' · +' + (its.length - 4) : '');
 }
+function cardHTML(c, active, sub) { // a playlist to pick, as one compact row
+  const on = c.id === active, line = sub || c.description;
+  return '<button class="listbtn" data-act="pickpl" data-arg="' + esc(c.id) + '" data-name="' + esc(sound(c.name)) + '" aria-current="' + on + '"' + (c.songs ? '' : ' disabled') + '>' +
+    fanHTML(c.thumbs, c.icon) + '<span class="lb"><span class="t">' + esc(c.name) + '</span>' + (line ? '<span class="a">' + esc(line) + '</span>' : '') +
+    '<span class="its">' + (on ? '<span class="pill on">Playing</span> ' : '') + '<b>' + c.songs + '</b> song' + (c.songs === 1 ? '' : 's') + (c.songs ? ' · ' + itemsLine(c) : '') + '</span></span></button>';
+}
+function mineCard(m) { const c = cardOf(m.id, m.name, null, songsIn(m)); c.icon = SRC_ICON[m.src || 'yt']; return c; }
+function curCard() { const id = S.playlist && S.playlist.id, m = mineOf(id); return m ? mineCard(m) : lists().find(c => c.id === id) || null; }
 function renderPicker() {
-  const active = S.playlist && S.playlist.id;
-  return '<section class="card"><h2>Pick a playlist</h2><ul class="lists">' + lists().map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>' +
-    (CAT ? mineHTML(active) : '') +
-    (S.chosen ? '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="keeppl" title="Keep ' + esc((S.playlist || {}).name || 'this playlist') + ' on this phone">' + ICON.keep + 'Keep</button></div>' : '') +
-    '</section>';
+  const active = S.playlist && S.playlist.id, all = lists(), jh = all.filter(c => c.id !== ALL).concat(all.filter(c => c.id === ALL)), mine = S.mine || [];
+  const back = S.source === 'db' && S.playlist && !sharedBusy ? '<button class="btn small backbtn" data-act="keeppl" aria-label="Back to ' + esc(S.playlist.name) + '">' + ICON.back + '<span>' + esc(S.playlist.name) + '</span></button>' : '';
+  return '<section class="card picker"><div class="pickhead"><h2>Playlists</h2>' + back + '</div>' +
+    (jh.length + mine.length > 8 ? '<input type="search" id="plFind" class="plfind" placeholder="Find a playlist" aria-label="Find a playlist" autocomplete="off" value="' + esc(plQuery) + '">' : '') +
+    (CAT ? makerHTML() : '') +
+    (mine.length ? '<h3 class="sub">Yours</h3><ul class="lists">' + mine.map(m => '<li class="mine" data-id="' + esc(m.id) + '">' + mineHTML(m, active) + '</li>').join('') + '</ul>' : '') +
+    '<h3 class="sub">Jhapat playlists</h3><ul class="lists">' + jh.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul></section>';
 }
-/* Playlists made from YouTube links: each one's card, what matched, and the videos not in Jhapat yet, which can be asked for. */
-const mineSummary = m => { const got = m.n.upload + m.n.name; // "53 in Jhapat (12 matched by name) · 30 not in Jhapat yet"
-  return [got + ' in Jhapat' + (m.n.name ? (m.n.upload ? ' (' + m.n.name + ' matched by name)' : ', matched by name') : ''),
-    m.missing.length ? m.missing.length + ' not in Jhapat yet' : '', m.n.gone ? m.n.gone + ' won’t play outside YouTube' : ''].filter(Boolean).join(' · '); };
-function mineHTML(active) {
-  const asked = new Set(S.asked || []);
-  const rows = (S.mine || []).map(m => {
-    const c = cardOf(m.id, m.name, 'From YouTube', songsIn(m)), open = m.missing.filter(x => !asked.has(x.yt)).length, a = ' data-arg="' + esc(m.id) + '"';
-    return '<li class="mine">' + cardHTML(c, active) + '<p class="minesum">' + esc(mineSummary(m)) + '</p><div class="row minebtns">' +
-      (m.missing.length ? (open ? '<button class="btn small primary" data-act="ytask"' + a + '>' + ICON.plus + 'Ask' + (open > 1 ? ' ' + open : '') + '</button>'
-        : '<span class="badge ok">Asked for ' + m.missing.length + '</span>') : '') +
-      '<button class="btn small" data-act="ytshare"' + a + '>' + ICON.share + 'Share</button><button class="btn small" data-act="ytread"' + a + (ytBusy ? ' disabled' : '') + '>' + ICON.replay + 'Refresh</button>' +
-      '<button class="btn small ghost" data-act="ytdel"' + a + '>' + ICON.trash + 'Remove</button></div>' +
-      (m.missing.length ? '<details class="miss"><summary>Not in Jhapat yet (' + m.missing.length + ')</summary><ul>' + m.missing.map(x =>
-        '<li><img src="https://i.ytimg.com/vi/' + esc(x.yt) + '/default.jpg" alt="" loading="lazy"><span><b>' + esc(x.title) + '</b><br>' + esc(x.channel || '') + '</span></li>').join('') + '</ul></details>' : '') + '</li>';
-  }).join('');
-  return (rows ? '<h3 class="sub">From YouTube</h3><ul class="lists">' + rows + '</ul>' : '') +
-    '<form class="ytform" id="ytForm"><h3 class="sub"><label for="ytLink">Use a YouTube playlist</label></h3>' +
-    '<p class="hint">Paste its link. Public and unlisted playlists work. Jhapat reads the first 200 videos and plays the songs it has; you can ask for the rest.</p>' +
-    '<div class="row"><input type="url" id="ytLink" inputmode="url" autocomplete="off" placeholder="youtube.com/playlist?list=…"' + (ytBusy ? ' disabled' : '') + '>' +
-    (ytBusy ? '<span class="badge" id="ytBusy" role="status">' + esc(ytBusy.text) + '</span>' : '<button class="btn primary" type="submit">Read it</button>') + '</div></form>';
+function filterPicker() { // the search box hides the cards whose names don't have what's typed, without drawing the list again
+  const q = sound(plQuery);
+  document.querySelectorAll('.picker .lists > li').forEach(li => { const b = li.querySelector('[data-name]'); li.hidden = !!q && !!b && !b.dataset.name.includes(q); });
+}
+function makerHTML() {
+  return '<form class="maker" id="mkForm"><h3><label for="mkIn">' + ICON.plus + 'Make your own</label></h3>' +
+    '<p class="hint small">Paste a YouTube or Spotify playlist link, or type songs one per line (Title - Artist). The songs Jhapat has play right away; it asks the studio for the rest.</p>' +
+    '<textarea id="mkIn" rows="3" autocomplete="off" spellcheck="false" placeholder="youtube.com/playlist?list=…&#10;open.spotify.com/playlist/…&#10;Sasto Mutu - Sajjan Raj Vaidya"' + (mkBusy ? ' disabled' : '') + '></textarea>' +
+    '<div class="row"><input type="text" id="mkName" maxlength="80" placeholder="Name it (optional)" aria-label="Name it (optional)" autocomplete="off"' + (mkBusy ? ' disabled' : '') + '>' +
+    (mkBusy ? '<span class="badge" id="mkBusy" role="status">' + esc(mkBusy.text) + '</span>' : '<button class="btn primary" type="submit">' + ICON.plus + 'Make</button>') + '</div></form>';
+}
+/* Your playlists: what's ready, what's coming, and what isn't supported yet, with the songs not ready grouped by why. */
+const KINDS = [['auto', '⏳ We can add these', 'Timed Nepali lyrics found. Jhapat asked the studio to add them; they join this playlist by themselves.'],
+  ['timing', '✍️ Need timing by hand', 'Nepali lyrics found, but not timed to the song yet. Asked for.'],
+  ['tagging', '✍️ Need tagging by hand', 'No lyrics online, so the words have to be tapped in by hand. Asked for.'],
+  ['foreign', '🚫 Not supported yet', 'Jhapat plays Nepali songs for now.'],
+  ['', '🔎 Still checking', 'Looking them up on LRCLIB.']];
+function mineCounts(m) {
+  const c = { ready: songsIn(m).length, add: 0, hand: 0, no: (m.n && m.n.gone) || 0, wait: 0 };
+  (m.missing || []).forEach(x => { if (x.kind === 'auto') c.add++; else if (x.kind === 'timing' || x.kind === 'tagging') c.hand++; else if (x.kind === 'foreign') c.no++; else c.wait++; });
+  return c;
+}
+function mineSummary(m) {
+  const c = mineCounts(m);
+  return [c.ready + ' ready', c.add ? c.add + ' we can add' : '', c.hand ? c.hand + ' to tag by hand' : '', c.no ? c.no + ' not supported yet' : '', c.wait ? c.wait + ' still checking' : ''].filter(Boolean).join(' · ');
+}
+function mineHTML(m, active) {
+  const a = ' data-arg="' + esc(m.id) + '"', asked = (m.missing || []).filter(isAsked).length, src = m.src || 'yt';
+  return cardHTML(mineCard(m), active, SRC_NAME[src]) + '<p class="minesum">' + esc(mineSummary(m)) + '</p><div class="row minebtns">' +
+    (asked ? '<span class="badge ok">Asked the studio for ' + asked + '</span>' : '') +
+    '<button class="btn small" data-act="plshare"' + a + '>' + ICON.share + 'Share</button>' +
+    (src !== 'text' ? '<button class="btn small" data-act="plread"' + a + (mkBusy ? ' disabled' : '') + '>' + ICON.replay + 'Refresh</button>' : '') +
+    '<button class="btn small ghost" data-act="pldel"' + a + '>' + ICON.trash + 'Remove</button></div>' + missHTML(m);
+}
+function missHTML(m) {
+  const miss = m.missing || [], gone = (m.n && m.n.gone) || 0;
+  if (!miss.length && !gone) return '';
+  return '<details class="miss"><summary>Not ready yet (' + (miss.length + gone) + ')</summary>' +
+    KINDS.map(([k, h, why]) => { const xs = miss.filter(x => (x.kind || '') === k); return xs.length ? '<h4>' + h + ' (' + xs.length + ')</h4><p class="hint small">' + why + '</p><ul>' +
+      xs.map(x => '<li>' + (x.yt ? '<img src="https://i.ytimg.com/vi/' + esc(x.yt) + '/default.jpg" alt="" loading="lazy">' : '<span class="ph" aria-hidden="true">♪</span>') +
+        '<span><b>' + esc(x.t || x.title) + '</b>' + ((x.a || x.channel) ? '<br>' + esc(x.a || x.channel) : '') + (k === 'foreign' && x.why ? '<i>' + esc(x.why) + '</i>' : '') + '</span></li>').join('') + '</ul>' : ''; }).join('') +
+    (gone ? '<p class="hint small">' + gone + ' won’t play outside YouTube: private, removed, or embedding turned off.</p>' : '') + '</details>';
+}
+function refreshMine(m) { // after a song is looked up: just this playlist's card in the list, so nothing being typed is lost
+  const li = document.querySelector('.picker li.mine[data-id="' + (window.CSS && CSS.escape ? CSS.escape(m.id) : m.id) + '"]');
+  if (li) { const open = !!li.querySelector('details[open]'); li.innerHTML = mineHTML(m, S.playlist && S.playlist.id); if (open) { const d = li.querySelector('details'); if (d) d.open = true; } }
+  else if (!picking && S.playlist && S.playlist.id === m.id) renderNow();
+}
+function plBarHTML() {
+  const c = curCard(), n = S.songs.length, m = mineOf(S.playlist.id), soon = m ? (m.missing || []).filter(x => x.kind === 'auto' || x.kind === 'timing' || x.kind === 'tagging').length : 0;
+  return '<button class="plbar" data-act="lists" aria-label="Playlist: ' + esc(S.playlist.name) + ', ' + n + ' songs. Switch playlist">' + fanHTML(c && c.thumbs, c && c.icon) +
+    '<span class="pli"><span class="kicker">Playlist</span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + n + ' song' + (n === 1 ? '' : 's') + (soon ? ' · ' + soon + ' on the way' : '') + '</span></span>' +
+    '<span class="plgo">' + ICON.list + 'Switch</span></button>';
 }
 /* The table: a long item list shows its first few (and any that are on), with "+N more" for the rest. */
 const CHIP_CAP = 8;
@@ -1253,15 +1328,14 @@ function renderPlay() {
     '<div class="bigrow' + (current ? '' : ' solo') + '"><button class="btn primary big' + (current ? '' : ' glow') + '" data-act="next">' + (current ? ICON.next + 'Next' : ICON.play + 'Start') + '</button>' +
     (current ? '<button class="btn big" data-act="pause" data-pausebtn data-l="Pause">' + ICON.pause + 'Pause</button>' : '') + '</div>' + reportHTML() +
     '<section class="card" id="table">' +
-    (fromDb && S.playlist ? '<div class="plbar"><span><span class="pn">' + esc(S.playlist.name) + '</span><span class="ps">' + S.songs.length + ' song' + (S.songs.length === 1 ? '' : 's') + '</span></span>' +
-      '<span class="plr">' + (nightCount() ? '<span class="streak" title="Drops tonight">🔥 ' + nightCount() + '</span>' : '') +
-      (CAT ? '<button class="btn small" data-act="lists">' + ICON.list + 'Change</button>' : '') + '</span></div>' : '') +
+    (fromDb && S.playlist && CAT ? plBarHTML() : '') +
     '<h2>On the table</h2><p class="hint">Tap what you’ve put out.</p>' +
     '<div class="chips">' + vis.map(chip).join('') +
     (moreItems && long ? '<button class="chip more" data-act="moreitems" aria-expanded="true">Fewer</button>'
       : hidden ? '<button class="chip more" data-act="moreitems" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div>' +
     '<p class="pool">' + (el.length ? '<span><b>' + el.length + '</b> song' + (el.length === 1 ? '' : 's') + ' · <b>' + left + '</b> drop' + (left === 1 ? '' : 's') + ' left</span>'
       : '<span>' + (fromDb ? 'No song here has those words. Turn on more items.' : 'No tagged song matches these items yet. Tag one in Songs.') + '</span>') +
+    (nightCount() ? '<span class="streak" title="Drops tonight">🔥 ' + nightCount() + '</span>' : '') +
     ((S.donePts || []).length ? '<button class="btn ghost small" data-act="reset">' + ICON.replay + 'Reset</button>' : '') + '</p></section>' +
     settingsHTML();
 }
@@ -1423,7 +1497,7 @@ document.addEventListener('click', async e => {
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
     case 'item': { const it = itemById(arg); if (it) { it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
       const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6); } break; }
-    case 'lists': picking = true; render(); window.scrollTo(0, 0); break;
+    case 'lists': picking = true; render(); filterPicker(); window.scrollTo(0, 0); break;
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': pickPlaylist(arg); break;
     case 'intro': openIntro(); break;
@@ -1436,14 +1510,13 @@ document.addEventListener('click', async e => {
     case 'reportopen': reporting = true; render(); break;
     case 'reportx': reporting = false; render(); break;
     case 'report': if (arg === 'other') { reporting = 'other'; render(); const n = $('#reportNote'); if (n) n.focus(); } else await sendReport(arg); break;
-    case 'ytask': { const m = mineOf(arg); if (m) { b.disabled = true; await askFor(m); } break; }
-    case 'ytshare': { const m = mineOf(arg); if (m) await shareMine(m); break; }
-    case 'ytread': { const m = mineOf(arg); if (m) await readYt(m.list); break; }
-    case 'ytdel': {
+    case 'plshare': { const m = mineOf(arg); if (m) await shareMine(m); break; }
+    case 'plread': { const m = mineOf(arg); if (m) await (m.src === 'sp' ? readSp(m.ref, m.name) : readYt(m.list, m.name)); break; }
+    case 'pldel': {
       const m = mineOf(arg); if (!m) break;
       S.mine = S.mine.filter(x => x !== m); if (S.tables) delete S.tables[m.id];
       if (S.playlist && S.playlist.id === m.id) { discardPre(); useList(pidFor(DB.playlist), true); }
-      save(); render(); toast(m.name + ' is off this phone. Paste its link again to bring it back.'); break;
+      saveMine(); save(); render(); toast(m.name + ' is off this phone. Paste its link or list again to bring it back.'); break;
     }
     case 'lead': {
       const st = S.settings;
@@ -1509,6 +1582,7 @@ document.addEventListener('click', async e => {
   }
 });
 
+document.addEventListener('input', e => { if (e.target && e.target.id === 'plFind') { plQuery = e.target.value; filterPicker(); } });
 document.addEventListener('change', e => {
   if (e.target.id === 'autoNext') { S.settings.autoNext = e.target.checked; save(); }
   if (e.target.id === 'preload') { S.settings.preload = e.target.checked; save(); if (e.target.checked) schedulePreload(300); else discardPre(); renderNow(); }
@@ -1521,12 +1595,7 @@ document.addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
   if (f.id === 'reportForm') { const note = (($('#reportNote') || {}).value || '').trim(); if (!note) { toast('Say what happened, then Send.'); return; } await sendReport('other', note); return; }
-  if (f.id === 'ytForm') {
-    const list = listIdOf(($('#ytLink') || {}).value);
-    if (!list) { toast('That isn’t a YouTube playlist link. On the playlist, tap Share, then Copy link.'); return; }
-    if (await readYt(list)) tally('ytlist', 'paste');
-    return;
-  }
+  if (f.id === 'mkForm') { await makeFrom((($('#mkIn') || {}).value || ''), ((($('#mkName') || {}).value || '').trim()).slice(0, 80)); return; }
   if (f.id === 'addForm') {
     const link = $('#addLink').value, vid = parseYT(link);
     if (!vid) { toast('That doesn’t look like a YouTube link. Copy it from the Share button on the video.'); return; }
@@ -1645,40 +1714,57 @@ async function loadDb() {
   else if (snapP || stamp) { const snap = await (snapP || getJson(SNAP, 15000)); if (goodCat(snap) && (snap.stamp === stamp || (!stamp && !CAT))) c = snap; }
   if (!c) c = await dbGet('rpc/catalog', null, 30000); // about 140 KB, so it gets longer than other calls
   if (goodCat(c) && (S.outbox || []).length) flushOutbox();
-  if (!goodCat(c)) { save(); render(); if (CAT && sharedYt) openShared(); return; }
-  if (c === CAT) { if (sharedYt) openShared(); return; }
+  if (!goodCat(c)) { save(); render(); if (CAT && sharedIn) openShared(); else mineCheck(); return; }
+  if (c === CAT) { if (sharedIn) openShared(); else mineCheck(); return; }
   const txt = JSON.stringify(c);
-  if (catSaved && txt === stored(CAT_KEY)) { if (sharedYt) openShared(); return; } // nothing changed since the last visit
+  if (catSaved && txt === stored(CAT_KEY)) { if (sharedIn) openShared(); else mineCheck(); return; } // nothing changed since the last visit
   delete S.bundles; delete S.cards; save(); // before v30 the phone kept a copy of each playlist it opened; the catalog replaces them
   CAT = c;
   try { localStorage.setItem(CAT_KEY, txt); catSaved = true; } catch (e) { catSaved = false; } // too big to store: this visit still has it
   buildCat();
-  (S.mine || []).forEach(rematch); // songs added to Jhapat since: a YouTube playlist picks them up
+  const joined = (S.mine || []).reduce((a, m) => a + rematch(m), 0); saveMine(); // songs added to Jhapat since join your playlists by themselves
+  if (joined && !sharedIn) setTimeout(() => toast(joined + ' song' + (joined === 1 ? '' : 's') + ' you were waiting for joined your playlists. 🎉'), 1200);
   const ids = new Set(CARDS.map(x => x.id).concat((S.mine || []).map(m => m.id))); // a playlist taken out of the studio leaves the phone too
   Object.keys(S.tables || {}).forEach(id => { if (!ids.has(id)) delete S.tables[id]; });
   useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id));
-  if (sharedYt) openShared();
+  if (sharedIn) openShared(); else mineCheck();
 }
 function pickPlaylist(pid) {
   const m = mineOf(pid), c = m ? cardOf(m.id, m.name, '', songsIn(m)) : lists().find(x => x.id === pid);
-  if (!c || !c.songs) { toast(m ? 'None of its songs are in Jhapat yet. Ask for them, then try again later.' : 'Couldn’t open that playlist. Reload the page and try again.'); return; }
+  if (!c || !c.songs) { toast(m ? 'None of its songs are ready yet. Jhapat asked the studio for them; they join this playlist by themselves.' : 'Couldn’t open that playlist. Reload the page and try again.'); return; }
   S.chosen = true; picking = false;
   if (S.source === 'db' && S.playlist && S.playlist.id === pid) { save(); render(); toast('Turn on the items you’ve put out, then press Start.'); return; }
   discardPre(); useList(pid);
   toast(c.name + ': turn on the items you’ve put out, then press Start.');
 }
 
-/* ---------- a playlist from a YouTube link ----------
-   YouTube's player reads a playlist's videos (the first 200, public or unlisted, no sign-in), and YouTube's oEmbed gives each
-   video's title. Videos Jhapat has an upload of match first; the rest match by name (the title, with the artist's name in the
-   title or channel, or a long title on its own) and play from Jhapat's timed upload. The playlist stays on this phone
-   (S.mine), new songs in Jhapat join it when the catalog changes, and a link (#yt=…) rebuilds it on any phone. */
-let ytBusy = null, ytSeq = 0, nameKeys = null;
-let sharedYt = (location.hash.match(/^#yt=([\w-]{10,64})$/) || [])[1] || null; // opened from a shared link
+/* ---------- your own playlists (v40) ----------
+   One box takes a YouTube playlist link, a Spotify playlist or album link, or a list of songs (one per line, "Title - Artist").
+   YouTube's player reads a YouTube playlist (its first 200 videos, no key) and oEmbed gives the titles; the database reads a Spotify
+   one (spotify_list: its public embed page, the first 100 tracks). Every song Jhapat already has joins the playlist once and plays
+   from Jhapat's own timed upload, whichever version their copy was: matched by upload, then by name as it sounds (with the artist).
+   The rest is looked up on LRCLIB from the phone, one song every 1.4 s, and sorted: timed Nepali lyrics found (the studio can add it
+   automatically), lyrics not timed or none (it needs timing or tagging by hand), or not Nepali (not supported yet). The studio hears
+   about every song it could add (wish_songs), once per song per phone, and those songs join the playlist by themselves once the
+   catalog has them. Playlists stay on the phone (jhapat.mine, at most 12) and travel as links: #yt= and #sp= read the source again,
+   #list= opens a typed list kept by save_list. */
+let mkBusy = null, ytSeq = 0, nameKeys = null, sharedBusy = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sharedOf = h => { const x = String(h || '').match(/^#(yt|sp|list)=([\w:-]{6,80})$/); return x ? { kind: x[1], id: x[2] } : null; };
+let sharedIn = sharedOf(location.hash); // opened from a shared link
 const listIdOf = input => { const s = String(input || '').trim();
   if (/^(PL|OLAK5uy_|RD|UU)[\w-]{10,62}$/.test(s)) return s; // a bare playlist ID
   try { const u = new URL(/^\w+:\/\//.test(s) ? s : 'https://' + s), l = u.searchParams.get('list');
     return /(^|\.)(youtube\.com|youtu\.be)$/.test(u.hostname) && l && /^[\w-]{10,64}$/.test(l) ? l : null; } catch (e) { return null; } };
+const spIdOf = input => { const s = String(input || '').trim(); // "playlist:<id>" or "album:<id>"
+  const x = s.match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(?:embed\/)?(playlist|album)\/([A-Za-z0-9]{22})/) || s.match(/^spotify:(playlist|album):([A-Za-z0-9]{22})$/);
+  return x ? x[1] + ':' + x[2] : null; };
+function parseSongLines(text) { // "Title - Artist" (or "Title by Artist", or just the title), one a line; numbers, bullets and lengths are dropped
+  return String(text || '').split(/\r?\n/).map(l => l.replace(/^\s*(?:\d+\s*[.)]|[-*•·])\s*/, '').replace(/\s*[|·(]?\s*\d{1,2}:\d{2}\s*\)?\s*$/, '').trim())
+    .filter(l => l && !/https?:\/\/|www\./i.test(l) && l.length <= 200).slice(0, 300) // a line with a link in it isn't a song
+    .map(l => { const x = l.split(/\s+[-–—|]\s+|\s+by\s+/i); return x.length >= 2 ? { t: x[0].trim(), a: x.slice(1).join(', ').trim() } : { t: l, a: '' }; })
+    .filter(r => r.t);
+}
 const ytApi = () => new Promise(res => { const t0 = Date.now(), iv = setInterval(() => { // the IFrame API, which the page loads at the start
   if (window.YT && window.YT.Player) { clearInterval(iv); res(true); } else if (Date.now() - t0 > 10000) { clearInterval(iv); res(false); } }, 100); });
 async function readList(list) { // the playlist's video IDs (at most 200), or null if YouTube won't show it
@@ -1723,59 +1809,202 @@ function matchName(title, channel) { // the Jhapat song a YouTube video is, by n
   }
   return best && best.s;
 }
+function matchTA(t, a) { // the Jhapat song a title and artist name (from Spotify or a typed list) are, or null; "Artist - Title" works too
+  if (!nameKeys) matchName('', '');
+  const T = sound(String(t || '').replace(/\(.*?\)|\[.*?\]/g, ' ')), A = sound(a), Aflat = A.replace(/ /g, '');
+  const byArtist = (k, who, flat) => k.names.some(n => hasWords(who, n) || (flat && flat.includes(n.replace(/ /g, ''))));
+  const pick = (title, who, flat) => { if (!title) return null; const hits = nameKeys.filter(k => k.tk === title);
+    if (!hits.length) return null;
+    if (who) { const h = hits.find(k => byArtist(k, who, flat)); return h ? h.s : null; }
+    return hits.length === 1 && title.replace(/ /g, '').length >= 6 ? hits[0].s : null; }; // a title on its own only when no other song has it
+  return pick(T, A, Aflat) || (A ? pick(A, T, T.replace(/ /g, '')) : null) || (A ? matchName(t + ' - ' + a, a) : null);
+}
 const uploadIndex = () => { const m = new Map(); songMap.forEach(s => s.videos.forEach(y => m.set(y, s.id))); return m; };
-async function readYt(list) {
-  if (ytBusy || !CAT) return null;
-  ytBusy = { list, text: 'Reading the playlist…' }; render();
-  const say = t => { if (ytBusy) ytBusy.text = t; const el = $('#ytBusy'); if (el) el.textContent = t; };
-  const [read, info] = await Promise.all([readList(list), oembed('https://www.youtube.com/playlist?list=' + list)]);
-  if (!read) { ytBusy = null; render(); toast('Couldn’t read that playlist. Check the link, and that the playlist is public or unlisted.'); return null; }
-  const ids = [...new Set(read)];
-  const up = uploadIndex(), got = ids.map(v => up.get(v) || null), n = { upload: got.filter(Boolean).length, name: 0, gone: 0 }, missing = [];
-  const todo = ids.map((v, i) => i).filter(i => !got[i]); let k = 0, seen = 0;
-  const worker = async () => { while (k < todo.length) { const i = todo[k++], o = await oembed('https://www.youtube.com/watch?v=' + ids[i]);
-    say('Reading titles… ' + (++seen) + ' of ' + todo.length);
-    if (!o || !o.title) { n.gone++; continue; }
-    const s = matchName(o.title, o.author_name);
-    if (s) { got[i] = s.id; n.name++; } else missing.push({ i, yt: ids[i], title: String(o.title).slice(0, 200), channel: String(o.author_name || '').slice(0, 100) }); } };
-  await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(worker));
-  missing.sort((a, b) => a.i - b.i);
-  const m = { id: 'yt-' + list, list, name: String((info && info.title) || 'YouTube playlist').slice(0, 120), at: Date.now(), total: ids.length,
-    songs: [...new Set(got.filter(Boolean))], n, missing: missing.map(({ yt, title, channel }) => ({ yt, title, channel })) };
-  S.mine = [m].concat((S.mine || []).filter(x => x.id !== m.id)).slice(0, 12);
-  ytBusy = null; save();
+function ytGuess(title, channel) { // a video's song and artist from its title and channel: "Sasto Mutu - Sajjan Raj Vaidya (Official Video)"
+  const ch = String(channel || '').replace(/\s*-\s*Topic$/i, '').trim();
+  const clean = String(title || '').replace(/\(.*?\)|\[.*?\]|【.*?】|「.*?」|『.*?』/g, ' ').replace(/\b(official|music|video|lyrics?|lyrical|audio|full song|mv|hd|4k|new nepali songs?|nepali songs?)\b/gi, ' ');
+  const parts = clean.split(/\s[-–—|•]\s|\|/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const own = parts.findIndex(x => sound(x) === sound(ch)); if (own > -1 && parts.length > 1) parts.splice(own, 1);
+  return { t: (parts[0] || String(title || '')).slice(0, 200), a: (parts.length > 1 ? parts[1] : ch).slice(0, 200) };
+}
+function matchEntry(x, up) { // [Jhapat song id, 'upload' or 'name'], or null
+  if (x.yt && up.has(x.yt)) return [up.get(x.yt), 'upload'];
+  const hit = x.title != null ? matchName(x.title, x.channel) : matchTA(x.t, x.a);
+  return hit ? [hit.id, 'name'] : null;
+}
+const entryKey = x => sound(x.t || x.title) + '|' + sound(x.a || x.channel);
+function makeMine(o) { // o: { id, src, list?, ref?, key?, rows?, name, total, entries, gone }
+  const up = uploadIndex(), songs = [], seen = new Set(), n = { upload: 0, name: 0, gone: o.gone || 0 }, missing = [], mkeys = new Set();
+  const old = mineOf(o.id), was = new Map(((old && old.missing) || []).map(x => [entryKey(x), x]));
+  o.entries.forEach(x => {
+    const hit = matchEntry(x, up);
+    if (hit) { if (!seen.has(hit[0])) { seen.add(hit[0]); songs.push(hit[0]); n[hit[1]]++; } return; }
+    const k = entryKey(x); if (mkeys.has(k)) return; mkeys.add(k); // the same song twice (two uploads of it) waits once
+    const prev = was.get(k); missing.push(prev && prev.kind ? Object.assign({}, x, { kind: prev.kind, why: prev.why, lrc: prev.lrc, len: prev.len }) : x); // looked up already
+  });
+  const m = { id: o.id, src: o.src, list: o.list, ref: o.ref, key: o.key || (old && old.key), rows: o.rows, name: o.name, at: Date.now(), total: o.total, songs, n, missing };
+  S.mine = [m].concat((S.mine || []).filter(x => x.id !== m.id)).slice(0, 12); saveMine();
   if (S.playlist && S.playlist.id === m.id) useList(m.id); else render();
+  classifyMine(m); // in the background: the playlist plays meanwhile
+  return m;
+}
+const busySay = t => { if (mkBusy) mkBusy.text = t; const el = $('#mkBusy'); if (el) el.textContent = t; };
+async function readYt(list, name) {
+  if (mkBusy || !CAT) return null;
+  mkBusy = { text: 'Reading the playlist…' }; render();
+  const [read, info] = await Promise.all([readList(list), oembed('https://www.youtube.com/playlist?list=' + list)]);
+  if (!read) { mkBusy = null; render(); toast('Couldn’t read that playlist. Check the link, and that the playlist is public or unlisted.'); return null; }
+  const ids = [...new Set(read)], up = uploadIndex(), todo = ids.filter(v => !up.has(v)), titles = new Map();
+  let k = 0, seen = 0;
+  const worker = async () => { while (k < todo.length) { const v = todo[k++], o = await oembed('https://www.youtube.com/watch?v=' + v); busySay('Reading titles… ' + (++seen) + ' of ' + todo.length); if (o && o.title) titles.set(v, o); } };
+  await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(worker));
+  const entries = [];
+  ids.forEach(v => { if (up.has(v)) entries.push({ yt: v }); else { const o = titles.get(v); if (o) { const g = ytGuess(o.title, o.author_name);
+    entries.push({ yt: v, title: String(o.title).slice(0, 200), channel: String(o.author_name || '').slice(0, 100), t: g.t, a: g.a }); } } });
+  mkBusy = null;
+  const m = makeMine({ id: 'yt-' + list, src: 'yt', list, name: name || String((info && info.title) || 'YouTube playlist').slice(0, 120), total: ids.length, entries, gone: todo.length - titles.size });
   toast(m.name + ': ' + mineSummary(m) + (read.length >= 200 ? '. YouTube shows Jhapat its first 200 videos.' : '.'));
   return m;
 }
-function rematch(m) { // the catalog changed: videos asked for may be in Jhapat now
-  const up = uploadIndex(), still = [];
-  m.missing.forEach(x => { const id = up.get(x.yt) || ((matchName(x.title, x.channel) || {}).id);
-    if (id) { if (!m.songs.includes(id)) m.songs.push(id); m.n[up.get(x.yt) ? 'upload' : 'name']++; } else still.push(x); });
-  m.missing = still;
+async function readSp(ref, name) {
+  if (mkBusy || !CAT) return null;
+  const [kind, sid] = String(ref).split(':');
+  mkBusy = { text: 'Reading the Spotify ' + kind + '…' }; render();
+  const r = await dbCall('rpc/spotify_list', { sid, kind }, 20000), d = r.ok ? r.data : null, tracks = d && Array.isArray(d.tracks) ? d.tracks : null;
+  mkBusy = null;
+  if (!tracks || !tracks.length) { render(); toast(r.offline ? 'Couldn’t reach Jhapat. Check the connection and try again.' : 'Couldn’t read that Spotify link. Public playlists and albums work.'); return null; }
+  const entries = tracks.slice(0, 300).map(x => ({ t: String(x.t || '').slice(0, 200), a: String(x.a || '').slice(0, 200) })).filter(x => x.t);
+  const m = makeMine({ id: 'sp-' + sid, src: 'sp', ref: kind + ':' + sid, name: name || String(d.name || 'Spotify playlist').slice(0, 120), total: tracks.length, entries });
+  toast(m.name + ': ' + mineSummary(m) + (tracks.length >= 100 ? '. Spotify shows its first 100 songs.' : '.'));
+  return m;
 }
-async function askFor(m) {
-  const asked = new Set(S.asked || []), vids = m.missing.filter(x => !asked.has(x.yt)).slice(0, 200);
-  if (!vids.length) return;
-  const r = await dbGet('rpc/request_songs', { vids });
-  if (r == null) { render(); toast('Couldn’t send that. Try again when the phone is online.'); return; }
-  S.asked = [...asked].concat(vids.map(x => x.yt)).slice(-3000); save(); render();
-  toast('Asked for ' + vids.length + ' song' + (vids.length === 1 ? '' : 's') + '. Once they’re in Jhapat they join this playlist by themselves.');
+const hashStr = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+function readText(rows, name, key) {
+  if (mkBusy || !CAT) return null;
+  const m = makeMine({ id: 'tx-' + (key || hashStr(rows.map(r => r.t + '|' + r.a).join('\n'))), src: 'text', key, rows, name: name || 'My list', total: rows.length, entries: rows.map(r => ({ t: r.t, a: r.a })) });
+  toast(m.name + ': ' + mineSummary(m) + '.');
+  return m;
+}
+async function makeFrom(raw, name) { // the Make box: a YouTube or Spotify link, or songs one a line
+  const s = String(raw || '').trim(), one = !/\n/.test(s), yt = one && listIdOf(s), sp = !yt && one && spIdOf(s);
+  let m = null;
+  if (yt) m = await readYt(yt, name);
+  else if (sp) m = await readSp(sp, name);
+  else { const rows = parseSongLines(s);
+    if (!rows.length || (one && /^\w+:\/\//.test(s))) { toast('Paste a YouTube or Spotify playlist link, or songs one per line (Title - Artist).'); return null; }
+    m = readText(rows, name); }
+  if (m) tally('list', m.src);
+  return m;
+}
+function rematch(m) { // the catalog changed: songs this playlist waits for may be in Jhapat now; returns how many joined
+  const up = uploadIndex(), still = [], seen = new Set(m.songs); let joined = 0;
+  (m.missing || []).forEach(x => { const hit = matchEntry(x, up);
+    if (hit) { if (!seen.has(hit[0])) { seen.add(hit[0]); m.songs.push(hit[0]); joined++; } m.n[hit[1]] = (m.n[hit[1]] || 0) + 1; } else still.push(x); });
+  m.missing = still;
+  return joined;
+}
+/* LRCLIB from the phone, one request at a time and 1.4 s apart (it allows about 45 a minute from one address). */
+const lrcGap = () => (typeof window.__lrcGap === 'number' ? window.__lrcGap : 1400);
+let lrcChain = Promise.resolve(), lrcNext = 0;
+function lrcGet(path) { // its answer, [] when there's nothing, or null when it couldn't be asked
+  const run = async () => {
+    const wait = lrcNext - Date.now(); if (wait > 0) await sleep(wait); lrcNext = Date.now() + lrcGap();
+    try { const r = await fetch('https://lrclib.net' + path); if (r.status === 429) { lrcNext = Date.now() + 15000; return null; } if (r.status === 404) return []; return r.ok ? await r.json() : null; }
+    catch (e) { return null; } };
+  const p = lrcChain.then(run, run); lrcChain = p.catch(() => {}); return p;
+}
+/* Nepali or not, from the words of the lyrics: words only Nepali uses against words only Hindi uses, and common English ones. */
+const NE_W = new Set('छ छु छन् छौ छैन छैनौ मेरो तिम्रो तिमी तिमीले तिमीलाई मलाई हामी हाम्रो मैले गर्छु गर्छौ भन्छ भन्छौ भयो गयो हुन्छ हुँदैन होइन पनि अनि कति किन कहाँ हजुर मायालु बिर्सें timi timro timilai malai mero hami hamro maile chha chhu chhan chhau chaina cha chu huncha hunchha bhayo gayo kina kaha kati pani ani hajur mayalu birse garchu bhanchha'.split(' '));
+const HI_W = new Set('है हैं मैं मेरा मेरी तेरा तेरी तुम हम क्या नहीं हूँ हूं मुझे तुझे जाना यह वह hai hain main mera meri tera teri tum hum kya nahi nahin hoon mujhe tujhe yeh woh jaana'.split(' '));
+const EN_W = new Set('the you and your love baby my me is are i\'m don\'t we it in on of to be so oh yeah'.split(' '));
+function langOf(text) {
+  let ne = 0, hi = 0, en = 0, words = 0;
+  String(text || '').toLowerCase().replace(/\[[\d:.]+\]/g, ' ').split(/[^\p{L}\p{M}']+/u).forEach(w => { if (!w) return; words++; if (NE_W.has(w)) ne++; else if (HI_W.has(w)) hi++; else if (EN_W.has(w)) en++; });
+  if (ne >= 2 && ne >= hi) return 'ne';
+  if (hi >= 2 && hi > ne) return 'hi';
+  if (en >= 6 && en > 3 * (ne + hi)) return 'en';
+  if (ne) return 'ne'; if (hi) return 'hi';
+  return /[ऀ-ॿ]/.test(text) ? 'ne' : words > 30 ? 'other' : 'unknown';
+}
+function pickBest(list, t, a) { // LRCLIB's version of this song: its title and artist, timed lyrics first
+  const T = sound(t), A = sound(a);
+  const fit = (Array.isArray(list) ? list : []).filter(r => { const rt = sound(r.trackName), ra = sound(r.artistName);
+    const tOk = !!rt && (rt === T || hasWords(rt, T) || hasWords(T, rt));
+    const aOk = !A || ra.split(' ').some(w => w.length >= 3 && hasWords(A, w)) || A.split(' ').some(w => w.length >= 3 && hasWords(ra, w));
+    return tOk && aOk && !r.instrumental; });
+  return fit.find(r => r.syncedLyrics) || fit[0] || null;
+}
+async function classify(x) { // looks one song up on LRCLIB; false when LRCLIB couldn't be asked (try again next visit)
+  const t = x.t || x.title || '', a = x.a != null ? x.a : (x.channel || ''), fromYt = x.title != null;
+  const a1 = String(a).split(/\s*[,&]\s*|\s+(?:feat\.?|ft\.?|x)\s+/i)[0]; // LRCLIB knows a song by its first artist
+  const q = !fromYt && a1 ? 'track_name=' + encodeURIComponent(t) + '&artist_name=' + encodeURIComponent(a1) : 'q=' + encodeURIComponent((t + ' ' + a).trim());
+  let list = await lrcGet('/api/search?' + q);
+  if (list == null) return false;
+  let best = pickBest(list, t, a);
+  if (!best && !fromYt && a) { list = await lrcGet('/api/search?q=' + encodeURIComponent(t + ' ' + a)); if (list == null) return false; best = pickBest(list, t, a); }
+  if (!best) { x.kind = 'tagging'; x.why = 'No lyrics online yet'; return true; }
+  const lang = langOf((best.syncedLyrics || best.plainLyrics || '') + ' ' + best.trackName);
+  if (lang === 'hi' || lang === 'en' || lang === 'other') { x.kind = 'foreign'; x.why = { hi: 'A Hindi song', en: 'An English song', other: 'Not a Nepali song' }[lang]; return true; }
+  if (best.syncedLyrics) Object.assign(x, { kind: 'auto', why: 'Timed lyrics found', lrc: best.id, len: best.duration });
+  else if (best.plainLyrics) Object.assign(x, { kind: 'timing', why: 'Lyrics found, not timed', lrc: best.id });
+  else Object.assign(x, { kind: 'tagging', why: 'No lyrics online yet' });
+  return true;
+}
+const checking = new Set();
+async function classifyMine(m) { // looks up this playlist's songs that aren't in Jhapat, then asks the studio for the ones it can add
+  if (!m || checking.has(m.id)) return; checking.add(m.id);
+  try {
+    for (const x of (m.missing || []).slice()) {
+      if (x.kind) continue;
+      const cur = mineOf(m.id); if (cur !== m || !m.missing.includes(x)) return; // rebuilt or removed meanwhile
+      if (!(await classify(x))) break;
+      saveMine(); refreshMine(m);
+    }
+    if (mineOf(m.id) === m) await askFor(m);
+  } finally { checking.delete(m.id); }
+}
+function mineCheck() { (S.mine || []).forEach((m, i) => { if ((m.missing || []).some(x => !x.kind || !isAsked(x))) setTimeout(() => classifyMine(m), 2000 + i * 500); }); } // each visit finishes what the last one couldn't
+const wishKey = x => x.lrc ? 'lrc:' + x.lrc : x.yt ? 'yt:' + x.yt : 'q:' + entryKey(x);
+const isAsked = x => { const a = S.asked || []; return a.includes(wishKey(x)) || (!!x.yt && a.includes(x.yt)); }; // v31–v39 kept bare video IDs
+async function askFor(m) { // the studio hears which songs this playlist waits for: the ones it can add, or tag by hand
+  const want = (m.missing || []).filter(x => (x.kind === 'auto' || x.kind === 'timing' || x.kind === 'tagging') && !isAsked(x)).slice(0, 200);
+  if (!want.length) return 0;
+  const w = want.map(x => ({ t: x.t || x.title, a: x.a || x.channel || '', kind: x.kind, lrc: x.lrc || null, len: x.len || null, yt: x.yt || null, src: m.src || 'yt' }));
+  const r = await dbCall('rpc/wish_songs', { w });
+  if (!r.ok) return 0; // the next visit tries again
+  S.asked = (S.asked || []).concat(want.map(wishKey)).slice(-3000); save(); refreshMine(m);
+  return want.length;
 }
 async function shareMine(m) {
-  const url = (onSite ? location.origin + location.pathname.replace(/index\.html$/, '') : WEB_LINK) + '#yt=' + m.list; // whatever domain this page is on
-  try { if (navigator.share) { await navigator.share({ title: m.name + ' · Jhapat', url }); tally('share', 'yt'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); tally('share', 'yt'); toast('Link copied. It opens this playlist in Jhapat on any phone, read fresh from YouTube.'); }
+  let frag = m.src === 'sp' ? '#sp=' + m.ref : '#yt=' + m.list;
+  if (m.src === 'text') {
+    if (!m.key) { const r = await dbCall('rpc/save_list', { l: { name: m.name, items: (m.rows || []).slice(0, 300) } });
+      if (!r.ok || typeof r.data !== 'string') { toast('Couldn’t make a link for this list. Try again when the phone is online.'); return; }
+      m.key = r.data; saveMine(); }
+    frag = '#list=' + m.key;
+  }
+  const url = (onSite ? location.origin + location.pathname.replace(/index\.html$/, '') : WEB_LINK) + frag; // whatever domain this page is on
+  const how = m.src === 'text' ? 'It opens this list in Jhapat on any phone.' : 'It opens this playlist in Jhapat on any phone, read fresh from ' + (m.src === 'sp' ? 'Spotify.' : 'YouTube.');
+  try { if (navigator.share) { await navigator.share({ title: m.name + ' · Jhapat', url }); tally('share', m.src || 'yt'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); tally('share', m.src || 'yt'); toast('Link copied. ' + how); }
   catch (e) { toast('Copy this link: ' + url); }
 }
-async function openShared() {
-  const list = sharedYt; sharedYt = null;
+async function openShared() { // a link to a playlist: read it, then play it
+  const x = sharedIn; sharedIn = null; if (!x) return;
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-  picking = true; // the list shows while YouTube is read
-  const m = await readYt(list);
-  if (m) tally('ytlist', 'link');
+  picking = true; sharedBusy = true; render();
+  let m = null;
+  if (x.kind === 'yt' && /^[\w-]{10,64}$/.test(x.id)) m = await readYt(x.id);
+  else if (x.kind === 'sp' && /^(playlist|album):[A-Za-z0-9]{22}$/.test(x.id)) m = await readSp(x.id);
+  else if (x.kind === 'list') {
+    const r = await dbCall('rpc/get_list', { lid: x.id }), d = r.ok ? r.data : null;
+    if (d && Array.isArray(d.items) && d.items.length) m = readText(d.items.map(i => ({ t: String(i.t || ''), a: String(i.a || '') })).filter(i => i.t), String(d.name || 'Shared list'), x.id);
+    else toast(r.offline ? 'Couldn’t reach Jhapat to open that list. Check the connection.' : 'That list link didn’t open. It may be mistyped.');
+  }
+  sharedBusy = false;
+  if (m) tally('list', 'link-' + m.src);
   if (m && songsIn(m).length) { discardPre(); S.chosen = true; picking = false; useList(m.id); }
-  else if (m) { picking = true; render(); }
+  else { picking = true; render(); }
 }
 /* Share (v39): the footer and the intro open a sheet with a QR code friends scan, the phone's own share sheet, and Copy. Shared
    links and the QR code carry ?ref=, which a phone's first visit counts and then takes off the address. */
@@ -1850,7 +2079,7 @@ function closeIntro() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeIntro(); closeShare(); } });
 document.addEventListener('click', e => { const id = e.target && e.target.id; if (id === 'intro') closeIntro(); else if (id === 'sharebox') closeShare(); }); // a tap outside the card
 
-window.addEventListener('hashchange', () => { const l = (location.hash.match(/^#yt=([\w-]{10,64})$/) || [])[1]; if (l && CAT) { sharedYt = l; openShared(); } });
+window.addEventListener('hashchange', () => { const x = sharedOf(location.hash); if (x && CAT) { sharedIn = x; openShared(); } });
 
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
 applySmall(); applyBlind();

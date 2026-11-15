@@ -52,6 +52,9 @@ nav.tabs .navn{display:inline-block;margin-left:6px;min-width:18px;padding:3px 6
 .res.req{grid-template-columns:auto 64px minmax(0,1fr) auto;align-items:center}
 .res.req input[type=checkbox]{width:20px;height:20px;accent-color:var(--gold-fill)}
 .res.req .info{min-width:0;overflow-wrap:anywhere}
+.wishes{margin-bottom:18px}
+.wishk{margin:8px 0 4px;font-size:16px}
+.reqsub{margin:6px 0 4px}
 .reqbar{margin-bottom:8px}
 .res.rep{grid-template-columns:64px minmax(0,1fr) auto;align-items:center}
 .res.rep .info{min-width:0;overflow-wrap:anywhere}
@@ -379,7 +382,7 @@ function fail(what, error) { console.warn(what, error); toast(what + ': ' + ((er
 
 /* ---------- state ---------- */
 let user = null, editor = null;                 // editor: null = not checked yet
-let items = [], songs = [], playlists = [], requests = [], reports = [];
+let items = [], songs = [], playlists = [], requests = [], reports = [], wishes = [];
 let route = { view: 'songs', id: null };
 let filter = '';
 let cur = null;                                 // the open song: { s, videos, tags, lines, groups, lit, byLine, typical }
@@ -389,7 +392,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 39; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 40; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -481,17 +484,19 @@ async function allRows(query, size = 1000) { // Supabase answers at most 1,000 r
   }
 }
 async function loadAll() {
-  const [a, b, c, q, rp] = await Promise.all([
+  const [a, b, c, q, rp, wq] = await Promise.all([
     sb.from('items').select('*').order('sort'),
     allRows(() => sb.from('songs').select('id,title,artist,status,lrclib_id,duration,notes,created_at,updated_at,tagged_at,checked_at,line0:lines->0,videos(id,yt,offset_s,synced,embeddable,rank),tags(item_id,t,rep)').order('title').order('id')), // line0: has lyrics, without fetching them all
     sb.from('playlists').select('id,name,description,sort,is_public,owner,playlist_songs(song_id,position)').order('sort'),
     sb.from('requests').select('*').order('asks', { ascending: false }),
     sb.from('reports').select('*').order('created_at', { ascending: false }).limit(1000),
+    sb.from('wishes').select('*').order('asks', { ascending: false }).limit(3000),
   ]);
   if (a.error || b.error || c.error) return fail('Couldn’t load the studio', a.error || b.error || c.error);
   items = a.data; spell = null; playlists = c.data;
   requests = q && !q.error && Array.isArray(q.data) ? q.data : []; // these lists stay empty if they can't load; songs still work
   reports = rp && !rp.error && Array.isArray(rp.data) ? rp.data : [];
+  wishes = wq && !wq.error && Array.isArray(wq.data) ? wq.data : [];
   songs = b.data.map(s => { const r = rowOf({ ...s, hasLines: s.line0 != null }); delete r.line0; return r; });
 }
 async function openSong(id) {
@@ -1348,6 +1353,20 @@ document.addEventListener('click', async e => {
       pendingReport = r; if (location.hash === '#song:' + encodeURIComponent(r.song_id) && cur && cur.s.id === r.song_id) { pendingReport = null; reportCheck(r); } else location.hash = '#song:' + encodeURIComponent(r.song_id); break; }
     case 'reqskip': await reqDone(arg, 'skipped'); break;
     case 'reqopen': await reqDone(arg, null); break;
+    case 'wishcopy': {
+      const lines = openWishes().filter(w => w.kind === 'auto').map(wishLine);
+      const text = 'Songs Jhapat users are waiting for, with timed lyrics on LRCLIB. For each, find the same-length Topic upload (or official audio) and add them with Studio › Add many:\n' + lines.join('\n');
+      try { await navigator.clipboard.writeText(text); toast('Copied ' + plural(lines.length, 'line') + ' for Claude.'); } catch (err) { toast('Copying was blocked by the browser.'); }
+      break;
+    }
+    case 'wishadd': {
+      if (imp.busy) { toast('Add many is still working. Try again when it’s done.'); break; }
+      const lines = openWishes().filter(w => w.kind === 'auto' && w.yt).map(wishLine);
+      imp.text = (imp.text.trim() ? imp.text.trim() + '\n' : '') + lines.join('\n'); imp.rows = null;
+      location.hash = '#import'; toast('Check each title and artist, then press Find.'); break;
+    }
+    case 'wishdone': await wishDone(arg, 'added'); break;
+    case 'wishskip': await wishDone(arg, 'skipped'); break;
     case 'reqadd': {
       if (imp.busy) { toast('Add many is still working. Try again when it’s done.'); break; }
       const lines = requests.filter(r => reqPick.has(r.yt)).map(reqLine);
@@ -1545,7 +1564,7 @@ const ytIn = () => new Set(songs.flatMap(s => (s.videos || []).map(v => v.yt)));
 const reqState = (r, yts) => (r.done === 'skipped' ? 'skipped' : r.done === 'added' || yts.has(r.yt) ? 'added' : 'open');
 function navCounts() {
   const el = $('#navReq'), er = $('#navRep'); if (!el || !er) return;
-  const yts = ytIn(), n = requests.filter(r => reqState(r, yts) === 'open').length, m = reports.filter(r => !r.fixed_at).length;
+  const yts = ytIn(), lrcs = lrcIn(), n = requests.filter(r => reqState(r, yts) === 'open').length + wishes.filter(w => wishState(w, yts, lrcs) === 'open').length, m = reports.filter(r => !r.fixed_at).length;
   el.textContent = n; el.hidden = !n; er.textContent = m; er.hidden = !m;
 }
 function reqLine(r) { // an Add many line from the video's title and channel: "Title - Artist | link"; the channel's own name is dropped from the title
@@ -1561,13 +1580,49 @@ function requestsHTML() {
   const list = requests.filter(r => reqState(r, yts) === reqShow).sort((a, b) => b.asks - a.asks || String(b.last_at || '').localeCompare(String(a.last_at || '')));
   const picked = list.filter(r => reqPick.has(r.yt)).length;
   const seg = (k, label) => '<button class="seg" data-act="reqshow" data-arg="' + k + '" aria-pressed="' + (reqShow === k) + '">' + label + ' <span class="n">' + n[k] + '</span></button>';
-  return '<div class="pagehead"><h1>Requests<span class="count">' + n.open + '</span></h1></div>' +
-    '<p class="muted small">Songs people asked for from their YouTube playlists, most asked first. Pick some and Add many looks for their timed lyrics; each one added leaves this list.</p>' +
+  const lrcs = lrcIn(), wopen = wishes.filter(w => wishState(w, yts, lrcs) === 'open').length;
+  return '<div class="pagehead"><h1>Requests<span class="count">' + (n.open + wopen) + '</span></h1></div>' + wishesHTML() +
+    '<h2 class="reqsub">Videos asked for from YouTube playlists before v40</h2>' +
+    '<p class="muted small">Most asked first. Pick some and Add many looks for their timed lyrics; each one added leaves this list.</p>' +
     '<div class="segs" role="group" aria-label="Show">' + seg('open', 'Open') + seg('added', 'In Jhapat') + seg('skipped', 'Skipped') + '</div>' +
     (list.length ? (reqShow === 'open' ? '<div class="row reqbar"><label class="row small"><input type="checkbox" id="reqAll"' + (picked === list.length ? ' checked' : '') + '> Pick all ' + list.length + '</label>' +
       '<span class="grow"></span><button class="btn primary" data-act="reqadd"' + (picked ? '' : ' disabled') + '>Add ' + (picked ? picked + ' ' : '') + 'to Add many</button></div>' : '') +
       '<div class="results">' + list.map(r => reqRowHTML(r, reqShow)).join('') + '</div>'
       : '<div class="empty"><p class="muted">' + (reqShow === 'open' ? 'No open requests. Songs people ask for from their YouTube playlists show up here.' : 'None yet.') + '</p></div>');
+}
+/* ---------- songs people's playlists are waiting for (v40) ----------
+   The player looks each song up on LRCLIB and asks once per song per phone (wish_songs): auto (timed Nepali lyrics found: Add many
+   takes it once it has an upload), timing (lyrics not timed: Time the lines) or tagging (no lyrics: tap along). One closes by itself
+   once a song with its LRCLIB version or its upload is in the studio. Copy for Claude copies the auto ones as Add many lines without
+   uploads, for a Claude session to find their same-length Topic uploads; ones from YouTube playlists already have theirs. */
+const lrcIn = () => new Set(songs.map(s => Number(s.lrclib_id)).filter(Boolean));
+const wishState = (w, yts, lrcs) => (w.done === 'skipped' ? 'skipped' : w.done === 'added' || (w.lrclib_id && lrcs.has(Number(w.lrclib_id))) || (w.yt && yts.has(w.yt)) ? 'added' : 'open');
+const WISH_KIND = { auto: 'Can add: timed lyrics', timing: 'Needs timing by hand', tagging: 'Needs tagging by hand' }, WISH_SRC = { yt: 'from YouTube', sp: 'from Spotify', text: 'from a typed list' };
+const wishLine = w => String(w.title || '').replace(/\s+[-–—]\s+/g, ' ') + (w.artist ? ' - ' + w.artist : '') + (w.yt ? ' | https://youtu.be/' + w.yt : '') + (w.lrclib_id ? ' | lrclib:' + w.lrclib_id : '') + (w.len ? ' | ' + fmtLen(w.len) : '');
+const openWishes = () => { const yts = ytIn(), lrcs = lrcIn(); return wishes.filter(w => wishState(w, yts, lrcs) === 'open').sort((a, b) => b.asks - a.asks || String(b.last_at || '').localeCompare(String(a.last_at || ''))); };
+function wishesHTML() {
+  if (!wishes.length) return '';
+  const open = openWishes(), auto = open.filter(w => w.kind === 'auto'), ready = open.filter(w => w.kind === 'auto' && w.yt);
+  const by = k => open.filter(w => (w.kind || '') === k);
+  return '<div class="card wishes"><div class="row"><h2 class="grow">Waiting in people’s playlists<span class="count">' + open.length + '</span></h2>' +
+    (auto.length ? '<button class="btn small" data-act="wishcopy">Copy ' + auto.length + ' for Claude</button>' : '') +
+    (ready.length ? '<button class="btn small primary" data-act="wishadd">Add ' + ready.length + ' with uploads to Add many</button>' : '') + '</div>' +
+    '<p class="muted small">Songs from YouTube and Spotify playlists and typed lists that Jhapat doesn’t have, looked up on LRCLIB by the phone that made the playlist; most asked first. Each closes by itself once the song is in the studio.</p>' +
+    (open.length ? ['auto', 'timing', 'tagging', ''].map(k => { const xs = by(k); return xs.length ? '<h3 class="wishk">' + esc(WISH_KIND[k] || 'Not looked up') + ' <span class="muted">' + xs.length + '</span></h3><div class="results">' + xs.slice(0, 200).map(wishRowHTML).join('') + '</div>' : ''; }).join('')
+      : '<p class="muted small">Nothing waiting.</p>') + '</div>';
+}
+function wishRowHTML(w) {
+  return '<div class="res req wish"><span></span>' + thumbHTML(w.yt, 'sm') + '<span class="info"><b>' + esc(w.title) + '</b>' + (w.artist ? ' · ' + esc(w.artist) : '') +
+    '<br><span class="meta">asked ' + plural(w.asks, 'time') + (WISH_SRC[w.src] ? ' · ' + WISH_SRC[w.src] : '') + (w.len ? ' · ' + fmtLen(w.len) : '') +
+    (w.lrclib_id ? ' · <a href="https://lrclib.net/api/get/' + Number(w.lrclib_id) + '" target="_blank" rel="noopener">LRCLIB ' + Number(w.lrclib_id) + '</a>' : '') +
+    (w.yt ? ' · <a href="https://youtu.be/' + esc(w.yt) + '" target="_blank" rel="noopener">their upload</a>' : '') + '</span></span>' +
+    '<span class="row"><button class="btn small ghost" data-act="wishdone" data-arg="' + esc(w.k) + '">Added</button><button class="btn small ghost" data-act="wishskip" data-arg="' + esc(w.k) + '">Skip</button></span></div>';
+}
+async function wishDone(k, done) {
+  const w = wishes.find(x => x.k === k); if (!w) return;
+  const { error } = await sb.from('wishes').update({ done, done_at: done ? new Date().toISOString() : null }).eq('k', k);
+  if (error) return fail('Couldn’t save that', error);
+  w.done = done; navCounts(); if (route.view === 'requests') $('#view').innerHTML = requestsHTML();
 }
 function reqRowHTML(r, st) {
   const maybe = st === 'open' ? nameMatch(r.title, r.channel) : null;
@@ -1684,7 +1739,8 @@ function statsHTML() {
     '<li><span class="grow">' + label(k) + '</span><b>' + Number(v).toLocaleString('en') + '</b></li>').join('') + '</ol>' : '<p class="muted small">Nothing yet.</p>') + '</div>';
   const plName = id => ({ all: 'All songs', yt: 'From YouTube links', seed: 'Built-in songs (no database)' })[id] || esc((playlists.find(p => p.id === id) || {}).name || id);
   const songName = id => { const x = songs.find(y => y.id === id); return x ? '<a href="#song:' + encodeURIComponent(id) + '">' + esc(x.title) + '</a> <span class="muted">' + esc(x.artist || '') + '</span>' : esc(id); };
-  const feats = [['Hide turned on', sum(cur, 'hide')], ['YouTube playlists pasted', sum(cur, 'ytlist', 'paste')], ['YouTube playlists opened from a link', sum(cur, 'ytlist', 'link')], ['Added to a home screen', sum(cur, 'install')]].filter(x => x[1]);
+  const feats = [['Hide turned on', sum(cur, 'hide')], ['Playlists made from YouTube', sum(cur, 'list', 'yt') + sum(cur, 'ytlist', 'paste')], ['Playlists made from Spotify', sum(cur, 'list', 'sp')],
+    ['Playlists made from a typed list', sum(cur, 'list', 'text')], ['Playlists opened from a link', sum(cur, 'list', k => k.startsWith('link')) + sum(cur, 'ytlist', 'link')], ['Added to a home screen', sum(cur, 'install')]].filter(x => x[1]);
   return '<div class="pagehead"><h1>Stats</h1><div class="segs" role="group" aria-label="Days">' + [7, 30].map(n => '<button class="seg" data-act="statdays" data-arg="' + n + '" aria-pressed="' + (D === n) + '">' + n + ' days</button>').join('') +
     '<button class="seg" data-act="statsreload">Refresh</button></div></div>' +
     '<p class="muted small statnote">Anonymous counts from the party player since v39 (15 Nov 2026): no accounts, no IDs, nothing typed. A phone counts once a day; a party is a night that reached 5 drops. Days are UTC.</p>' +

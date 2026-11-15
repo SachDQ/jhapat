@@ -424,3 +424,138 @@ grant execute on function public.tally(jsonb) to anon, authenticated;
 -- Suju's TikTok handle is @suzupah (the video's own page says so); the playlist said @sujupah.
 update public.playlists set description = replace(description, '@sujupah', '@suzupah'), updated_at = now()
   where id = 'tiktok-og' and description like '%@sujupah%';
+
+-- ---------- v40, 15 Nov 2026: your own playlists ----------
+-- A Spotify playlist or album, read by the database from Spotify's public embed page (the first 100 tracks), since a browser can't.
+-- POST /rest/v1/rpc/spotify_list {"sid": "<22 letters and digits>", "kind": "playlist"} → {"name": "...", "tracks": [{"t", "a", "ms"}]}
+create or replace function public.spotify_list(sid text, kind text default 'playlist') returns jsonb
+language plpgsql volatile security definer set search_path = '' as $$
+declare res record; body text; e jsonb;
+begin
+  if kind not in ('playlist', 'album') or sid !~ '^[A-Za-z0-9]{22}$' then raise exception 'not a Spotify playlist or album'; end if;
+  select r.status, r.content into res from extensions.http_get('https://open.spotify.com/embed/' || kind || '/' || sid) r;
+  if res.status is distinct from 200 then raise exception 'Spotify answered %', res.status; end if;
+  body := substring(res.content from '<script id="__NEXT_DATA__" type="application/json">(.*?)</script>');
+  if body is null then raise exception 'no track list on that page'; end if;
+  e := body::jsonb #> '{props,pageProps,state,data,entity}';
+  return jsonb_build_object('name', coalesce(e->>'name', e->>'title'),
+    'tracks', coalesce((select jsonb_agg(jsonb_build_object('t', x->>'title', 'a', x->>'subtitle', 'ms', x->'duration'))
+                        from jsonb_array_elements(coalesce(e->'trackList', '[]'::jsonb)) x), '[]'::jsonb));
+end $$;
+
+-- Songs people's playlists are waiting for (from YouTube, Spotify or a typed list), sorted by what the phone found on LRCLIB:
+-- auto (timed Nepali lyrics: Add many can take it, given an upload), timing (untimed lyrics: Time the lines) or tagging (no lyrics).
+-- Each phone asks once per song; the same song asked again counts again. Only editors read them (Studio › Requests).
+create table if not exists public.wishes (
+  k         text primary key,                   -- lrc:<LRCLIB id>, yt:<video> or q:<title|artist>
+  title     text not null,
+  artist    text,
+  kind      text check (kind in ('auto', 'timing', 'tagging')),
+  lrclib_id bigint,
+  len       numeric,                            -- the LRCLIB version's length in seconds
+  yt        text check (yt ~ '^[A-Za-z0-9_-]{11}$'), -- the upload in their YouTube playlist, if it came from one
+  src       text check (src in ('yt', 'sp', 'text')),
+  asks      int not null default 1,
+  first_at  timestamptz not null default now(),
+  last_at   timestamptz not null default now(),
+  done      text check (done in ('added', 'skipped')),
+  done_at   timestamptz
+);
+alter table public.wishes enable row level security;
+drop policy if exists "editors read wishes" on public.wishes;
+create policy "editors read wishes" on public.wishes for select to authenticated using (public.is_editor());
+drop policy if exists "editors edit wishes" on public.wishes;
+create policy "editors edit wishes" on public.wishes for all to authenticated using (public.is_editor()) with check (public.is_editor());
+
+-- POST /rest/v1/rpc/wish_songs {"w": [{"t": "Title", "a": "Artist", "kind": "auto", "lrc": 123, "len": 201.5, "yt": "...", "src": "sp"}]}
+create or replace function public.wish_songs(w jsonb) returns int
+language plpgsql volatile security definer set search_path = '' as $$
+declare n int;
+begin
+  if jsonb_typeof(w) is distinct from 'array' or jsonb_array_length(w) > 200 then raise exception 'send a list of at most 200 songs'; end if;
+  insert into public.wishes as x (k, title, artist, kind, lrclib_id, len, yt, src)
+  select distinct on (k) k, t, a, kind, lrc, len, yt, src from (
+    select case when (v->>'lrc') ~ '^[0-9]{1,12}$' then 'lrc:' || (v->>'lrc')
+                when (v->>'yt') ~ '^[A-Za-z0-9_-]{11}$' then 'yt:' || (v->>'yt')
+                else 'q:' || left(lower(btrim(v->>'t')) || '|' || lower(btrim(coalesce(v->>'a', ''))), 200) end as k,
+      left(btrim(v->>'t'), 200) as t, left(nullif(btrim(v->>'a'), ''), 200) as a,
+      case when v->>'kind' in ('auto', 'timing', 'tagging') then v->>'kind' end as kind,
+      case when (v->>'lrc') ~ '^[0-9]{1,12}$' then (v->>'lrc')::bigint end as lrc,
+      case when jsonb_typeof(v->'len') = 'number' then round((v->>'len')::numeric, 1) end as len,
+      case when (v->>'yt') ~ '^[A-Za-z0-9_-]{11}$' then v->>'yt' end as yt,
+      case when v->>'src' in ('yt', 'sp', 'text') then v->>'src' end as src
+    from jsonb_array_elements(w) v
+    where jsonb_typeof(v) = 'object' and nullif(btrim(v->>'t'), '') is not null) s
+  where not exists (select 1 from public.songs so where so.lrclib_id = s.lrc)   -- already in Jhapat (or a draft on its way)
+    and not exists (select 1 from public.videos vi where vi.yt = s.yt)
+  on conflict (k) do update set asks = x.asks + 1, last_at = now(), kind = coalesce(excluded.kind, x.kind),
+    lrclib_id = coalesce(excluded.lrclib_id, x.lrclib_id), len = coalesce(excluded.len, x.len), yt = coalesce(x.yt, excluded.yt);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+-- A typed list someone shared: kept so its link (#list=<id>) opens it on any phone. Only the songs' names and artists.
+create table if not exists public.lists (
+  id         text primary key default substr(md5(random()::text || clock_timestamp()::text), 1, 10),
+  name       text not null,
+  items      jsonb not null,                    -- [{"t": "Title", "a": "Artist"}], at most 300
+  created_at timestamptz not null default now(),
+  opened_at  timestamptz,
+  opens      int not null default 0
+);
+alter table public.lists enable row level security;
+drop policy if exists "editors read lists" on public.lists;
+create policy "editors read lists" on public.lists for select to authenticated using (public.is_editor());
+
+-- POST /rest/v1/rpc/save_list {"l": {"name": "Wedding night", "items": [{"t": "...", "a": "..."}]}} → its id
+create or replace function public.save_list(l jsonb) returns text
+language plpgsql volatile security definer set search_path = '' as $$
+declare lid text; its jsonb;
+begin
+  if jsonb_typeof(l) is distinct from 'object' or jsonb_typeof(l->'items') is distinct from 'array'
+     or jsonb_array_length(l->'items') = 0 or jsonb_array_length(l->'items') > 300 then raise exception 'send a list of 1 to 300 songs'; end if;
+  if (select count(*) from public.lists where created_at > now() - interval '1 hour') >= 300 then raise exception 'too many lists this hour; try again later'; end if;
+  select jsonb_agg(jsonb_build_object('t', left(btrim(v->>'t'), 200), 'a', left(btrim(coalesce(v->>'a', '')), 200)))
+    into its from jsonb_array_elements(l->'items') v where jsonb_typeof(v) = 'object' and nullif(btrim(v->>'t'), '') is not null;
+  if its is null then raise exception 'no songs in that list'; end if;
+  insert into public.lists (name, items) values (left(coalesce(nullif(btrim(l->>'name'), ''), 'My list'), 80), its) returning id into lid;
+  return lid;
+end $$;
+-- POST /rest/v1/rpc/get_list {"lid": "..."} → {"id", "name", "items"}, or null
+create or replace function public.get_list(lid text) returns jsonb
+language plpgsql volatile security definer set search_path = '' as $$
+declare r record;
+begin
+  update public.lists set opens = opens + 1, opened_at = now() where id = lid returning name, items into r;
+  if not found then return null; end if;
+  return jsonb_build_object('id', lid, 'name', r.name, 'items', r.items);
+end $$;
+
+-- tally() as in v39, taking "list" too (a playlist made on a phone, by source, or opened from a link)
+create or replace function public.tally(e jsonb) returns int
+language plpgsql volatile security definer set search_path = '' as $$
+declare x jsonb; v_ev text; v_k text; v_n int; v_day date; cnt int := 0;
+begin
+  if jsonb_typeof(e) is distinct from 'array' or jsonb_array_length(e) > 40 then raise exception 'send at most 40 events'; end if;
+  for x in select value from jsonb_array_elements(e) loop
+    if jsonb_typeof(x) is distinct from 'array' then continue; end if;
+    v_ev := x->>0; v_k := coalesce(x->>1, '');
+    v_n := case when jsonb_typeof(x->2) = 'number' then least(greatest((x->>2)::numeric, 1), 50)::int else 1 end;
+    if v_ev is null or v_ev not in ('visit', 'new', 'start', 'party', 'drops', 'song', 'share', 'ytlist', 'list', 'hide', 'install') then continue; end if;
+    if v_k !~ '^[A-Za-z0-9_+./:-]{0,64}$' then v_k := '?'; end if;
+    v_day := case when v_ev = 'song' then date_trunc('week', now() at time zone 'utc')::date else (now() at time zone 'utc')::date end;
+    if not exists (select 1 from public.stats s where s.day = v_day and s.ev = v_ev and s.k = v_k)
+       and (select count(*) from public.stats s where s.day = v_day and s.ev = v_ev) >= (case when v_ev = 'song' then 3000 else 300 end) then
+      v_k := '?';
+    end if;
+    insert into public.stats as s (day, ev, k, n) values (v_day, v_ev, v_k, v_n)
+      on conflict (day, ev, k) do update set n = s.n + excluded.n;
+    cnt := cnt + 1;
+  end loop;
+  return cnt;
+end $$;
+
+revoke execute on function public.spotify_list(text, text), public.wish_songs(jsonb), public.save_list(jsonb), public.get_list(text), public.tally(jsonb) from public;
+grant execute on function public.spotify_list(text, text), public.wish_songs(jsonb), public.save_list(jsonb), public.get_list(text), public.tally(jsonb) to anon, authenticated;
+grant select on public.wishes, public.lists to authenticated;
+grant update on public.wishes to authenticated;

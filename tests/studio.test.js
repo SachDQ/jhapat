@@ -17,7 +17,7 @@ function makeDb() {
     tags: [{ id: 1, song_id: 'old', item_id: 'paani', t: 30, line: null, word: null, source: 'estimate', checked: false }],
     playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', description: null, sort: 0, is_public: true, owner: null }],
     playlist_songs: [{ playlist_id: 'party-mix', song_id: 'old', position: 0 }],
-    requests: [], reports: [], stats: [],
+    requests: [], reports: [], stats: [], wishes: [],
     seq: 100, log: [],
   };
 }
@@ -574,6 +574,31 @@ function makeDom(db, opts) {
       'top lists: playlists, songs, time zones, how new phones arrived, sharing and features');
     c('[data-act="statdays"][data-arg="7"]'); await sleep(20);
     ok(d.querySelectorAll('.bars .bar').length === 7 && [...d.querySelectorAll('.kpi b')][0].textContent === '15', 'the last 7 days, too'); }
+
+  // Songs people's playlists are waiting for (v40): grouped by what they need, most asked first; Copy for Claude, Add many for the
+  // ones with uploads, Added and Skip; one closes by itself once its LRCLIB version is in the studio
+  { const db = makeDb();
+    db.songs[0].lrclib_id = 555;
+    db.wishes = [
+      { k: 'lrc:777', title: 'Timi Ra Ma', artist: 'Salin Magar', kind: 'auto', lrclib_id: 777, len: 201, yt: 'TTTTTTTTTTT', src: 'yt', asks: 3, last_at: '2026-11-15T10:00:00Z', done: null },
+      { k: 'lrc:888', title: 'Khai K Ho', artist: 'Unknown Artist', kind: 'auto', lrclib_id: 888, len: 199, yt: null, src: 'text', asks: 1, last_at: '2026-11-15T09:00:00Z', done: null },
+      { k: 'q:naya|band', title: 'Naya Gaana', artist: 'Band X', kind: 'timing', lrclib_id: 8, len: null, yt: null, src: 'sp', asks: 2, last_at: '2026-11-15T08:00:00Z', done: null },
+      { k: 'lrc:555', title: 'Old Song', artist: 'Someone', kind: 'auto', lrclib_id: 555, len: 200, yt: null, src: 'sp', asks: 5, last_at: '2026-11-15T07:00:00Z', done: null }];
+    let copied = null;
+    const { w, d } = makeDom(db, { signedIn: true, editor: true });
+    Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async t => { copied = t; } } });
+    const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await sleep(60); w.location.hash = '#requests'; await sleep(20);
+    const rows = [...d.querySelectorAll('.wishes .res.wish')].map(r => r.querySelector('b').textContent);
+    ok(rows.join() === 'Timi Ra Ma,Khai K Ho,Naya Gaana' && d.querySelector('#navReq').textContent === '3', 'waiting songs show grouped by what they need, most asked first; one already in the studio has closed: ' + rows.join());
+    ok(/Can add: timed lyrics\s*2/.test(d.querySelector('.wishes').textContent) && /Needs timing by hand\s*1/.test(d.querySelector('.wishes').textContent) && /from Spotify/.test(d.querySelector('.wishes').textContent), 'with what each needs and where it came from');
+    c('[data-act="wishcopy"]'); await sleep(10);
+    ok(/Timi Ra Ma - Salin Magar \| https:\/\/youtu\.be\/TTTTTTTTTTT \| lrclib:777 \| 3:21/.test(copied || '') && /Khai K Ho - Unknown Artist \| lrclib:888 \| 3:19/.test(copied || '') && !/Naya Gaana/.test(copied || ''),
+      'Copy for Claude copies the ones with timed lyrics as Add many lines');
+    c('[data-act="wishskip"][data-arg="q:naya|band"]'); await sleep(20);
+    ok(db.wishes.find(x => x.k === 'q:naya|band').done === 'skipped' && d.querySelectorAll('.wishes .res.wish').length === 2, 'Skip puts one aside');
+    c('[data-act="wishadd"]'); await sleep(20);
+    ok(w.location.hash === '#import' && /Timi Ra Ma - Salin Magar \| https:\/\/youtu\.be\/TTTTTTTTTTT \| lrclib:777/.test(d.querySelector('#view').textContent + (d.querySelector('textarea') || {}).value), 'the ones with uploads go to Add many'); }
 
   // the version check works on jhapat.live too
   { const db = makeDb(); db.ver = 999; const { d } = makeDom(db, { signedIn: false, url: 'https://jhapat.live/studio/' });

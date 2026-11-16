@@ -325,17 +325,17 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   await sleep(60);
   ok(asked.filter(a => !/version\.json/.test(a)).join(' ') === 'https://raw.githubusercontent.com/SachDQ/jhapat/catalog/catalog.json rpc/catalog_stamp rpc/catalog',
     'a first visit tries GitHub’s copy and the stamp, and with neither, one call brings every playlist: ' + asked.join(', '));
-  ok(!d5.querySelector('[data-act="pickpl"]') && !!d5.querySelector('[data-act="next"]') && st5().playlist.id === 'party-mix' && /Playlist\s*Nepali Party Mix\s*2 songs\s*Switch/.test(d5.querySelector('.plbar').textContent),
-    'a first visit goes straight to Play on the Party Mix, named at the top of the table with Switch: ' + d5.querySelector('.plbar').textContent);
+  ok(!d5.querySelector('[data-act="pickpl"]') && !!d5.querySelector('[data-act="next"]') && st5().playlist.id === 'all' && /Playlist\s*All songs\s*4 songs\s*Switch/.test(d5.querySelector('.plbar').textContent),
+    'a first visit goes straight to Play on All songs (v49), named at the top of the table with Switch: ' + d5.querySelector('.plbar').textContent);
   ok(d5.querySelector('.plbar').tagName === 'BUTTON' && d5.querySelector('.plbar').dataset.act === 'lists' && /Switch playlist/.test(d5.querySelector('.plbar').getAttribute('aria-label')) && d5.querySelectorAll('.plbar .fan img').length === 2,
     'the whole bar is the Switch button, with the playlist’s covers as its icon');
   c5('.plbar'); await sleep(10);
   const cards5 = [...d5.querySelectorAll('[data-act="pickpl"]')];
   ok(cards5.map(c => c.dataset.arg).join(' ') === 'party-mix love all' && /Playlists/.test(d5.querySelector('.pickhead').textContent) && !d5.querySelector('[data-act="next"]'),
     'Switch opens the list: Jhapat’s playlists with All songs last (the empty playlist is left out)');
-  ok(d5.querySelector('.pickhead [data-act="keeppl"]') && /Nepali Party Mix/.test(d5.querySelector('.pickhead [data-act="keeppl"]').textContent) && d5.querySelector('.picker').firstElementChild.classList.contains('pickhead'),
+  ok(d5.querySelector('.pickhead [data-act="keeppl"]') && /All songs/.test(d5.querySelector('.pickhead [data-act="keeppl"]').textContent) && d5.querySelector('.picker').firstElementChild.classList.contains('pickhead'),
     'Back to the playlist playing sits at the top, so there’s no scrolling to keep it');
-  ok(cards5[0].getAttribute('aria-current') === 'true' && /Playing/.test(cards5[0].textContent) && !/Playing/.test(cards5[1].textContent), 'the one playing is marked');
+  ok(cards5[2].getAttribute('aria-current') === 'true' && /Playing/.test(cards5[2].textContent) && !/Playing/.test(cards5[0].textContent), 'the one playing is marked');
   ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('💧 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, its items as emoji with counts, and its description');
   ok(cards5[2].textContent.includes('All songs') && cards5[2].textContent.includes('4 songs') && cards5[2].textContent.includes('❤️ 3'), 'All songs counts every song once: ' + cards5[2].textContent);
   ok(!!d5.querySelector('#mkForm #mkIn') && d5.querySelector('.picker').lastElementChild.id === 'mkForm' && !d5.querySelector('#plFind'), 'Make your own sits at the bottom, under the playlists; the search box waits until there are more than 8');
@@ -1153,7 +1153,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     click('[data-act="item"][data-arg="maya"]'); await sleep(10);
     ok(chips() === 'phool paani maya bato sapana rakshi ghar chiya', 'one turned off stays put at first too');
     await sleep(700);
-    ok(chips() === 'phool paani bato sapana rakshi maya ghar chiya' && sv().tables['party-mix'].join(' ') === 'phool paani bato sapana rakshi',
+    ok(chips() === 'phool paani bato sapana rakshi maya ghar chiya' && sv().playlist.id === 'all' && sv().tables.all.join(' ') === 'phool paani bato sapana rakshi',
       'then drops to the head of the ones off: ' + chips());
     click('.plbar'); await sleep(10);
     const cards = [...sdoc.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' ');
@@ -1168,7 +1168,11 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const osv = JSON.parse(od.window.localStorage.getItem('jhapat.v1'));
     ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani maya bato sapana' && /starts with Phool, Paani, Maya, Bato and Sapana\. Tap any item/.test(od.window.document.querySelector('#toast').textContent),
       'a phone that never chose moves to the new first table once, and is told: ' + od.window.document.querySelector('#toast').textContent);
+    ok(osv.playlist.id === 'all', 'and a phone that never picked a playlist plays All songs (v49): ' + osv.playlist.id);
     const again = JSON.stringify(osv); od.window.close();
+    const pk = mk(Object.assign({}, old, { chosen: true, tables: { 'nepali-hits': ['maya'] }, playlist: { id: 'nepali-hits', name: 'Nepali Hits' } })); await sleep(150);
+    ok(JSON.parse(pk.window.localStorage.getItem('jhapat.v1')).playlist.id === 'nepali-hits', 'a phone that picked a playlist keeps it');
+    pk.window.close();
     const od2 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
       beforeParse(win) { win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C }); win.localStorage.setItem('jhapat.v1', again); win.localStorage.setItem('jhapat.cat', JSON.stringify(C)); } });
     await sleep(1700);

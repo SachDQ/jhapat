@@ -524,7 +524,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 48; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 49; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1759,7 +1759,8 @@ function buildCat() {
 }
 const mineOf = id => (S.mine || []).find(m => m.id === id);
 const listed = id => lists().some(c => c.id === id) || !!(mineOf(id) && songsIn(mineOf(id)).length);
-const pidFor = pid => [pid, DB.playlist, ALL].find(id => id && listed(id)) || ALL; // that playlist while it's still there, else the party mix
+const pidFor = pid => [pid, ALL, DB.playlist].find(id => id && listed(id)) || ALL; // that playlist while it's still there, else All songs (v49), else the party mix
+const keptPl = () => S.source === 'db' && S.playlist && S.chosen ? S.playlist.id : null; // a playlist someone picked; one that never picked plays All songs (v49)
 /* Open All songs, a playlist, or one made from a YouTube link, its items in their spot for it (rankItems). One opened for the
    first time starts with what's on the table now, plus any item all of its songs have. A phone that never chose a table (no
    table remembered, given its first table before v48) gets the ones that start on once, and is told if it had played before. */
@@ -1822,7 +1823,7 @@ async function loadDb() {
   if (joined && !sharedIn) setTimeout(() => toast(joined + ' song' + (joined === 1 ? '' : 's') + ' you were waiting for joined your playlists. 🎉'), 1200);
   const ids = new Set(CARDS.map(x => x.id).concat((S.mine || []).map(m => m.id))); // a playlist taken out of the studio leaves the phone too
   Object.keys(S.tables || {}).forEach(id => { if (!ids.has(id)) delete S.tables[id]; });
-  useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id));
+  useList(pidFor(keptPl()));
   if (sharedIn) openShared(); else mineCheck();
 }
 function pickPlaylist(pid) {
@@ -2422,7 +2423,7 @@ window.addEventListener('hashchange', () => { const x = sharedOf(location.hash);
 
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
 applySmall(); applyBlind();
-if (CAT) { buildCat(); useList(pidFor(S.source === 'db' && S.playlist && S.playlist.id), true); } // from the phone, before the database answers
+if (CAT) { buildCat(); useList(pidFor(keptPl()), true); } // from the phone, before the database answers
 $('#ver').textContent = 'v' + VERSION;
 render();
 { const ref = readRef(); if (!hadSave) tally('new', ref);

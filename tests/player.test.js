@@ -1130,7 +1130,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
       { id: 'nepali-hits', name: 'Nepali Hits', sort: 4, songs: ['st0', 'st1', 'st2', 'st3'] }, { id: 'dohori', name: 'Nepali Dohori Sachin', sort: 100, songs: ['st0', 'st1', 'st2'] },
       { id: 'tiktok-og', name: 'Suju’s OG Round', sort: 101, songs: ['st0', 'st1'] }] };
     const mk = (save, ua) => new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
-      beforeParse(win) { win.__settleMs = 60; win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C });
+      beforeParse(win) { win.__settleMs = 400; win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C });
         if (ua) Object.defineProperty(win.navigator, 'userAgent', { value: ua });
         if (save) { win.localStorage.setItem('jhapat.v1', JSON.stringify(save)); win.localStorage.setItem('jhapat.cat', JSON.stringify(C)); }
         win.localStorage.setItem('jhapat.mine', JSON.stringify([{ id: 'yt-mine', name: 'My Mix', src: 'yt', songs: ['st0', 'st1'] }])); } });
@@ -1148,11 +1148,11 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(chips() === 'phool paani maya bato sapana ghar chiya rakshi', 'the table shows the ones on first: ' + chips());
     click('[data-act="item"][data-arg="rakshi"]'); await sleep(10);
     ok(chips() === 'phool paani maya bato sapana ghar chiya rakshi' && sdoc.querySelector('[data-arg="rakshi"]').getAttribute('aria-pressed') === 'true', 'a tapped tile stays put while the taps come in: ' + chips());
-    await sleep(150);
+    await sleep(700);
     ok(chips() === 'phool paani maya bato sapana rakshi ghar chiya', 'a moment later it joins the ones on: ' + chips());
     click('[data-act="item"][data-arg="maya"]'); await sleep(10);
     ok(chips() === 'phool paani maya bato sapana rakshi ghar chiya', 'one turned off stays put at first too');
-    await sleep(150);
+    await sleep(700);
     ok(chips() === 'phool paani bato sapana rakshi maya ghar chiya' && sv().tables['party-mix'].join(' ') === 'phool paani bato sapana rakshi',
       'then drops to the head of the ones off: ' + chips());
     click('.plbar'); await sleep(10);

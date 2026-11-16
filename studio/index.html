@@ -395,7 +395,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 46; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 47; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -1280,14 +1280,17 @@ function itemStats() { // songs, tags and drop points per item, from the song li
 }
 /* How easy an item's prop is to find at home (items.ease, v45). The player ranks a playlist's items by it and by the songs with a
    drop point for each: √(the item's songs ÷ the top item's) × ease ÷ 5, so a key or a pillow beats a word in twice the songs
-   whose prop has to be made, and Rakshi sits at the end. Re-order writes the same rank over all public songs into items.sort,
-   which these tiles and the Tips page follow. */
+   whose prop has to be made, and Rakshi sits at the end. Starters (items.starter, v47: Sachin's picks) come before all of it, in
+   their own order, and a new phone's table begins with them on. Re-order writes the same rank over all public songs into
+   items.sort, which these tiles and the Tips page follow. */
 const EASE_L = { 5: 'In every home, at hand', 4: 'Most homes have one', 3: 'Has to be looked for, or drawn', 2: 'Has to be made, or few homes have it', 1: 'Hard to find' };
 const easeOf = it => { const e = Number(it && it.ease); return e >= 1 && e <= 5 ? e : 3; };
+const starterOf = it => { const k = Number(it && it.starter); return k >= 1 ? k : 0; };
 function itemRank() {
   const n = {}; songs.forEach(x => { if (x.status !== 'draft') Object.entries(x.dpCounts || {}).forEach(([k, v]) => { if (v) n[k] = (n[k] || 0) + 1; }); });
   const top = Math.max(1, ...Object.values(n)), sc = it => n[it.id] ? Math.sqrt(n[it.id] / top) * easeOf(it) / 5 : -1;
-  return items.slice().sort((a, b) => sc(b) - sc(a) || (a.sort ?? 0) - (b.sort ?? 0));
+  const g = it => starterOf(it) ? 0 : 1; // the starters first, in their order
+  return items.slice().sort((a, b) => g(a) - g(b) || starterOf(a) - starterOf(b) || sc(b) - sc(a) || (a.sort ?? 0) - (b.sort ?? 0));
 }
 async function reorderItems(quiet) {
   const moves = itemRank().map((it, k) => [it, k]).filter(([it, k]) => it.sort !== k);
@@ -1295,7 +1298,7 @@ async function reorderItems(quiet) {
   const res = await Promise.all(moves.map(([it, k]) => sb.from('items').update({ sort: k }).eq('id', it.id)));
   const bad = res.find(r => r && r.error); if (bad) return fail('Couldn’t re-order the items', bad.error);
   moves.forEach(([it, k]) => { it.sort = k; }); render();
-  if (!quiet) toast('Re-ordered ' + plural(moves.length, 'item') + ': most songs and easiest to find at home first.');
+  if (!quiet) toast('Re-ordered ' + plural(moves.length, 'item') + ': the starters, then most songs and easiest to find at home.');
 }
 const ITEM_CAP = 12;
 function itemAreaHTML() {
@@ -1322,7 +1325,9 @@ function itemEdHTML() {
     '<span class="small muted">Each matches the start of a lyric word, so पानी also catches पानीमा. Start one with a minus to rule words out: <code>-दामी</code> stops दामी counting as दाम.</span></label>' +
     '<label class="wide">Put out<input type="text"' + f('note', it.note) + ' placeholder="e.g. a key"></label>' +
     '<label class="wide">Easy to find at home<select data-f="ease">' + [5, 4, 3, 2, 1].map(n => '<option value="' + n + '"' + (easeOf(it) === n ? ' selected' : '') + '>' + n + ' · ' + EASE_L[n] + '</option>').join('') + '</select>' +
-    '<span class="small muted">With the songs that sing it, this sets the item’s spot in the player: the easiest, most sung items come first, and a phone’s first table turns on the top five.</span></label></div>' +
+    '<span class="small muted">With the songs that sing it, this sets the item’s spot in the player: after the starters, the easiest, most sung items come first.</span></label>' +
+    '<label class="wide">Starter<select data-f="starter"><option value="">No</option>' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(k => '<option value="' + k + '"' + (starterOf(it) === k ? ' selected' : '') + '>' + k + (k === 1 ? 'st' : k === 2 ? 'nd' : k === 3 ? 'rd' : 'th') + ' starter</option>').join('') + '</select>' +
+    '<span class="small muted">Starters lead every playlist’s table in this order, and a new phone’s table begins with them on.</span></label></div>' +
     '<div class="row"><button class="btn primary" type="submit">' + (it.id ? 'Save' : 'Add item') + '</button><button type="button" class="btn ghost" data-act="closeitem">Close</button>' +
     (it.id ? '<span class="small muted">New spelling? Auto-tag all songs tags it everywhere.</span>' : '') + '</div></form>';
 }
@@ -1330,7 +1335,7 @@ function itemsHTML() {
   const timed = songs.filter(x => x.hasLines).length;
   return '<div class="pagehead"><h1>Items<span class="count">' + items.length + '</span></h1>' +
     '<button class="btn" data-act="autoall" title="Every item word without a tag, in all ' + timed + ' songs with timed lyrics, gets an estimated tag, and estimates on words that no longer count come off. Tags timed or checked by hand stay put.">Auto-tag all songs</button>' +
-    '<button class="btn" data-act="reorder" title="Puts the items in the player’s order over all songs: most songs with a drop point and easiest to find at home first. These tiles and the Tips page follow it; the player works it out for each playlist.">Re-order</button>' +
+    '<button class="btn" data-act="reorder" title="Puts the items in the player’s order over all songs: the starters, then most songs with a drop point and easiest to find at home. These tiles and the Tips page follow it; the player works it out for each playlist.">Re-order</button>' +
     '<button class="btn primary" data-act="newitem">New item</button></div>' +
     '<p class="small" id="autoAllMsg" aria-live="polite"></p>' +
     (itemEd !== null ? itemEdHTML() : '') +
@@ -2011,7 +2016,7 @@ async function saveItem(id) {
   const f = $('#itemEd'); if (!f) return;
   const val = k => f.querySelector('[data-f="' + k + '"]').value.trim();
   const words = val('words').split(/[,\n]/).map(x => x.trim()).filter(Boolean);
-  const patch = { name: val('name'), dev: val('dev') || null, emoji: val('emoji') || null, words, note: val('note') || null, ease: easeOf({ ease: val('ease') }) };
+  const patch = { name: val('name'), dev: val('dev') || null, emoji: val('emoji') || null, words, note: val('note') || null, ease: easeOf({ ease: val('ease') }), starter: starterOf({ starter: val('starter') }) || null };
   if (!patch.name) { toast('Give the item a name.'); return; }
   if (!id) {
     let nid = slug(patch.name); while (items.some(i => i.id === nid)) nid += '-2';
@@ -2022,9 +2027,9 @@ async function saveItem(id) {
   }
   const { error } = await sb.from('items').update(patch).eq('id', id);
   if (error) return fail('Couldn’t save', error);
-  const it = items.find(i => i.id === id), moved = easeOf(it) !== patch.ease;
+  const it = items.find(i => i.id === id), moved = easeOf(it) !== patch.ease || starterOf(it) !== (patch.starter || 0);
   Object.assign(it, patch); spell = null; render(); toast('Saved ' + patch.name + '.');
-  if (moved) await reorderItems(true); // a new ease can move it up or down the list
+  if (moved) await reorderItems(true); // a new ease or starter spot can move it up or down the list
 }
 async function savePlaylist(id) {
   const card = document.querySelector('[data-plid="' + CSS.escape(id) + '"]'); if (!card) return;

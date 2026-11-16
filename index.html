@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Jhapat">
 <title>Jhapat (झपट) · the Nepali party song game</title>
-<meta name="description" content="A Nepali party game: put paani, phool, chiya and paisa on the table, play a song, and grab the item the moment its word is sung. Free, no sign-up, over 1,200 Nepali songs.">
+<meta name="description" content="A Nepali party game: put phool, paani, maya and sapana on the table, play a song, and grab the item the moment its word is sung. Free, no sign-up, over 1,200 Nepali songs.">
 <link rel="canonical" href="https://jhapat.live/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Jhapat">
@@ -21,7 +21,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Jhapat: a tiger on a madal, and the words Songs play, a word drops, grab it first">
 <meta name="twitter:card" content="summary_large_image">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Jhapat","alternateName":"झपट","url":"https://jhapat.live/","applicationCategory":"GameApplication","operatingSystem":"Any","inLanguage":["en","ne"],"isAccessibleForFree":true,"description":"A Nepali party game. Put things like paani, phool, chiya and paisa on the table; Jhapat plays a Nepali song from a few seconds before one of their words is sung, and the first hand on it wins.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Jhapat","alternateName":"झपट","url":"https://jhapat.live/","applicationCategory":"GameApplication","operatingSystem":"Any","inLanguage":["en","ne"],"isAccessibleForFree":true,"description":"A Nepali party game. Put things like phool, paani, maya and sapana on the table; Jhapat plays a Nepali song from a few seconds before one of their words is sung, and the first hand on it wins.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -242,12 +242,13 @@ img.broken{visibility:hidden}
 .miss li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center;font-size:14px;color:var(--muted)}
 .miss li b{color:var(--ink);font-weight:600}
 .miss img{width:64px;height:36px;object-fit:cover;border-radius:6px;background:var(--raise)}
-/* the playlists list (v40): Back on top, a search box once it's long, Make your own, yours, then Jhapat's */
+/* the playlists list (v40, v47): Back on top, a search box once it's long, Jhapat's, yours, then Make your own */
 .pickhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-width:0}
 .pickhead h2{margin:0}
 .backbtn{min-width:0;max-width:62%}
 .backbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plfind{margin-bottom:12px}
+.picker .maker{margin-top:18px}
 .picker .sub{margin:18px 0 8px}
 .maker{display:grid;gap:8px;background:var(--raise);border:1.5px dashed var(--gold-fill);border-radius:16px;padding:14px}
 .maker h3{margin:0;font:400 21px/1.15 var(--display)}
@@ -261,8 +262,13 @@ img.broken{visibility:hidden}
 .miss .hint{margin:0 0 6px}
 .miss .ph{width:64px;height:36px;display:grid;place-items:center;border-radius:6px;background:var(--raise);color:var(--muted)}
 .miss li i{display:block;font-style:normal;font-size:12.5px;color:var(--muted)}
-.introtip{grid-area:tip;margin:0;font-size:13.5px;line-height:1.4;color:var(--muted);text-align:left}
-.introtip a{color:var(--gold)}
+/* v47: the ad tip sits over Let's go, so it's in view on a phone without scrolling */
+.introads{grid-column:1/-1;margin:0 0 2px;padding:9px 12px;border-radius:14px;border:1px solid rgba(255,164,27,.6);background:linear-gradient(135deg,rgba(242,107,29,.22),rgba(29,22,54,.96) 70%);
+  font-size:14px;line-height:1.35;text-align:left;color:var(--ink)}
+.introads b{color:var(--gold)}
+.introads a{color:var(--gold);font-weight:800;white-space:nowrap}
+.introads.ok{border-color:rgba(110,220,150,.6);background:linear-gradient(135deg,rgba(80,200,130,.2),rgba(29,22,54,.96) 70%)}
+.introads.ok b{color:#9BEFB9}
 .switch{display:flex;align-items:center;gap:10px;font-weight:600}
 .switch input{width:22px;height:22px;accent-color:var(--gold-fill)}
 
@@ -416,7 +422,7 @@ body.blind #tapHint{z-index:8}
 .linkbtn{appearance:none;border:0;background:none;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
 .intro{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:12px;background:rgba(15,11,30,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .introcard{width:min(100%,440px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line-2);border-radius:24px;
-  padding:14px 14px 0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "vid" "steps" "tip" "btns";gap:12px;text-align:center;
+  padding:14px 14px 0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "vid" "steps" "btns";gap:12px;text-align:center;
   box-shadow:0 0 0 1px rgba(255,164,27,.15),0 24px 60px rgba(0,0,0,.6);animation:introin .5s cubic-bezier(.3,1.5,.5,1)}
 @keyframes introin{from{opacity:0;transform:translateY(24px) scale(.94)}}
 .ihead{grid-area:head;display:flex;align-items:center;justify-content:center;gap:10px;text-align:left}
@@ -434,7 +440,7 @@ body.blind #tapHint{z-index:8}
 .introsteps b{font-size:21px;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:var(--bg)}
 .introbtns{grid-area:btns;position:sticky;bottom:0;display:grid;padding:10px 0 14px;background:linear-gradient(rgba(29,22,54,0),var(--surface) 30%)}
 @media (min-width:760px){
-  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto auto auto 1fr;grid-template-areas:"vid ." "vid head" "vid steps" "vid tip" "vid btns" "vid .";column-gap:24px;row-gap:14px;padding:20px;text-align:left}
+  .introcard{width:min(100%,880px);grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto auto 1fr;grid-template-areas:"vid ." "vid head" "vid steps" "vid btns" "vid .";column-gap:24px;row-gap:14px;padding:20px;text-align:left}
   .ihead{justify-content:flex-start}
   .ttbox{width:calc(min(calc(100dvh - 90px),680px) * 325 / 578)}
   .introbtns{position:static;background:none;padding:4px 0 0}
@@ -491,13 +497,13 @@ body.introopen{overflow:hidden}
       <p class="introsub">Songs play. A word drops. Grab it first. 🐯</p></div></div>
     <figure class="tt"><div class="ttbox"></div><figcaption><a href="https://www.tiktok.com/@suzupah" target="_blank" rel="noopener">@suzupah</a></figcaption></figure>
     <ol class="introsteps">
-      <li><b aria-hidden="true">🧺</b><span>Put things on the table, then tap the same ones here. The first ones are in the most songs and easy to find at home.</span></li>
+      <li><b aria-hidden="true">🧺</b><span id="introTable">Put things on the table, then tap the same ones here.</span></li>
       <li><b aria-hidden="true">▶️</b><span>Start. A song drops in a few seconds before one of their words.</span></li>
       <li><b aria-hidden="true">🐯</b><span>Hear it? Jhapat! First hand on it wins.</span></li>
       <li><b aria-hidden="true">🙈</b><span>Holding the phone? Tap Hide and play too.</span></li>
     </ol>
-    <p class="introtip">💡 Ads before songs, or a TV to play on? <a href="tips/">See the tips</a>.</p>
-    <div class="introbtns"><button class="btn primary big" data-act="introgo">Let’s go</button><button class="btn big" data-act="share"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Share</button></div>
+    <div class="introbtns"><p class="introads" id="introAds"><b>🚫 Skip YouTube’s ads:</b> use an ad blocker, like the DuckDuckGo or Brave browser, or open jhapat.live from a Messenger chat. <a href="tips/#ads">More ways</a></p>
+      <button class="btn primary big" data-act="introgo">Let’s go</button><button class="btn big" data-act="share"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Share</button></div>
   </div>
 </div>
 <div class="intro" id="sharebox" role="dialog" aria-modal="true" aria-labelledby="shareH" hidden>
@@ -518,7 +524,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 46; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 47; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1160,7 +1166,7 @@ function toggleSound() { S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('
 function revealWord() { revealed = true; revealAt = Date.now(); renderNow(); sfx('show'); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } }
 function toggleItem(id) {
   const it = itemById(id); if (!it) return;
-  it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
+  holdTable(); it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
   const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6);
 }
 const hideName = () => !!S.settings.blind && !revealed;
@@ -1247,8 +1253,9 @@ async function flushOutbox() { // reports made without signal; one the database 
 }
 /* ---------- the playlists (v40) ----------
    The Play screen names the playlist at the top of the table, with its covers and Switch, all one button. Switch opens the list:
-   Back to the one playing sits at the top, then Make your own (a YouTube or Spotify link, or a list of songs), your playlists, and
-   Jhapat's, with All songs last; a search box shows once there are more than 8. Every card is one compact row: covers, name, a line
+   Back to the one playing sits at the top, then Jhapat's playlists (All songs after the main ones, and under it the ones sorted
+   100 or more: Nepali Dohori Sachin and Suju's OG Round since v47), your playlists, and Make your own (a YouTube or Spotify link,
+   or a list of songs) at the bottom; a search box shows once there are more than 8. Every card is one compact row: covers, name, a line
    about it, its four most common items as emoji, and its song count. A new phone starts on the Party Mix; nobody has to pick first.
    All of it is built from the catalog on the phone, so the list also shows offline. */
 const lists = () => (CARDS || []).filter(c => c.songs > 0);
@@ -1273,14 +1280,19 @@ function cardHTML(c, active, sub) { // a playlist to pick, as one compact row
 }
 function mineCard(m) { const c = cardOf(m.id, m.name, null, songsIn(m)); c.icon = SRC_ICON[m.src || 'yt']; return c; }
 function curCard() { const id = S.playlist && S.playlist.id, m = mineOf(id); return m ? mineCard(m) : lists().find(c => c.id === id) || null; }
+const TAIL = 100; // an official playlist sorted 100 or more sits under All songs, at the bottom of Jhapat's (v47)
+function jhOrder() { // Jhapat's playlists in the list's order: the main ones, All songs, then the tail
+  const all = lists().filter(c => c.id !== ALL), tail = c => (c.sort || 0) >= TAIL;
+  return all.filter(c => !tail(c)).concat(lists().filter(c => c.id === ALL), all.filter(tail));
+}
 function renderPicker() {
-  const active = S.playlist && S.playlist.id, all = lists(), jh = all.filter(c => c.id !== ALL).concat(all.filter(c => c.id === ALL)), mine = S.mine || [];
+  const active = S.playlist && S.playlist.id, jh = jhOrder(), mine = S.mine || [];
   const back = S.source === 'db' && S.playlist && !sharedBusy ? '<button class="btn small backbtn" data-act="keeppl" aria-label="Back to ' + esc(S.playlist.name) + '">' + ICON.back + '<span>' + esc(S.playlist.name) + '</span></button>' : '';
   return '<section class="card picker"><div class="pickhead"><h2>Playlists</h2>' + back + '</div>' +
     (jh.length + mine.length > 8 ? '<input type="search" id="plFind" class="plfind" placeholder="Find a playlist" aria-label="Find a playlist" autocomplete="off" value="' + esc(plQuery) + '">' : '') +
-    (CAT ? makerHTML() : '') +
+    '<h3 class="sub">Jhapat playlists</h3><ul class="lists">' + jh.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>' +
     (mine.length ? '<h3 class="sub">Yours</h3><ul class="lists">' + mine.map(m => '<li class="mine" data-id="' + esc(m.id) + '">' + mineHTML(m, active) + '</li>').join('') + '</ul>' : '') +
-    '<h3 class="sub">Jhapat playlists</h3><ul class="lists">' + jh.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul></section>';
+    (CAT ? makerHTML() : '') + '</section>';
 }
 function filterPicker() { // the search box hides the cards whose names don't have what's typed, without drawing the list again
   const q = sound(plQuery);
@@ -1340,10 +1352,32 @@ function plBarHTML() {
 const CHIP_CAP = 8;
 let moreItems = false, settingsOpen = false;
 const touched = new Set(); // items tapped here stay in view when the list folds, so a chip never vanishes under a finger
+/* Selected items first (v47): the items that are on lead the table, in the playlist's order, then the rest. The order holds while
+   taps come in, so a tile never jumps from under a finger, and catches up a moment after the last one, the tiles gliding to their
+   new places (not with motion turned down). */
+let settled = null, settleT = null;
+const settleMs = () => window.__settleMs != null ? window.__settleMs : 1200;
+function tableOrder(list) {
+  const on = settled || new Set(list.filter(it => it.on).map(it => it.id));
+  return list.filter(it => on.has(it.id)).concat(list.filter(it => !on.has(it.id)));
+}
+function holdTable() { // before a tap: keep the order it has now until the taps stop
+  if (!settled) settled = new Set(S.items.filter(i => i.on).map(i => i.id));
+  clearTimeout(settleT); settleT = setTimeout(settleTable, settleMs());
+}
+function settleTable() { settled = null; if (tab === 'play' && !picking && document.getElementById('table')) glide(render); }
+function glide(draw) { // the item tiles slide from where they were to where they land
+  const tiles = () => document.querySelectorAll('#table .chips [data-act="item"]'), was = new Map();
+  if (!reduced()) tiles().forEach(b => was.set(b.dataset.arg, b.getBoundingClientRect()));
+  draw();
+  if (was.size) tiles().forEach(b => { const a = was.get(b.dataset.arg); if (!a || !b.animate) return;
+    const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
+    if (Math.abs(dx) + Math.abs(dy) > 1) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.25,1)' }); });
+}
 function tableInfo() { // each item's songs with a drop point (and its drop points), and the items this playlist can offer
   const stats = new Map(S.items.map(it => [it.id, { songs: 0, pts: 0 }]));
   S.songs.forEach(s => { if (!s.broken) dpOf(s).forEach((n, id) => { const x = stats.get(id); if (x) { x.songs++; x.pts += n; } }); });
-  const shown = S.source === 'db' ? S.items.filter(it => stats.get(it.id).songs > 0) : S.items; // a playlist only offers the items its songs have
+  const shown = tableOrder(S.source === 'db' ? S.items.filter(it => stats.get(it.id).songs > 0) : S.items); // a playlist only offers the items its songs have; the ones on first
   return { stats, shown };
 }
 function renderPlay() {
@@ -1672,19 +1706,23 @@ function applySmall() { document.querySelector('.stage').classList.toggle('small
    on every visit and stays on the phone, so All songs and every playlist open straight away and work without signal once
    it has loaded here. If the database has never answered on this phone, the songs built into this page are used instead. */
 const DB = { rest: 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', key: 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T', playlist: 'party-mix' };
-/* The table's order (v45): a playlist's items by how many of its songs have a drop point for each and how easy its prop is to
-   find at home (items.ease, 1–5): the square root of the item's share of the top item's songs, times ease / 5. So Maya, in most
-   songs, leads though its heart has to be drawn; a key or a pillow outranks a word in twice the songs whose prop has to be made;
-   and Rakshi, in a handful of songs, comes last. A phone's first table turns on the top five. */
-const DEFAULT_ON = 5, OLD_ON = 'chithi,chiya,paani,paisa,phool'; // before v45 every phone started with these five on
+/* The table's order (v45, v47): Sachin's starter items first (items.starter: Phool, Paani, Samaya, Maya, Sapana and Aansu, in that
+   order) wherever a playlist has songs for them, then the rest by how many of its songs have a drop point for each and how easy
+   its prop is to find at home (items.ease, 1–5): the square root of the item's share of the top item's songs, times ease / 5. So a
+   key or a pillow outranks a word in twice the songs whose prop has to be made, and Rakshi, in a handful of songs, comes last.
+   A phone's first table turns on the starters (the top five if there were none). */
+const DEFAULT_ON = 5, TABLE_V = 47; // TABLE_V: the first table a phone that never chose was last given (v47: the starters)
 const easeOf = it => { const e = Number(it && it.ease); return e >= 1 && e <= 5 ? e : 3; };
+const starterOf = it => { const k = Number(it && it.starter); return k >= 1 ? k : 0; };
 function rankItems(items, songs) { // [{ it, n }], best spot first; n: the songs with a drop point for the item
   const n = new Map(items.map(it => [it.id, 0]));
   songs.forEach(s => { if (!s.broken) dpOf(s).forEach((c, id) => { if (n.has(id)) n.set(id, n.get(id) + 1); }); });
   const top = Math.max(1, ...n.values());
-  return items.map((it, k) => ({ it, k, n: n.get(it.id), s: n.get(it.id) ? Math.sqrt(n.get(it.id) / top) * easeOf(it) / 5 : -1 }))
-    .sort((a, b) => b.s - a.s || a.k - b.k);
+  return items.map((it, k) => { const c = n.get(it.id), st = starterOf(it);
+    return { it, k, n: c, st, g: !c ? 2 : st ? 0 : 1, s: c ? Math.sqrt(c / top) * easeOf(it) / 5 : -1 }; }) // g: starters, the rest, none here
+    .sort((a, b) => a.g - b.g || (a.g === 0 ? a.st - b.st : b.s - a.s) || a.k - b.k);
 }
+const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 function atVideo(song) { // a song moved to its next upload: use that upload's own offset
   if (song.offsets) { song.offset = song.offsets[song.vi || 0] || 0; song.sync = (song.synced || [])[song.vi || 0] ? 'ok' : 'check'; }
   else if (song.tags.length) { song.offset = 0; song.sync = 'check'; }
@@ -1713,7 +1751,7 @@ function cardOf(id, name, description, songs, thumbs) {
 function buildCat() {
   const all = CAT.songs.filter(s => Array.isArray(s.videos) && s.videos.length).map(fromCat);
   songMap = new Map(all.map(s => [s.id, s])); nameKeys = null;
-  const pls = CAT.playlists.map(p => cardOf(p.id, p.name, p.description, songsIn(p))).filter(c => c.songs);
+  const pls = CAT.playlists.map(p => Object.assign(cardOf(p.id, p.name, p.description, songsIn(p)), { sort: Number(p.sort) || 0 })).filter(c => c.songs);
   const most = pls.reduce((a, c) => Math.max(a, c.songs), 0); // All songs shows when it adds songs to the biggest playlist
   CARDS = (all.length > most ? [cardOf(ALL, 'All songs', 'Every song in Jhapat', all, pls.slice(0, 3).map(c => c.thumbs[0]))] : []).concat(pls); // its covers: each playlist's first song
 }
@@ -1721,22 +1759,23 @@ const mineOf = id => (S.mine || []).find(m => m.id === id);
 const listed = id => lists().some(c => c.id === id) || !!(mineOf(id) && songsIn(mineOf(id)).length);
 const pidFor = pid => [pid, DB.playlist, ALL].find(id => id && listed(id)) || ALL; // that playlist while it's still there, else the party mix
 /* Open All songs, a playlist, or one made from a YouTube link, its items in their spot for it (rankItems). One opened for the
-   first time starts with what's on the table now, plus any item all of its songs have. A phone that never chose a table (it
-   still has the five every phone started with before v45) gets this playlist's top five instead. */
+   first time starts with what's on the table now, plus any item all of its songs have. A phone that never chose a table (no
+   table remembered, given its first table before v47) gets the starters once, and is told if it had played before. */
 function useList(pid, quiet) {
   const p = pid === ALL ? null : CAT.playlists.find(x => x.id === pid) || mineOf(pid);
   const songs = p ? songsIn(p) : [...songMap.values()];
-  const first = !Object.keys(S.tables || {}).length && S.items.filter(i => i.on).map(i => i.id).sort().join(',') === OLD_ON, wasDb = S.source === 'db';
+  const knows = CAT.items.some(i => i && 'starter' in i); // a catalog saved before v47 doesn't know the starters: wait for the new one
+  const first = knows && !Object.keys(S.tables || {}).length && (S.tableV || 0) < TABLE_V, wasDb = S.source === 'db';
   const wasOn = first ? new Map() : new Map(S.items.map(i => [i.id, i.on])), mem = (S.tables || {})[pid];
   const inAll = id => songs.length > 0 && songs.every(s => s.tags.some(t => t.item === id));
-  const ranked = rankItems(CAT.items, songs), top = ranked.filter(x => x.n).slice(0, DEFAULT_ON).map(x => x.it.id);
-  S.items = ranked.map(({ it: i }) => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '', ease: easeOf(i),
+  const ranked = rankItems(CAT.items, songs), top = ranked.filter(x => x.n).slice(0, CAT.items.filter(starterOf).length || DEFAULT_ON).map(x => x.it.id);
+  S.items = ranked.map(({ it: i }) => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '', ease: easeOf(i), starter: starterOf(i),
     on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : top.includes(i.id)) }));
-  if (first && wasDb) setTimeout(() => toast('Items are now in order of most songs and easiest to find at home. Your table starts with the top five: ' +
-    top.map(itemName).join(', ') + '.'), 1500); // a phone that played before v45 without ever choosing
+  if (first) { S.tableV = TABLE_V; if (wasDb) setTimeout(() => toast('Your table now starts with ' + andList(top.map(itemName)) + '. Tap any item to change it.'), 1500); } // a phone that played before without ever choosing
+  settled = null; clearTimeout(settleT);
   S.songs = songs; S.source = 'db'; S.playlist = { id: pid, name: p ? p.name : 'All songs' };
   const ids = new Set(songs.map(s => s.id)); S.played = S.played.filter(id => ids.has(id)); S.donePts = (S.donePts || []).filter(k => ids.has(k.slice(0, k.indexOf('|')))); DONE = null;
-  save(); if (!quiet) render(); schedulePreload(1200, true);
+  save(); if (!quiet) render(); schedulePreload(1200, true); introTable();
 }
 async function dbCall(path, body, ms) { // { ok, data }, or offline: true when the database didn't answer at all
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
@@ -2308,7 +2347,7 @@ function tvState() { // what the phones show: the song (unless it's hidden), the
     items: shown.map(it => ({ id: it.id, n: it.name, d: it.dev || '', e: emo(it.id), on: !!it.on, c: stats.get(it.id).songs })),
     drops: nightCount()
   };
-  if (tv.wantLists && CAT) out.lists = (S.mine || []).map(m => mineCard(m)).concat(lists().filter(x => x.id !== ALL), lists().filter(x => x.id === ALL)).filter(x => x.songs)
+  if (tv.wantLists && CAT) out.lists = jhOrder().concat((S.mine || []).map(m => mineCard(m))).filter(x => x.songs)
     .slice(0, 60).map(x => ({ id: x.id, n: x.name, songs: x.songs, th: (x.thumbs || []).slice(0, 3), e: x.icon || '' }));
   return out;
 }
@@ -2341,8 +2380,30 @@ document.addEventListener('keydown', e => { // a TV remote or a keyboard: → ne
 /* The intro (v37): how to play in four lines, and Suju's TikTok, the party round that gave Sachin the idea. It opens on a phone's
    first visit and from How to play. TikTok's player loads only while the intro is open, with its description off. */
 const TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&loop=1&autoplay=1&muted=1';
+/* What to put out for the table this phone starts with (the starters, from the catalog), and the ad tip: a phone in Messenger's
+   browser or in a browser that blocks ads is told it's set; everyone else is told how (v47). */
+const propShort = n => String(n || '').split(/[,:]| or /)[0].trim();
+function introTable() {
+  const el = document.getElementById('introTable'); if (!el) return;
+  const on = S.source === 'db' ? (S.items || []).filter(i => i.on && i.note).slice(0, 8) : [];
+  el.textContent = on.length >= 3 ? 'Put out ' + andList(on.map(i => ((emo(i.id) || '') + ' ' + propShort(i.note)).trim())) + ', then tap the same items here.'
+    : 'Put things on the table, then tap the same ones here.';
+}
+function adCtx() { // 'messenger', 'blocker' or ''
+  const ua = navigator.userAgent || '';
+  if (/FB_IAB\/MESSENGER|FBAN\/Messenger|MessengerForiOS|MessengerLite/i.test(ua)) return 'messenger';
+  if (/DuckDuckGo\//.test(ua) || (navigator.brave && typeof navigator.brave.isBrave === 'function')) return 'blocker';
+  return '';
+}
+function introAds() {
+  const el = document.getElementById('introAds'), c = adCtx(); if (!el || !c) return;
+  el.classList.add('ok');
+  el.innerHTML = c === 'messenger' ? '<b>✅ No ads here:</b> Messenger’s browser doesn’t show YouTube’s ads. Keep playing from this chat link. <a href="tips/#ads">Ad tips</a>'
+    : '<b>✅ Ad blocker on:</b> this browser blocks YouTube’s ads. <a href="tips/#ads">Ad tips</a>';
+}
 function openIntro() {
   const el = $('#intro'); if (!el) return;
+  introTable(); introAds();
   el.querySelector('.ttbox').innerHTML = '<iframe src="' + TIKTOK + '" title="Suju (@suzupah) on TikTok: the Nepali party round that started Jhapat" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share" allowfullscreen></iframe>';
   el.hidden = false; document.body.classList.add('introopen');
   setTimeout(() => { const b = el.querySelector('[data-act="introgo"]'); if (b && !el.hidden) b.focus(); }, 60);

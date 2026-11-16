@@ -663,3 +663,41 @@ language sql stable security invoker set search_path = '' as $$
               from public.playlists p where p.owner is null and p.is_public));
 $$;
 grant execute on function public.catalog() to anon, authenticated;
+
+-- ---------- v47 (16 Nov): starter items, and two playlists at the bottom ----------
+-- Sachin's picks lead every table, in this order, and a new phone's first table turns them on: Phool, Paani, Samaya, Maya,
+-- Sapana and Aansu. The player puts them first wherever a playlist has songs for them, then ranks the rest by songs × ease (v45).
+alter table public.items add column if not exists starter smallint check (starter between 1 and 99); -- null: not a starter
+update public.items set starter = null where starter is not null and id not in ('phool', 'paani', 'samaya', 'maya', 'sapana', 'aansu');
+update public.items i set starter = v.k from (values ('phool', 1), ('paani', 2), ('samaya', 3), ('maya', 4), ('sapana', 5), ('aansu', 6)) as v(id, k)
+where i.id = v.id and i.starter is distinct from v.k;
+-- items.sort (the studio's tiles, the Tips page): the starters first, then the v45 rank
+with r as (select id, (row_number() over (order by starter nulls last, sort, id) - 1)::int as k from public.items)
+update public.items i set sort = r.k from r where i.id = r.id and i.sort is distinct from r.k;
+-- A playlist sorted 100 or more sits under All songs, at the bottom of the list (Make your own and the phone's own come after).
+update public.playlists set sort = 100 where id = 'dohori' and sort <> 100;
+update public.playlists set sort = 101 where id = 'tiktok-og' and sort <> 101;
+
+-- catalog() as in v45, with each item's starter and each playlist's sort
+create or replace function public.catalog() returns jsonb
+language sql stable security invoker set search_path = '' as $$
+  select jsonb_build_object(
+    'stamp', (select m.v from public.meta m where m.k = 'catalog'),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note, 'emoji', i.emoji, 'ease', i.ease, 'starter', i.starter) order by i.sort, i.id), '[]'::jsonb)
+              from public.items i),
+    'songs', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', s.id, 'title', s.title, 'artist', s.artist,
+                'videos', (select coalesce(jsonb_agg(jsonb_build_object('yt', v.yt, 'offset', v.offset_s, 'synced', v.synced) order by v.rank, v.id), '[]'::jsonb)
+                           from public.videos v where v.song_id = s.id and v.embeddable),
+                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t, t.rep) order by t.t), '[]'::jsonb) -- [item, lyric time, repeat group]
+                         from public.tags t where t.song_id = s.id)
+              ) order by s.title, s.id), '[]'::jsonb)
+              from public.songs s where s.status <> 'draft'),
+    'playlists', (select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'description', p.description, 'sort', p.sort,
+                'songs', (select coalesce(jsonb_agg(ps.song_id order by ps.position, ps.song_id), '[]'::jsonb)
+                          from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
+                          where ps.playlist_id = p.id)
+              ) order by p.sort, p.name), '[]'::jsonb)
+              from public.playlists p where p.owner is null and p.is_public));
+$$;
+grant execute on function public.catalog() to anon, authenticated;

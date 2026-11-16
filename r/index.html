@@ -210,8 +210,9 @@ function remoteHTML() {
     '<button class="btn" data-c="sound" aria-pressed="' + !!st.sound + '"><span class="em">' + (st.sound ? '🔊' : '🔇') + '</span>Effects</button></div>' +
     '<div class="grid4" style="grid-template-columns:repeat(2,minmax(0,1fr))"><button class="btn" data-c="vol" data-d="-1"><span class="em">🔉</span>Quieter</button><button class="btn" data-c="vol" data-d="1"><span class="em">🔊</span>Louder' + (st.vol != null ? ' · ' + st.vol : '') + '</button></div>';
   const pl = st.pl ? '<button class="plbar" data-c="lists">' + fan(st.pl.th, st.pl.e) + '<span class="pli"><span class="kicker" style="margin:0">Playlist</span><span class="pn">' + esc(st.pl.n) + '</span><span class="ps">' + st.pl.songs + ' song' + (st.pl.songs === 1 ? '' : 's') + '</span></span><span class="plgo">' + ICON.list + 'Switch</span></button>' : '';
-  // the TV's order (most songs and easiest to find at home first), so a tile never moves under a finger; like the TV, a long
-  // table shows its first 8, plus any that are on or were tapped here, and "+N more"
+  // the TV's order (the ones on first, then the starters, then most songs and easiest to find at home), which the TV holds while
+  // taps come in and settles a moment after; like the TV, a long table shows its first 8, plus any that are on or were tapped
+  // here, and "+N more"
   const all = st.items || [], long = all.length > CAP + 2;
   const items = long && !more ? all.filter((it, k) => k < CAP || it.on || touched.has(it.id)) : all, hidden = all.length - items.length;
   const table = '<section class="card"><div class="kicker">On the table</div>' + pl + '<p class="hint" style="margin:10px 0 0">Tap what you’ve put out.</p><div class="tiles">' +
@@ -226,10 +227,16 @@ function listsHTML() {
       '<span class="pli"><span class="pn">' + esc(x.n) + '</span><span class="ps">' + x.songs + ' song' + (x.songs === 1 ? '' : 's') + '</span></span></button>').join('') + '</div>'
       : '<p class="hint" style="margin-top:10px">Getting the list from the TV…</p>') + '</section>';
 }
+const calm = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
 function render() {
   const app = $('#app');
   if (!code) { app.innerHTML = joinHTML(); const i = $('#codeIn'); if (i && !('ontouchstart' in window)) i.focus(); return; }
+  const tiles = () => app.querySelectorAll('.tile[data-c="item"]'), was = new Map(); // when the TV re-orders, the tiles glide to their new places
+  if (!calm()) tiles().forEach(b => was.set(b.dataset.arg, b.getBoundingClientRect()));
   app.innerHTML = remoteHTML();
+  if (was.size) tiles().forEach(b => { const a = was.get(b.dataset.arg); if (!a || !b.animate) return;
+    const r = b.getBoundingClientRect(), dx = a.left - r.left, dy = a.top - r.top;
+    if (Math.abs(dx) + Math.abs(dy) > 1) b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.9,.25,1)' }); });
 }
 let toastT = null;
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }

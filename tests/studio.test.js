@@ -456,7 +456,17 @@ function makeDom(db, opts) {
     ok(!!es && es.value === '5' && /every home/i.test(es.options[es.selectedIndex].textContent), 'the editor shows how easy its prop is to find at home: ' + (es && es.options[es.selectedIndex].textContent));
     es.value = '1'; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
     ok(db7.items.find(i => i.id === 'chithi').ease === 1 && db7.items.find(i => i.id === 'paani').sort === 0 && d7.querySelector('.itile').dataset.arg === 'paani',
-      'a new ease saves and moves the item: Chithi, now hard to find, goes after Paani: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.ease).join(' ')); }
+      'a new ease saves and moves the item: Chithi, now hard to find, goes after Paani: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.ease).join(' '));
+    // v47: a starter leads whatever its songs and ease, and a new phone's table begins with it on
+    if (!d7.querySelector('#itemEd[data-item="chithi"]')) { c7('[data-act="edititem"][data-arg="chithi"]'); await sleep(10); } // still open after the save
+    const ss = d7.querySelector('#itemEd [data-f="starter"]');
+    ok(!!ss && ss.value === '' && /starter/i.test(ss.parentNode.textContent), 'the editor has a Starter setting, off for this one');
+    ss.value = '1'; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
+    ok(db7.items.find(i => i.id === 'chithi').starter === 1 && db7.items.find(i => i.id === 'chithi').sort === 0 && d7.querySelector('.itile').dataset.arg === 'chithi',
+      'a starter saves and leads the list though its prop is hard to find: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.starter).join(' '));
+    if (!d7.querySelector('#itemEd[data-item="chithi"]')) { c7('[data-act="edititem"][data-arg="chithi"]'); await sleep(10); }
+    const ss2 = d7.querySelector('#itemEd [data-f="starter"]');
+    ok(ss2.value === '1' && /1st starter/.test(ss2.options[ss2.selectedIndex].textContent), 'and the editor shows it as the 1st starter'); }
 
   // v41: words compare as they're read (बाटाे is बाटो, फ़ोन is फोन), and Auto-tag all takes estimates off words a spelling
   // now rules out, while a tag timed by hand stays. Invented lines.

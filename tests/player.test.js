@@ -338,7 +338,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(cards5[0].getAttribute('aria-current') === 'true' && /Playing/.test(cards5[0].textContent) && !/Playing/.test(cards5[1].textContent), 'the one playing is marked');
   ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('💧 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, its items as emoji with counts, and its description');
   ok(cards5[2].textContent.includes('All songs') && cards5[2].textContent.includes('4 songs') && cards5[2].textContent.includes('❤️ 3'), 'All songs counts every song once: ' + cards5[2].textContent);
-  ok(!!d5.querySelector('#mkForm #mkIn') && !d5.querySelector('#plFind'), 'Make your own sits above the playlists; the search box waits until there are more than 8');
+  ok(!!d5.querySelector('#mkForm #mkIn') && d5.querySelector('.picker').lastElementChild.id === 'mkForm' && !d5.querySelector('#plFind'), 'Make your own sits at the bottom, under the playlists; the search box waits until there are more than 8');
   const fan5 = [...cards5[2].querySelectorAll('.fan img')].map(i => i.getAttribute('src'));
   ok(fan5.length === 2 && fan5[0].includes('/p1xxxxxxxxx/') && fan5[1].includes('/l1xxxxxxxxx/'), 'its covers are each playlist’s first song');
   { const its = []; for (let k = 0; k < 11; k++) its.push({ id: 'it' + k, name: 'it' + k, dev: '' }); // a playlist with 11 items lists its 8 most common, then "+3 more"
@@ -361,13 +361,13 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   c5('[data-act="lists"]'); await sleep(10);
   ok(d5.querySelector('[data-act="pickpl"][data-arg="love"]').getAttribute('aria-current') === 'true' && !!d5.querySelector('[data-act="keeppl"]'), 'Change shows the list with the current playlist marked and a way back');
   c5('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
-  ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani+2 phool-1 maya+1', 'a playlist opened for the first time starts with what was on the table: ' + chips5().join(' '));
+  ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani+2 maya+1 phool-1', 'a playlist opened for the first time starts with what was on the table, the ones on first: ' + chips5().join(' '));
   c5('[data-act="item"][data-arg="paani"]'); await sleep(10);
   c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="love"]'); await sleep(40);
   ok(chips5().join(' ') === 'maya+2 phool-1', 'back on Love Songs, its own table choices come back: ' + chips5().join(' '));
   online = false;
   c5('[data-act="lists"]'); await sleep(10); c5('[data-act="pickpl"][data-arg="party-mix"]'); await sleep(40);
-  ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'paani-2 phool-1 maya+1', 'offline: a playlist opened before still loads from the phone, with its table: ' + chips5().join(' '));
+  ok(st5().playlist.id === 'party-mix' && chips5().join(' ') === 'maya+1 paani-2 phool-1', 'offline: a playlist opened before still loads from the phone, with its table (the ones on first): ' + chips5().join(' '));
   c5('[data-act="lists"]'); await sleep(10);
   ok(d5.querySelectorAll('[data-act="pickpl"]').length === 3, 'offline: the playlist list still shows');
   c5('[data-act="pickpl"][data-arg="all"]'); await sleep(20);
@@ -948,9 +948,12 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const vis = [...dd.querySelectorAll('.picker .lists > li')].filter(li => !li.hidden).map(li => li.querySelector('.t').textContent);
     ok(vis.join() === 'Dashain Nights' && !!dd.querySelector('#mkForm'), 'typing shows only the playlists that match, and Make your own stays: ' + vis.join()); }
 
-  // 35. Tips (v42): the intro and the footer point at the Tips page, where the ad and big-screen guides live (not a footer sentence)
-  ok(d.querySelector('#intro .introtip a[href="tips/"]') && d.querySelector('.foot a[href="tips/"]') && !/ad blocker/i.test(d.querySelector('.foot').textContent),
-    'the intro and the footer link to Tips; the footer no longer carries the ad-blocker sentence');
+  // 35. Tips (v42, v47): the intro says how to skip YouTube's ads (an ad blocker, or Messenger) right over Let's go, with a link to
+  //     the Tips page's ad guide; the footer links to Tips (not an ad sentence)
+  { const ia = d.querySelector('#intro .introbtns #introAds');
+    ok(!!ia && /ad blocker/.test(ia.textContent) && /Messenger/.test(ia.textContent) && /DuckDuckGo or Brave/.test(ia.textContent) && ia.querySelector('a[href="tips/#ads"]') && !ia.classList.contains('ok')
+      && d.querySelector('.foot a[href="tips/"]') && !/ad blocker/i.test(d.querySelector('.foot').textContent),
+      'the intro tells a first-timer to use an ad blocker or open Jhapat from Messenger, over Let’s go, and links the ad tips: ' + (ia && ia.textContent)); }
 
   // 36. Big screen (v42): the TV opens a room; a phone joins it at /r and drives the night. Both pages talk through a stand-in for
   //     Supabase Realtime that passes broadcasts between the sockets in one room.
@@ -1028,10 +1031,28 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const pd = tdom.window.document;
     ok(['ads', 'tv', 'props', 'rules', 'privacy'].every(id => pd.getElementById(id)) && /Messenger/.test(pd.getElementById('ads').textContent) && /jhapat\.live\/r/.test(pd.getElementById('tv').textContent),
       'the Tips page has the ad, big-screen, props, rules and privacy guides');
+    const vis37 = () => ['ads', 'props', 'tv', 'rules', 'privacy'].filter(id => !pd.getElementById(id).hidden).join();
+    ok(vis37() === 'ads' && pd.getElementById('t-ads').getAttribute('aria-selected') === 'true' && pd.querySelectorAll('[role="tab"]').length === 5,
+      'it opens as tabs, one guide at a time, on the ad guide: ' + vis37());
+    pd.getElementById('t-props').dispatchEvent(new tdom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    ok(vis37() === 'props' && pd.getElementById('t-props').getAttribute('aria-selected') === 'true' && pd.getElementById('t-ads').getAttribute('aria-selected') === 'false' && /#props$/.test(tdom.window.location.href),
+      'a tab shows its guide alone and keeps it in the address: ' + vis37());
+    pd.getElementById('t-props').dispatchEvent(new tdom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    ok(vis37() === 'tv', 'the arrow keys move between tabs');
+    const ads37 = pd.getElementById('ads').textContent;
+    ok(/DuckDuckGo/.test(ads37) && /Brave/.test(ads37) && /uBlock Origin/.test(ads37) && /Private DNS/.test(ads37) && /YouTube Premium/.test(ads37) && pd.querySelector('#ads [data-copy="https://jhapat.live/?ref=messenger"]'),
+      'the ad guide: Messenger first (with Copy the link), the browsers that block YouTube’s ads, what doesn’t work, and Premium');
     const raat = pd.getElementById('item-raat');
     ok(!!raat && /A torch/.test(raat.textContent) && /Or anything black/.test(raat.textContent) && /Counts: raat, रात, night/.test(raat.textContent) && !/रातो/.test(raat.textContent) && raat.classList.contains('abstract'),
       'each item shows its prop, more ideas for the words you can’t hold, and the spellings that count (not the ruled-out ones)');
-    ok(/items\?select=/.test(tdom.window.__asked), 'the items come from the database'); tdom.window.close();
+    ok(/items\?select=.*starter/.test(tdom.window.__asked) && !!raat.querySelector('.counts') && !pd.getElementById('props-list').classList.contains('words'), 'the items come from the database; the words that count wait behind a switch');
+    tdom.window.close();
+    const tdom2 = new JSDOM(tipsHtml, { runScripts: 'dangerously', url: 'https://jhapat.live/tips/#props', pretendToBeVisual: true,
+      beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => items.map(x => Object.assign({}, x, { starter: x.id === 'paani' ? 2 : null })) }); } });
+    await sleep(40);
+    ok(!tdom2.window.document.getElementById('props').hidden && tdom2.window.document.getElementById('ads').hidden && /Starter/.test(tdom2.window.document.getElementById('item-paani').textContent) && !/Starter/.test(tdom2.window.document.getElementById('item-raat').textContent),
+      'a link to tips/#props opens that tab, and the starters are marked');
+    tdom2.window.close();
     // every prop and every other idea names a different thing, so a table never holds two of the same
     const ideas = []; tipsHtml.replace(/const MORE = \{([\s\S]*?)\n\};/, (m, b) => { b.replace(/'([^']+)'/g, (x, v) => { ideas.push(v); }); });
     const dup = ideas.filter((v, k) => ideas.indexOf(v) !== k);
@@ -1043,7 +1064,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   { const E = { maya: 3, ghar: 5, mutu: 3, sapana: 5, aankha: 4, raat: 4, khushi: 4, paani: 5, phool: 4, bato: 4, chiya: 5, rakshi: 2 };
     const N = { maya: 12, mutu: 6, aankha: 5, sapana: 4, raat: 4, khushi: 4, ghar: 3, paani: 3, phool: 3, bato: 2, chiya: 1, rakshi: 1 }; // songs with each
     const ids = Object.keys(E);
-    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: '•', ease: E[id], note: id === 'ghar' ? 'a key' : 'a thing' }));
+    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: '•', ease: E[id], starter: null, note: id === 'ghar' ? 'a key' : 'a thing' })); // a catalog with no starters
     const sg = []; for (let k = 0; k < 12; k++) sg.push({ id: 'rk' + k, title: 'Rank ' + k, artist: 'A', videos: [{ yt: ('rank' + k + 'xxxxxxxxx').slice(0, 11), offset: 0, synced: true }],
       tags: ids.filter(id => k < N[id]).map((id, j) => [id, 20 + j * 12]) });
     const C = { items: its, songs: sg, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: sg.map(s => s.id) }] };
@@ -1064,7 +1085,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
       source: 'db', playlist: { id: 'party-mix', name: 'Nepali Party Mix' }, items: ['paani', 'phool', 'chiya', 'paisa', 'chithi', 'maya', 'rakshi'].map((id, k) => ({ id, name: id, on: k < 5 })) };
     const od = mk(old); await sleep(1700);
     const osv = JSON.parse(od.window.localStorage.getItem('jhapat.v1'));
-    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'maya sapana aankha ghar paani' && /top five: Maya, Sapana, Aankha, Ghar, Paani/.test(od.window.document.querySelector('#toast').textContent),
+    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'maya sapana aankha ghar paani' && /starts with Maya, Sapana, Aankha, Ghar and Paani\. Tap any item/.test(od.window.document.querySelector('#toast').textContent) && osv.tableV === 47,
       'a phone that never chose moves to the new top five once, and is told: ' + od.window.document.querySelector('#toast').textContent);
     od.window.close();
     const chose = Object.assign({}, old, { tables: { 'party-mix': ['chiya', 'rakshi'] } });
@@ -1090,6 +1111,85 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     qclick('.tile.more'); await sleep(5); qclick('.tile[data-arg="chiya"]'); await sleep(5); qclick('.tile.more'); await sleep(5);
     ok(tilesQ() === order.slice(0, 8).concat('chiya').join(' ') && /\+3 more/.test(qdoc.querySelector('.tile.more').textContent), 'and one tapped further down stays in view when the table folds again: ' + tilesQ());
     qd.window.close(); }
+
+  // 39. v47: Sachin's starters lead every table in their order and start on (a starter with no songs in the playlist makes way);
+  //     the items that are on come first, the order catching up a moment after the last tap; Switch lists Jhapat's playlists,
+  //     All songs, the ones sorted 100+, yours, then Make your own; the intro names the props to put out and how to skip ads.
+  { const E = { maya: 3, ghar: 5, phool: 4, paani: 5, samaya: 4, sapana: 5, aansu: 4, rakshi: 2, chiya: 5 };
+    const ST = { phool: 1, paani: 2, samaya: 3, maya: 4, sapana: 5, aansu: 6 };
+    const N = { maya: 10, ghar: 8, sapana: 6, chiya: 5, paani: 4, phool: 3, samaya: 2, rakshi: 1, aansu: 0 }; // songs with each
+    const NOTE = { phool: 'a flower, real or plastic', paani: 'a bottle of water, cap on', samaya: 'a watch', maya: 'a heart: a card or one drawn on paper', sapana: 'a pillow',
+      ghar: 'a key', aansu: 'a tissue', chiya: 'an empty tea cup', rakshi: 'an empty can' };
+    const EMO = { phool: '🌸', paani: '💧', samaya: '⌚', maya: '❤️', sapana: '💤', ghar: '🔑', aansu: '🤧', chiya: '🍵', rakshi: '🥫' };
+    const ids = Object.keys(E);
+    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: EMO[id], ease: E[id], starter: ST[id] || null, note: NOTE[id] }));
+    const sg = []; for (let k = 0; k < 10; k++) sg.push({ id: 'st' + k, title: 'Star ' + k, artist: 'A', videos: [{ yt: ('star' + k + 'xxxxxxxxx').slice(0, 11), offset: 0, synced: true }],
+      tags: ids.filter(id => k < N[id]).map((id, j) => [id, 20 + j * 12]) });
+    const C = { items: its, songs: sg, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', sort: 0, songs: sg.slice(0, 9).map(s => s.id) }, // st9 is only in All songs
+      { id: 'nepali-hits', name: 'Nepali Hits', sort: 4, songs: ['st0', 'st1', 'st2', 'st3'] }, { id: 'dohori', name: 'Nepali Dohori Sachin', sort: 100, songs: ['st0', 'st1', 'st2'] },
+      { id: 'tiktok-og', name: 'Suju’s OG Round', sort: 101, songs: ['st0', 'st1'] }] };
+    const mk = (save, ua) => new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+      beforeParse(win) { win.__settleMs = 60; win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C });
+        if (ua) Object.defineProperty(win.navigator, 'userAgent', { value: ua });
+        if (save) { win.localStorage.setItem('jhapat.v1', JSON.stringify(save)); win.localStorage.setItem('jhapat.cat', JSON.stringify(C)); }
+        win.localStorage.setItem('jhapat.mine', JSON.stringify([{ id: 'yt-mine', name: 'My Mix', src: 'yt', songs: ['st0', 'st1'] }])); } });
+    const sd = mk(null); await sleep(80);
+    const sw = sd.window, sdoc = sw.document, sv = () => JSON.parse(sw.localStorage.getItem('jhapat.v1'));
+    const chips = () => [...sdoc.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg).join(' ');
+    const click = sel => sdoc.querySelector(sel).dispatchEvent(new sw.MouseEvent('click', { bubbles: true }));
+    ok(sv().items.map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar chiya rakshi aansu',
+      'the starters lead in their own order, then the rest by songs and ease; Aansu, a starter with no song here, goes last: ' + sv().items.map(i => i.id).join(' '));
+    ok(sv().items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar' && sv().tableV === 47,
+      'a first table turns on the starters, and the next best takes the place of one with no songs: ' + sv().items.filter(i => i.on).map(i => i.id).join(' '));
+    ok(/^Put out 🌸 a flower, 💧 a bottle of water, ⌚ a watch, ❤️ a heart, 💤 a pillow and 🔑 a key, then tap the same items here\.$/.test(sdoc.getElementById('introTable').textContent),
+      'the intro names what to put out for that table: ' + sdoc.getElementById('introTable').textContent);
+    click('[data-act="introgo"]'); await sleep(10);
+    ok(chips() === 'phool paani samaya maya sapana ghar chiya rakshi', 'the table shows the ones on first: ' + chips());
+    click('[data-act="item"][data-arg="rakshi"]'); await sleep(10);
+    ok(chips() === 'phool paani samaya maya sapana ghar chiya rakshi' && sdoc.querySelector('[data-arg="rakshi"]').getAttribute('aria-pressed') === 'true', 'a tapped tile stays put while the taps come in: ' + chips());
+    await sleep(150);
+    ok(chips() === 'phool paani samaya maya sapana ghar rakshi chiya', 'a moment later it joins the ones on: ' + chips());
+    click('[data-act="item"][data-arg="samaya"]'); await sleep(10);
+    ok(chips() === 'phool paani samaya maya sapana ghar rakshi chiya', 'one turned off stays put at first too');
+    await sleep(150);
+    ok(chips() === 'phool paani maya sapana ghar rakshi samaya chiya' && sv().tables['party-mix'].join(' ') === 'phool paani maya sapana ghar rakshi',
+      'then drops to the head of the ones off: ' + chips());
+    click('.plbar'); await sleep(10);
+    const cards = [...sdoc.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' ');
+    const heads = [...sdoc.querySelectorAll('.picker h3.sub')].map(h => h.textContent).join(',');
+    ok(cards === 'party-mix nepali-hits all dohori tiktok-og yt-mine' && heads === 'Jhapat playlists,Yours' && sdoc.querySelector('.picker').lastElementChild.id === 'mkForm',
+      'Switch: Jhapat’s playlists, All songs, then Nepali Dohori Sachin and Suju’s at the bottom of them; yours and Make your own last: ' + cards + ' / ' + heads);
+    sw.close();
+    // a phone given an older first table (never chose one) moves to the starters once and is told; the next visit leaves it be
+    const old = { v: 1, seedV: 4, settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false, blind: false, sound: true }, played: [], songs: [], introSeen: true,
+      source: 'db', playlist: { id: 'party-mix', name: 'Nepali Party Mix' }, items: ['maya', 'ghar', 'sapana', 'chiya', 'paani', 'phool'].map((id, k) => ({ id, name: id, on: k < 5 })) };
+    const od = mk(old); await sleep(1700);
+    const osv = JSON.parse(od.window.localStorage.getItem('jhapat.v1'));
+    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar' && /starts with Phool, Paani, Samaya, Maya, Sapana and Ghar\. Tap any item/.test(od.window.document.querySelector('#toast').textContent),
+      'a phone that never chose moves to the starters once, and is told: ' + od.window.document.querySelector('#toast').textContent);
+    const again = JSON.stringify(osv); od.window.close();
+    const od2 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+      beforeParse(win) { win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C }); win.localStorage.setItem('jhapat.v1', again); win.localStorage.setItem('jhapat.cat', JSON.stringify(C)); } });
+    await sleep(1700);
+    ok(!od2.window.document.querySelector('#toast').textContent && JSON.parse(od2.window.localStorage.getItem('jhapat.v1')).items.filter(i => i.on).length === 6, 'and only once');
+    od2.window.close();
+    // the same phone with the catalog it saved before v47 (no starters in it): the table waits for the new catalog to move
+    const oldCat = JSON.parse(JSON.stringify(C)); oldCat.items.forEach(i => { delete i.starter; });
+    const od3 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
+      beforeParse(win) { win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C }); win.localStorage.setItem('jhapat.v1', JSON.stringify(old)); win.localStorage.setItem('jhapat.cat', JSON.stringify(oldCat)); } });
+    await sleep(1700);
+    const o3 = JSON.parse(od3.window.localStorage.getItem('jhapat.v1'));
+    ok(o3.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar' && /starts with Phool, Paani, Samaya, Maya, Sapana and Ghar\./.test(od3.window.document.querySelector('#toast').textContent),
+      'a phone holding a catalog from before v47 still moves to the starters once the new one arrives: ' + o3.items.filter(i => i.on).map(i => i.id).join(' ') + ' / ' + od3.window.document.querySelector('#toast').textContent);
+    od3.window.close();
+    // the ad tip knows Messenger's browser and the browsers that block ads
+    const md = mk(null, 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36 [FB_IAB/MESSENGER;FBAV/480.0.0.0;]'); await sleep(60);
+    const ma = md.window.document.getElementById('introAds');
+    ok(ma.classList.contains('ok') && /No ads here/.test(ma.textContent) && ma.querySelector('a[href="tips/#ads"]'), 'in Messenger the intro says no ads show there: ' + ma.textContent);
+    md.window.close();
+    const dd = mk(null, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 DuckDuckGo/7 Safari/605.1.15'); await sleep(60);
+    ok(/Ad blocker on/.test(dd.window.document.getElementById('introAds').textContent), 'in DuckDuckGo it says the browser blocks the ads');
+    dd.window.close(); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

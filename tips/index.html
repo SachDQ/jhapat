@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0F0B1E">
-<title>Jhapat tips · fewer ads, the big screen, what to put on the table</title>
-<meta name="description" content="Tips for a Jhapat night: how to skip YouTube ads, play on a TV with phones as remotes, and what to put on the table for every word, from paani to raat and aansu.">
+<title>Jhapat tips · skip YouTube ads, what to put out, the big screen</title>
+<meta name="description" content="Tips for a Jhapat night: how to skip YouTube ads (Messenger, DuckDuckGo, Brave, uBlock Origin), what to put on the table for every word, and how to play on a TV with phones as remotes.">
 <link rel="canonical" href="https://jhapat.live/tips/">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Jhapat">
 <meta property="og:url" content="https://jhapat.live/tips/">
 <meta property="og:title" content="Jhapat tips">
-<meta property="og:description" content="Fewer ads, the big screen, and what to put on the table for every word.">
+<meta property="og:description" content="Skip YouTube ads, what to put on the table for every word, and the big screen.">
 <meta property="og:image" content="https://jhapat.live/img/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" sizes="32x32" href="../img/icon-32.png">
@@ -29,24 +29,29 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{background:var(--bg);scroll-behavior:smooth}
-@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+html{background:var(--bg)}
 body{margin:0;background:radial-gradient(120% 50% at 50% 0%,#2B1B4E 0%,var(--bg) 60%) no-repeat,var(--bg);color:var(--ink);font:17px/1.55 var(--body)}
 .wrap{max-width:760px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left)) 40px max(16px,env(safe-area-inset-right))}
-.top{display:flex;align-items:center;gap:10px;padding:14px 0 8px}
+.top{display:flex;align-items:center;gap:10px;padding:14px 0 6px}
 .top a.brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}
 .top img{width:66px;height:48px}
 .top .word{font:400 28px/1 var(--display);color:var(--gold)}
 .top .play{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,var(--gold-fill),var(--saffron));color:var(--gold-ink);font-weight:800;
   border-radius:14px;padding:10px 16px;text-decoration:none}
-h1{font:400 clamp(32px,6vw,46px)/1.05 var(--display);margin:18px 0 6px}
-.lede{color:var(--muted);margin:0 0 14px;max-width:60ch}
-nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
-nav.toc a{border:1px solid var(--line-2);border-radius:999px;padding:6px 12px;color:var(--ink);text-decoration:none;font-weight:700;font-size:15px;background:var(--raise)}
-article{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;margin-top:16px;scroll-margin-top:12px}
-article h2{font:400 28px/1.1 var(--display);margin:0 0 8px}
-article h3{font-size:18px;margin:18px 0 6px}
-.kicker{font:800 12px/1 var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--gold-fill);margin-bottom:8px}
+h1{font:400 clamp(30px,6vw,40px)/1.05 var(--display);margin:10px 0 2px}
+.lede{color:var(--muted);margin:0 0 10px;max-width:60ch;font-size:15.5px}
+/* the guides are tabs (v47): one at a time, so the page never turns into one long scroll */
+.tabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:8px 0;background:linear-gradient(var(--bg) 82%,rgba(15,11,30,0))}
+.tabs a{display:grid;justify-items:center;gap:1px;padding:7px 2px 6px;border:1px solid var(--line-2);border-radius:14px;background:var(--raise);color:var(--ink);text-decoration:none;
+  font-weight:800;font-size:13.5px;line-height:1.1;min-width:0;transition:transform .15s}
+.tabs a span{font-size:20px;line-height:1.1}
+.tabs a[aria-selected="true"]{background:var(--gold-fill);border-color:var(--gold-fill);color:var(--gold-ink);box-shadow:0 0 18px rgba(255,164,27,.35)}
+.tabs a:active{transform:scale(.96)}
+.tabs a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+article{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:6px}
+article:focus{outline:none}
+article h2{font:400 26px/1.1 var(--display);margin:0 0 8px}
+article h3{font-size:18px;margin:16px 0 6px}
 p{margin:0 0 10px;max-width:64ch}
 ol,ul{margin:0 0 12px;padding-left:1.3em}
 li{margin:4px 0}
@@ -58,18 +63,41 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
 .media{margin:12px 0 0}
 .media img,.media video{width:100%;height:auto;border-radius:14px;border:1px solid var(--line)}
 .media figcaption{color:var(--muted);font-size:14px;margin-top:6px}
-.props{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:12px}
-.prop{background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:12px}
-.prop .h{display:flex;align-items:center;gap:10px}
-.prop .em{font-size:28px;line-height:1}
+/* the ad guide */
+.way{background:var(--raise);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:12px}
+.way.best{border-color:var(--gold-fill);box-shadow:0 0 0 1px rgba(255,164,27,.25)}
+.wh{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.wh .em{font-size:30px;line-height:1}
+.wh h3{margin:0;font-size:18.5px;line-height:1.2}
+.wh .sub{margin:2px 0 0;color:var(--muted);font-size:14px}
+.way ol{margin-bottom:8px}
+.apps{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.apps li{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:15.5px;line-height:1.4}
+.apps li b{display:block;font-size:16.5px}
+.apps .on{display:block;color:var(--gold);font-size:13px;font-weight:700;margin-bottom:2px}
+.copy{appearance:none;border:1px solid var(--gold-fill);background:transparent;color:var(--gold);font:800 15px/1 var(--body);border-radius:12px;padding:10px 14px;cursor:pointer}
+.copy:active{transform:scale(.97)}
+details.more{margin-top:10px;background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+details.more summary{cursor:pointer;font-weight:800}
+details.more p{margin:8px 0 0;font-size:15.5px}
+/* the props */
+.props{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px;margin-top:10px}
+.prop{background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:10px 11px;scroll-margin-top:90px}
+.prop .h{display:flex;align-items:center;gap:9px}
+.prop .em{font-size:25px;line-height:1}
 .prop .nm{font-weight:800;line-height:1.1}
-.prop .d{color:var(--muted);font-size:14px}
-.prop .what{margin:8px 0 0;font-size:15.5px}
-.prop .alt{margin:4px 0 0;font-size:14px;color:var(--muted)}
-.prop .counts{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
-.prop.abstract{border-color:var(--gold-fill)}
-.foot{color:var(--muted);text-align:center;font-size:14px;margin-top:26px}
+.prop .d{color:var(--muted);font-size:13.5px}
+.prop .what{margin:6px 0 0;font-size:15px;line-height:1.3}
+.prop .alt{margin:3px 0 0;font-size:13.5px;color:var(--muted);line-height:1.3}
+.prop .counts{margin:6px 0 0;font-size:13px;color:var(--muted);display:none}
+.props.words .prop .counts{display:block}
+.prop.abstract{border-color:rgba(255,164,27,.55)}
+.prop .star{display:inline-block;margin-left:6px;font-size:11px;line-height:1.5;font-weight:800;color:var(--gold-ink);background:var(--gold-fill);border-radius:999px;padding:0 7px;vertical-align:1px}
+.switch{display:flex;align-items:center;gap:8px;margin:10px 0 0;font-weight:700;font-size:15px;cursor:pointer}
+.switch input{width:20px;height:20px;accent-color:var(--gold-fill)}
+.foot{color:var(--muted);text-align:center;font-size:14px;margin-top:22px}
 .foot a{color:var(--muted)}
+@media (prefers-reduced-motion: reduce){.tabs a,.copy{transition:none}.tabs a:active,.copy:active{transform:none}}
 </style>
 </head>
 <body>
@@ -79,35 +107,59 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
   <a class="play" href="../">▶ Play</a>
 </header>
 <main>
-<h1>Tips for a great Jhapat night</h1>
-<p class="lede">Quick guides for the things people ask about. More are on the way, with short videos.</p>
-<nav class="toc" aria-label="On this page"><a href="#ads">Fewer ads</a><a href="#tv">Big screen</a><a href="#props">What to put out</a><a href="#rules">How to play</a><a href="#privacy">Privacy</a></nav>
+<h1>Tips</h1>
+<p class="lede">For a great Jhapat night. More guides are on the way, with short videos.</p>
+<nav class="tabs" role="tablist" aria-label="Tips">
+  <a role="tab" id="t-ads" href="#ads" aria-controls="ads" aria-selected="true"><span aria-hidden="true">🚫</span>Ads</a>
+  <a role="tab" id="t-props" href="#props" aria-controls="props" aria-selected="false"><span aria-hidden="true">🧺</span>Props</a>
+  <a role="tab" id="t-tv" href="#tv" aria-controls="tv" aria-selected="false"><span aria-hidden="true">📺</span>TV</a>
+  <a role="tab" id="t-rules" href="#rules" aria-controls="rules" aria-selected="false"><span aria-hidden="true">🎯</span>Rules</a>
+  <a role="tab" id="t-privacy" href="#privacy" aria-controls="privacy" aria-selected="false"><span aria-hidden="true">🔒</span>Privacy</a>
+</nav>
 
-<!-- Each guide is an <article> with an id. To add a GIF or a video to one, put the file in img/tips/ and add, where it fits:
+<!-- Each guide is a tab: an <article> with an id, and a link in the tabs above (add its id to TABS in the script below too).
+     To add a GIF or a video to one, put the file in img/tips/ and add, where it fits:
      <figure class="media"><img src="../img/tips/NAME.gif" alt="What it shows" loading="lazy"><figcaption>One line about it</figcaption></figure>
-     (or <video src="../img/tips/NAME.mp4" muted loop playsinline autoplay></video>). A new guide is a new <article>, plus a link in the nav above. -->
+     (or <video src="../img/tips/NAME.mp4" muted loop playsinline autoplay></video>). -->
 
-<article id="ads">
-  <div class="kicker">Fewer ads</div>
-  <h2>Skip the ads between songs</h2>
-  <p>Jhapat plays songs through YouTube, and YouTube sometimes shows an ad before one. Two ways around it:</p>
-  <h3>1. Open Jhapat from a Messenger chat</h3>
-  <ol>
-    <li>Send <b>jhapat.live</b> in any Messenger chat, your party group for example.</li>
-    <li>Tap the link in that chat. Jhapat opens inside Messenger.</li>
-    <li>Play from there. Messenger’s own browser doesn’t show YouTube’s ads.</li>
-  </ol>
-  <h3>2. Use a browser that blocks ads</h3>
-  <ul>
-    <li><b>Android:</b> the Brave browser, or Firefox with the uBlock Origin add-on.</li>
-    <li><b>iPhone and iPad:</b> the Brave browser.</li>
-    <li><b>Laptop:</b> Brave, or Firefox with uBlock Origin.</li>
-  </ul>
+<article id="ads" role="tabpanel" aria-labelledby="t-ads" tabindex="-1">
+  <h2>Play without YouTube’s ads</h2>
+  <p>Jhapat plays the songs through YouTube, and YouTube sometimes plays an ad before one, which spoils the drop. Before the party, pick one of these:</p>
+  <section class="way best">
+    <div class="wh"><span class="em" aria-hidden="true">💬</span><div><h3>Open Jhapat from Messenger</h3><p class="sub">The easiest: nothing to install</p></div></div>
+    <ol>
+      <li>Send <b>jhapat.live</b> in any Messenger chat: your party group, or a chat with yourself.</li>
+      <li>Tap the link in that chat. Jhapat opens inside Messenger.</li>
+      <li>Play from there. Messenger’s own browser doesn’t show YouTube’s ads.</li>
+    </ol>
+    <button class="copy" type="button" data-copy="https://jhapat.live/?ref=messenger">Copy the link</button> <span class="muted" id="copied" role="status"></span>
+  </section>
+  <section class="way">
+    <div class="wh"><span class="em" aria-hidden="true">🛡️</span><div><h3>Or use a browser that blocks ads</h3><p class="sub">Free, from the App Store or Play Store. Then open jhapat.live in it.</p></div></div>
+    <ul class="apps">
+      <li><b>DuckDuckGo</b><span class="on">iPhone · Android · laptop</span>Blocks YouTube’s ads on its own, on YouTube and in videos on other sites like this one. On Android, if an ad still shows, turn it on: Settings › Ad Blocking › YouTube.</li>
+      <li><b>Brave</b><span class="on">iPhone · Android · laptop</span>Its Shields block YouTube’s ads. If one slips through, update the app: its block lists catch up with YouTube.</li>
+      <li><b>Firefox with uBlock Origin</b><span class="on">Android · laptop</span>Install Firefox, then add uBlock Origin from its add-ons.</li>
+      <li><b>Safari with uBlock Origin Lite</b><span class="on">iPhone · iPad · Mac</span>Free in the App Store; turn it on under Extensions in Safari’s settings. It doesn’t catch every YouTube ad.</li>
+    </ul>
+  </section>
+  <details class="more"><summary>These don’t stop YouTube’s ads</summary>
+    <p>Private DNS and other DNS blockers (AdGuard DNS, NextDNS), Firefox’s own ad blocker on iPhone, and the blockers made for Samsung Internet. YouTube sends its ads from the same servers as the songs, so a blocker that only sees addresses can’t tell them apart.</p></details>
+  <details class="more"><summary>Have YouTube Premium?</summary>
+    <p>Then songs play without ads when you’re signed in to YouTube in the same browser: not in a private tab, and with YouTube’s cookies allowed.</p></details>
   <p class="note">Ads are how artists get paid on YouTube. When a song becomes your party’s favourite, find it on YouTube and give the artist a like or a follow.</p>
 </article>
 
-<article id="tv">
-  <div class="kicker">Big screen</div>
+<article id="props" role="tabpanel" aria-labelledby="t-props" tabindex="-1" hidden>
+  <h2>Something on the table for every word</h2>
+  <p>Each item is a word sung in the songs. Put out its prop, turn the item on in Jhapat, and the game only drops into those words. The <b>starters</b> come first: a new phone’s table begins with them on. After them, the most sung and easiest to find at home.</p>
+  <p class="muted">No two items share a prop, and nothing here breaks, spills or burns when ten hands grab it.</p>
+  <label class="switch"><input type="checkbox" id="showWords"> Show the sung words that count</label>
+  <div class="props" id="props-list" aria-live="polite"><p class="muted">Loading the items…</p></div>
+  <p class="note">The words that count for an item are the ones sung in the songs: Jhapat also counts the usual other words for the same thing, like प्रेम and <i>love</i> for Maya.</p>
+</article>
+
+<article id="tv" role="tabpanel" aria-labelledby="t-tv" tabindex="-1" hidden>
   <h2>Play on the TV, with phones as remotes</h2>
   <ol>
     <li>Get Jhapat on the TV: a laptop plugged into the TV, a TV with a web browser, or a Chrome tab cast to it. Open <b>jhapat.live</b>.</li>
@@ -119,20 +171,10 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
   <p class="note">The laptop or TV plays the songs, so its sound is what the room hears. If a song won’t start on the TV, click the video there once: some browsers need one click before they play sound.</p>
 </article>
 
-<article id="props">
-  <div class="kicker">What to put out</div>
-  <h2>Something on the table for every word</h2>
-  <p>Each item is a word sung in the songs. Turn on the items you’ve put out, and the game only drops into those words. For the words you can’t hold, like <b>raat</b>, <b>aansu</b> or <b>khushi</b>, put out something that stands for them.</p>
-  <p>They’re in order: the first ones are sung in the most songs and are the easiest to find at home, so start from the top. No two share a prop, and nothing here breaks, spills or burns when ten hands grab it.</p>
-  <div class="props" id="props-list" aria-live="polite"><p class="muted">Loading the items…</p></div>
-  <p class="note">The words under each item are the ones that count when they’re sung: Jhapat also counts the usual other words for the same thing, like प्रेम and <i>love</i> for Maya.</p>
-</article>
-
-<article id="rules">
-  <div class="kicker">How to play</div>
+<article id="rules" role="tabpanel" aria-labelledby="t-rules" tabindex="-1" hidden>
   <h2>The rules, in four lines</h2>
   <ol>
-    <li>Put a few things on the table (see above) and turn them on in Jhapat.</li>
+    <li>Put a few things on the table (see Props) and turn them on in Jhapat.</li>
     <li>Press Start. A song drops in 7 to 10 seconds before one of their words is sung.</li>
     <li>Grab the item the moment you hear its word. First hand on it wins.</li>
     <li>Not sure which word it was? Press Show. Holding the phone? Tap Hide and play too.</li>
@@ -145,8 +187,7 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
   </ul>
 </article>
 
-<article id="privacy">
-  <div class="kicker">Privacy</div>
+<article id="privacy" role="tabpanel" aria-labelledby="t-privacy" tabindex="-1" hidden>
   <h2>Free, no sign-up</h2>
   <p>Jhapat counts drops, never who: no account, no ID for your phone and nothing you type is kept. Your table, playlists and drops stay on your phone. The counts it sends are anonymous totals, like how many parties played tonight.</p>
 </article>
@@ -156,9 +197,42 @@ kbd{font:700 14px/1 var(--body);border:1px solid var(--line-2);border-bottom-wid
 <script>
 (() => {
 'use strict';
-/* The items and what to put out for each, from the same database the player uses, in its order (items.sort: most songs and
-   easiest to find at home first). Another idea for each lives here, by item id; the studio's note on an item (Items › an item ›
-   Put out) is the first. No object appears twice across all of them, so the table never has two of the same thing. */
+/* The tabs (v47): one guide at a time. The address keeps the open one (#ads, #props, #tv, #rules, #privacy), so a link from the
+   player opens the right tab; #item-<id> opens Props at that item. */
+const TABS = ['ads', 'props', 'tv', 'rules', 'privacy'], bar = document.querySelector('.tabs');
+function show(id, how) {
+  if (!TABS.includes(id)) id = 'ads';
+  TABS.forEach(t => { const on = t === id, b = document.getElementById('t-' + t); document.getElementById(t).hidden = !on; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+  if (how === 'tap' || how === 'key') {
+    try { history.replaceState(null, '', '#' + id); } catch (e) {}
+    const top = bar.getBoundingClientRect().top + window.scrollY; if (window.scrollY > top) window.scrollTo(0, top); // the new guide starts in view
+    if (how === 'key') document.getElementById('t-' + id).focus();
+  }
+}
+function fromHash() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (/^item-/.test(h)) { show('props'); toItem(h); return; }
+  show(TABS.includes(h) ? h : 'ads');
+}
+function toItem(h) { const el = document.getElementById(h); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }
+bar.addEventListener('click', e => { const a = e.target.closest('[role="tab"]'); if (!a) return; e.preventDefault(); show(a.getAttribute('aria-controls'), 'tap'); });
+bar.addEventListener('keydown', e => {
+  const k = TABS.indexOf((e.target.getAttribute && e.target.getAttribute('aria-controls')) || ''); if (k < 0) return;
+  const to = e.key === 'ArrowRight' ? k + 1 : e.key === 'ArrowLeft' ? k - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : null;
+  if (to == null) return; e.preventDefault(); show(TABS[(to + TABS.length) % TABS.length], 'key');
+});
+window.addEventListener('hashchange', fromHash);
+fromHash();
+document.addEventListener('click', async e => { // Copy the link
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  let ok = false; try { await navigator.clipboard.writeText(b.dataset.copy); ok = true; } catch (x) {}
+  document.getElementById('copied').textContent = ok ? 'Copied. Paste it in a Messenger chat.' : 'Send this in a Messenger chat: jhapat.live';
+});
+document.getElementById('showWords').addEventListener('change', e => document.getElementById('props-list').classList.toggle('words', e.target.checked));
+
+/* The items and what to put out for each, from the same database the player uses, in its order (items.sort: the starters, then
+   the most sung and easiest to find at home). Another idea for each lives here, by item id; the studio's note on an item (Items ›
+   an item › Put out) is the first. No object appears twice across all of them, so the table never has two of the same thing. */
 const REST = 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', KEY = 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T';
 const MORE = {
   sapana: 'a sleep mask', aankha: 'a glasses case', phool: 'a flower drawn on paper', ghar: 'a house drawn on paper',
@@ -175,30 +249,32 @@ const ABSTRACT = new Set(['raat', 'aansu', 'khushi', 'sapana', 'samaya', 'naam',
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 function propHTML(it) {
   const counts = (it.words || []).filter(w => !/^\s*[-−]/.test(w)).slice(0, 8);
-  return '<div class="prop' + (ABSTRACT.has(it.id) ? ' abstract' : '') + '" id="item-' + esc(it.id) + '"><div class="h"><span class="em" aria-hidden="true">' + esc(it.emoji || '•') + '</span><div><div class="nm">' + esc(it.name) +
-    '</div><div class="d" lang="ne">' + esc(it.dev || '') + '</div></div></div>' +
+  return '<div class="prop' + (ABSTRACT.has(it.id) ? ' abstract' : '') + '" id="item-' + esc(it.id) + '">' +
+    '<div class="h"><span class="em" aria-hidden="true">' + esc(it.emoji || '•') + '</span><div><div class="nm">' + esc(it.name) +
+    '</div><div class="d"><span lang="ne">' + esc(it.dev || '') + '</span>' + (it.starter ? '<span class="star" title="On a new phone’s first table">Starter</span>' : '') + '</div></div></div>' +
     (it.note ? '<p class="what">' + esc(cap(it.note)) + '</p>' : '') + (MORE[it.id] ? '<p class="alt">Or ' + esc(MORE[it.id]) + '</p>' : '') +
     (counts.length ? '<p class="counts">Counts: ' + counts.map(esc).join(', ') + '</p>' : '') + '</div>';
 }
 const FALLBACK = [
-  { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️', note: 'a heart: a card, a sticker or one drawn on paper' },
-  { id: 'sapana', name: 'Sapana', dev: 'सपना', emoji: '💤', note: 'a pillow' },
+  { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸', note: 'a flower, real or plastic', starter: 1 },
+  { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧', note: 'a bottle of water, cap on', starter: 2 },
+  { id: 'samaya', name: 'Samaya', dev: 'समय', emoji: '⌚', note: 'a watch', starter: 3 },
+  { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️', note: 'a heart: a card, a sticker or one drawn on paper', starter: 4 },
+  { id: 'sapana', name: 'Sapana', dev: 'सपना', emoji: '💤', note: 'a pillow', starter: 5 },
+  { id: 'aansu', name: 'Aansu', dev: 'आँसु', emoji: '🤧', note: 'a tissue', starter: 6 },
   { id: 'aankha', name: 'Aankha', dev: 'आँखा', emoji: '🕶️', note: 'sunglasses or glasses' },
-  { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸', note: 'a flower, real or plastic' },
-  { id: 'ghar', name: 'Ghar', dev: 'घर', emoji: '🔑', note: 'a key' },
-  { id: 'khushi', name: 'Khushi', dev: 'खुशी', emoji: '😊', note: 'a sweet or a chocolate' },
-  { id: 'raat', name: 'Raat', dev: 'रात', emoji: '🔦', note: 'a torch' },
-  { id: 'mutu', name: 'Mutu', dev: 'मुटु', emoji: '💗', note: 'a red apple' }
+  { id: 'ghar', name: 'Ghar', dev: 'घर', emoji: '🔑', note: 'a key' }
 ];
 async function load() {
   const box = document.getElementById('props-list');
   let items = null;
   try {
-    const r = await fetch(REST + 'items?select=id,name,dev,emoji,note,words,sort&order=sort', { headers: { apikey: KEY } });
+    const r = await fetch(REST + 'items?select=id,name,dev,emoji,note,words,sort,starter&order=sort', { headers: { apikey: KEY } });
     if (r.ok) items = await r.json();
   } catch (e) {}
   if (!Array.isArray(items) || !items.length) items = FALLBACK;
   box.innerHTML = items.map(propHTML).join('');
+  const h = decodeURIComponent(location.hash.slice(1)); if (/^item-/.test(h)) toItem(h);
 }
 load();
 })();

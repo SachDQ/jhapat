@@ -1045,13 +1045,13 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const raat = pd.getElementById('item-raat');
     ok(!!raat && /A torch/.test(raat.textContent) && /Or anything black/.test(raat.textContent) && /Counts: raat, रात, night/.test(raat.textContent) && !/रातो/.test(raat.textContent) && raat.classList.contains('abstract'),
       'each item shows its prop, more ideas for the words you can’t hold, and the spellings that count (not the ruled-out ones)');
-    ok(/items\?select=.*starter/.test(tdom.window.__asked) && !!raat.querySelector('.counts') && !pd.getElementById('props-list').classList.contains('words'), 'the items come from the database; the words that count wait behind a switch');
+    ok(/items\?select=.*default_on/.test(tdom.window.__asked) && !!raat.querySelector('.counts') && !pd.getElementById('props-list').classList.contains('words'), 'the items come from the database; the words that count wait behind a switch');
     tdom.window.close();
     const tdom2 = new JSDOM(tipsHtml, { runScripts: 'dangerously', url: 'https://jhapat.live/tips/#props', pretendToBeVisual: true,
-      beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => items.map(x => Object.assign({}, x, { starter: x.id === 'paani' ? 2 : null })) }); } });
+      beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => items.map(x => Object.assign({}, x, { default_on: x.id === 'paani' })) }); } });
     await sleep(40);
     ok(!tdom2.window.document.getElementById('props').hidden && tdom2.window.document.getElementById('ads').hidden && /Starter/.test(tdom2.window.document.getElementById('item-paani').textContent) && !/Starter/.test(tdom2.window.document.getElementById('item-raat').textContent),
-      'a link to tips/#props opens that tab, and the starters are marked');
+      'a link to tips/#props opens that tab, and the ones a phone starts with are marked Starter');
     tdom2.window.close();
     // every prop and every other idea names a different thing, so a table never holds two of the same
     const ideas = []; tipsHtml.replace(/const MORE = \{([\s\S]*?)\n\};/, (m, b) => { b.replace(/'([^']+)'/g, (x, v) => { ideas.push(v); }); });
@@ -1064,7 +1064,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   { const E = { maya: 3, ghar: 5, mutu: 3, sapana: 5, aankha: 4, raat: 4, khushi: 4, paani: 5, phool: 4, bato: 4, chiya: 5, rakshi: 2 };
     const N = { maya: 12, mutu: 6, aankha: 5, sapana: 4, raat: 4, khushi: 4, ghar: 3, paani: 3, phool: 3, bato: 2, chiya: 1, rakshi: 1 }; // songs with each
     const ids = Object.keys(E);
-    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: '•', ease: E[id], starter: null, note: id === 'ghar' ? 'a key' : 'a thing' })); // a catalog with no starters
+    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: '•', ease: E[id], pin: null, default_on: false, note: id === 'ghar' ? 'a key' : 'a thing' })); // a catalog with none pinned and none starting on
     const sg = []; for (let k = 0; k < 12; k++) sg.push({ id: 'rk' + k, title: 'Rank ' + k, artist: 'A', videos: [{ yt: ('rank' + k + 'xxxxxxxxx').slice(0, 11), offset: 0, synced: true }],
       tags: ids.filter(id => k < N[id]).map((id, j) => [id, 20 + j * 12]) });
     const C = { items: its, songs: sg, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: sg.map(s => s.id) }] };
@@ -1085,7 +1085,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
       source: 'db', playlist: { id: 'party-mix', name: 'Nepali Party Mix' }, items: ['paani', 'phool', 'chiya', 'paisa', 'chithi', 'maya', 'rakshi'].map((id, k) => ({ id, name: id, on: k < 5 })) };
     const od = mk(old); await sleep(1700);
     const osv = JSON.parse(od.window.localStorage.getItem('jhapat.v1'));
-    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'maya sapana aankha ghar paani' && /starts with Maya, Sapana, Aankha, Ghar and Paani\. Tap any item/.test(od.window.document.querySelector('#toast').textContent) && osv.tableV === 47,
+    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'maya sapana aankha ghar paani' && /starts with Maya, Sapana, Aankha, Ghar and Paani\. Tap any item/.test(od.window.document.querySelector('#toast').textContent) && osv.tableV === 48,
       'a phone that never chose moves to the new top five once, and is told: ' + od.window.document.querySelector('#toast').textContent);
     od.window.close();
     const chose = Object.assign({}, old, { tables: { 'party-mix': ['chiya', 'rakshi'] } });
@@ -1112,17 +1112,18 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(tilesQ() === order.slice(0, 8).concat('chiya').join(' ') && /\+3 more/.test(qdoc.querySelector('.tile.more').textContent), 'and one tapped further down stays in view when the table folds again: ' + tilesQ());
     qd.window.close(); }
 
-  // 39. v47: Sachin's starters lead every table in their order and start on (a starter with no songs in the playlist makes way);
-  //     the items that are on come first, the order catching up a moment after the last tap; Switch lists Jhapat's playlists,
-  //     All songs, the ones sorted 100+, yours, then Make your own; the intro names the props to put out and how to skip ads.
-  { const E = { maya: 3, ghar: 5, phool: 4, paani: 5, samaya: 4, sapana: 5, aansu: 4, rakshi: 2, chiya: 5 };
-    const ST = { phool: 1, paani: 2, samaya: 3, maya: 4, sapana: 5, aansu: 6 };
-    const N = { maya: 10, ghar: 8, sapana: 6, chiya: 5, paani: 4, phool: 3, samaya: 2, rakshi: 1, aansu: 0 }; // songs with each
+  // 39. v47, v48: the items a new phone starts with (default_on: Paani, Maya, Phool, Bato, Samaya) lead every table and start on,
+  //     then Sachin's other pinned ones (pin), then the rest by songs and ease; one with no songs here makes way for the next. The
+  //     items that are on come first, the order catching up a moment after the last tap; Switch lists Jhapat's playlists, All songs,
+  //     the ones sorted 100+, yours, then Make your own; the intro names the props to put out and how to skip ads.
+  { const E = { maya: 3, ghar: 5, phool: 4, paani: 5, samaya: 4, sapana: 5, aansu: 4, rakshi: 2, chiya: 5, bato: 4 };
+    const PIN = { phool: 1, paani: 2, samaya: 3, maya: 4, sapana: 5, aansu: 6 }, ON = ['paani', 'maya', 'phool', 'bato', 'samaya'];
+    const N = { maya: 10, ghar: 8, sapana: 6, chiya: 5, paani: 4, bato: 4, phool: 3, rakshi: 1, samaya: 0, aansu: 0 }; // songs with each
     const NOTE = { phool: 'a flower, real or plastic', paani: 'a bottle of water, cap on', samaya: 'a watch', maya: 'a heart: a card or one drawn on paper', sapana: 'a pillow',
-      ghar: 'a key', aansu: 'a tissue', chiya: 'an empty tea cup', rakshi: 'an empty can' };
-    const EMO = { phool: '🌸', paani: '💧', samaya: '⌚', maya: '❤️', sapana: '💤', ghar: '🔑', aansu: '🤧', chiya: '🍵', rakshi: '🥫' };
+      ghar: 'a key', aansu: 'a tissue', chiya: 'an empty tea cup', rakshi: 'an empty can', bato: 'a shoe or a chappal' };
+    const EMO = { phool: '🌸', paani: '💧', samaya: '⌚', maya: '❤️', sapana: '💤', ghar: '🔑', aansu: '🤧', chiya: '🍵', rakshi: '🥫', bato: '👟' };
     const ids = Object.keys(E);
-    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: EMO[id], ease: E[id], starter: ST[id] || null, note: NOTE[id] }));
+    const its = ids.map(id => ({ id, name: id[0].toUpperCase() + id.slice(1), dev: '', emoji: EMO[id], ease: E[id], pin: PIN[id] || null, default_on: ON.includes(id), note: NOTE[id] }));
     const sg = []; for (let k = 0; k < 10; k++) sg.push({ id: 'st' + k, title: 'Star ' + k, artist: 'A', videos: [{ yt: ('star' + k + 'xxxxxxxxx').slice(0, 11), offset: 0, synced: true }],
       tags: ids.filter(id => k < N[id]).map((id, j) => [id, 20 + j * 12]) });
     const C = { items: its, songs: sg, playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', sort: 0, songs: sg.slice(0, 9).map(s => s.id) }, // st9 is only in All songs
@@ -1137,22 +1138,22 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const sw = sd.window, sdoc = sw.document, sv = () => JSON.parse(sw.localStorage.getItem('jhapat.v1'));
     const chips = () => [...sdoc.querySelectorAll('[data-act="item"]')].map(b => b.dataset.arg).join(' ');
     const click = sel => sdoc.querySelector(sel).dispatchEvent(new sw.MouseEvent('click', { bubbles: true }));
-    ok(sv().items.map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar chiya rakshi aansu',
-      'the starters lead in their own order, then the rest by songs and ease; Aansu, a starter with no song here, goes last: ' + sv().items.map(i => i.id).join(' '));
-    ok(sv().items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar' && sv().tableV === 47,
-      'a first table turns on the starters, and the next best takes the place of one with no songs: ' + sv().items.filter(i => i.on).map(i => i.id).join(' '));
-    ok(/^Put out 🌸 a flower, 💧 a bottle of water, ⌚ a watch, ❤️ a heart, 💤 a pillow and 🔑 a key, then tap the same items here\.$/.test(sdoc.getElementById('introTable').textContent),
+    ok(sv().items.map(i => i.id).join(' ') === 'phool paani maya bato sapana ghar chiya rakshi samaya aansu',
+      'the ones a phone starts with lead (by pin, then Bato), then the other pinned (Sapana), then songs and ease; Samaya and Aansu, with no song here, go last: ' + sv().items.map(i => i.id).join(' '));
+    ok(sv().items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani maya bato sapana' && sv().tableV === 48,
+      'a first table turns on Paani, Maya, Phool and Bato, and Sapana takes the place of Samaya, which has no songs here: ' + sv().items.filter(i => i.on).map(i => i.id).join(' '));
+    ok(/^Put out 🌸 a flower, 💧 a bottle of water, ❤️ a heart, 👟 a shoe and 💤 a pillow, then tap the same items here\.$/.test(sdoc.getElementById('introTable').textContent),
       'the intro names what to put out for that table: ' + sdoc.getElementById('introTable').textContent);
     click('[data-act="introgo"]'); await sleep(10);
-    ok(chips() === 'phool paani samaya maya sapana ghar chiya rakshi', 'the table shows the ones on first: ' + chips());
+    ok(chips() === 'phool paani maya bato sapana ghar chiya rakshi', 'the table shows the ones on first: ' + chips());
     click('[data-act="item"][data-arg="rakshi"]'); await sleep(10);
-    ok(chips() === 'phool paani samaya maya sapana ghar chiya rakshi' && sdoc.querySelector('[data-arg="rakshi"]').getAttribute('aria-pressed') === 'true', 'a tapped tile stays put while the taps come in: ' + chips());
+    ok(chips() === 'phool paani maya bato sapana ghar chiya rakshi' && sdoc.querySelector('[data-arg="rakshi"]').getAttribute('aria-pressed') === 'true', 'a tapped tile stays put while the taps come in: ' + chips());
     await sleep(150);
-    ok(chips() === 'phool paani samaya maya sapana ghar rakshi chiya', 'a moment later it joins the ones on: ' + chips());
-    click('[data-act="item"][data-arg="samaya"]'); await sleep(10);
-    ok(chips() === 'phool paani samaya maya sapana ghar rakshi chiya', 'one turned off stays put at first too');
+    ok(chips() === 'phool paani maya bato sapana rakshi ghar chiya', 'a moment later it joins the ones on: ' + chips());
+    click('[data-act="item"][data-arg="maya"]'); await sleep(10);
+    ok(chips() === 'phool paani maya bato sapana rakshi ghar chiya', 'one turned off stays put at first too');
     await sleep(150);
-    ok(chips() === 'phool paani maya sapana ghar rakshi samaya chiya' && sv().tables['party-mix'].join(' ') === 'phool paani maya sapana ghar rakshi',
+    ok(chips() === 'phool paani bato sapana rakshi maya ghar chiya' && sv().tables['party-mix'].join(' ') === 'phool paani bato sapana rakshi',
       'then drops to the head of the ones off: ' + chips());
     click('.plbar'); await sleep(10);
     const cards = [...sdoc.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' ');
@@ -1160,27 +1161,27 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(cards === 'party-mix nepali-hits all dohori tiktok-og yt-mine' && heads === 'Jhapat playlists,Yours' && sdoc.querySelector('.picker').lastElementChild.id === 'mkForm',
       'Switch: Jhapat’s playlists, All songs, then Nepali Dohori Sachin and Suju’s at the bottom of them; yours and Make your own last: ' + cards + ' / ' + heads);
     sw.close();
-    // a phone given an older first table (never chose one) moves to the starters once and is told; the next visit leaves it be
-    const old = { v: 1, seedV: 4, settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false, blind: false, sound: true }, played: [], songs: [], introSeen: true,
+    // a phone given an older first table (never chose one; v47 gave it six) moves to the new one once and is told; the next visit leaves it be
+    const old = { v: 1, seedV: 4, tableV: 47, settings: { minLead: 7, maxLead: 10, balance: 5, autoNext: true, lag: 0.3, preload: true, small: false, blind: false, sound: true }, played: [], songs: [], introSeen: true,
       source: 'db', playlist: { id: 'party-mix', name: 'Nepali Party Mix' }, items: ['maya', 'ghar', 'sapana', 'chiya', 'paani', 'phool'].map((id, k) => ({ id, name: id, on: k < 5 })) };
     const od = mk(old); await sleep(1700);
     const osv = JSON.parse(od.window.localStorage.getItem('jhapat.v1'));
-    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar' && /starts with Phool, Paani, Samaya, Maya, Sapana and Ghar\. Tap any item/.test(od.window.document.querySelector('#toast').textContent),
-      'a phone that never chose moves to the starters once, and is told: ' + od.window.document.querySelector('#toast').textContent);
+    ok(osv.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani maya bato sapana' && /starts with Phool, Paani, Maya, Bato and Sapana\. Tap any item/.test(od.window.document.querySelector('#toast').textContent),
+      'a phone that never chose moves to the new first table once, and is told: ' + od.window.document.querySelector('#toast').textContent);
     const again = JSON.stringify(osv); od.window.close();
     const od2 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
       beforeParse(win) { win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C }); win.localStorage.setItem('jhapat.v1', again); win.localStorage.setItem('jhapat.cat', JSON.stringify(C)); } });
     await sleep(1700);
-    ok(!od2.window.document.querySelector('#toast').textContent && JSON.parse(od2.window.localStorage.getItem('jhapat.v1')).items.filter(i => i.on).length === 6, 'and only once');
+    ok(!od2.window.document.querySelector('#toast').textContent && JSON.parse(od2.window.localStorage.getItem('jhapat.v1')).items.filter(i => i.on).length === 5, 'and only once');
     od2.window.close();
-    // the same phone with the catalog it saved before v47 (no starters in it): the table waits for the new catalog to move
-    const oldCat = JSON.parse(JSON.stringify(C)); oldCat.items.forEach(i => { delete i.starter; });
+    // the same phone with the catalog it saved before v48 (it doesn't say which start on): the table waits for the new catalog to move
+    const oldCat = JSON.parse(JSON.stringify(C)); oldCat.items.forEach(i => { delete i.default_on; i.starter = i.pin; delete i.pin; });
     const od3 = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
       beforeParse(win) { win.scrollTo = () => {}; win.fetch = async () => ({ ok: true, json: async () => C }); win.localStorage.setItem('jhapat.v1', JSON.stringify(old)); win.localStorage.setItem('jhapat.cat', JSON.stringify(oldCat)); } });
     await sleep(1700);
     const o3 = JSON.parse(od3.window.localStorage.getItem('jhapat.v1'));
-    ok(o3.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani samaya maya sapana ghar' && /starts with Phool, Paani, Samaya, Maya, Sapana and Ghar\./.test(od3.window.document.querySelector('#toast').textContent),
-      'a phone holding a catalog from before v47 still moves to the starters once the new one arrives: ' + o3.items.filter(i => i.on).map(i => i.id).join(' ') + ' / ' + od3.window.document.querySelector('#toast').textContent);
+    ok(o3.items.filter(i => i.on).map(i => i.id).join(' ') === 'phool paani maya bato sapana' && /starts with Phool, Paani, Maya, Bato and Sapana\./.test(od3.window.document.querySelector('#toast').textContent),
+      'a phone holding a catalog from before v48 still moves once the new one arrives: ' + o3.items.filter(i => i.on).map(i => i.id).join(' ') + ' / ' + od3.window.document.querySelector('#toast').textContent);
     od3.window.close();
     // the ad tip knows Messenger's browser and the browsers that block ads
     const md = mk(null, 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36 [FB_IAB/MESSENGER;FBAV/480.0.0.0;]'); await sleep(60);

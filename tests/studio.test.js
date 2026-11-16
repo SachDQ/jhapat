@@ -457,16 +457,19 @@ function makeDom(db, opts) {
     es.value = '1'; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
     ok(db7.items.find(i => i.id === 'chithi').ease === 1 && db7.items.find(i => i.id === 'paani').sort === 0 && d7.querySelector('.itile').dataset.arg === 'paani',
       'a new ease saves and moves the item: Chithi, now hard to find, goes after Paani: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.ease).join(' '));
-    // v47: a starter leads whatever its songs and ease, and a new phone's table begins with it on
+    // v47, v48: a starter (on when a phone first opens Jhapat) leads whatever its songs and ease; pinned ones come right after
     if (!d7.querySelector('#itemEd[data-item="chithi"]')) { c7('[data-act="edititem"][data-arg="chithi"]'); await sleep(10); } // still open after the save
-    const ss = d7.querySelector('#itemEd [data-f="starter"]');
-    ok(!!ss && ss.value === '' && /starter/i.test(ss.parentNode.textContent), 'the editor has a Starter setting, off for this one');
-    ss.value = '1'; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
-    ok(db7.items.find(i => i.id === 'chithi').starter === 1 && db7.items.find(i => i.id === 'chithi').sort === 0 && d7.querySelector('.itile').dataset.arg === 'chithi',
-      'a starter saves and leads the list though its prop is hard to find: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.starter).join(' '));
-    if (!d7.querySelector('#itemEd[data-item="chithi"]')) { c7('[data-act="edititem"][data-arg="chithi"]'); await sleep(10); }
-    const ss2 = d7.querySelector('#itemEd [data-f="starter"]');
-    ok(ss2.value === '1' && /1st starter/.test(ss2.options[ss2.selectedIndex].textContent), 'and the editor shows it as the 1st starter'); }
+    const sc7 = d7.querySelector('#itemEd [data-f="default_on"]'), sp7 = d7.querySelector('#itemEd [data-f="pin"]');
+    ok(!!sc7 && !sc7.checked && /Starter/.test(sc7.parentNode.textContent) && !!sp7 && sp7.value === '', 'the editor has Starter (off) and Pinned to the top (no) for this one');
+    sc7.checked = true; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
+    ok(db7.items.find(i => i.id === 'chithi').default_on === true && db7.items.find(i => i.id === 'chithi').sort === 0 && d7.querySelector('.itile').dataset.arg === 'chithi',
+      'a starter saves and leads the list though its prop is hard to find: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.default_on).join(' '));
+    c7('[data-act="edititem"][data-arg="paani"]'); await sleep(10);
+    d7.querySelector('#itemEd [data-f="pin"]').value = '1'; d7.querySelector('#itemEd').dispatchEvent(new w7.Event('submit', { bubbles: true, cancelable: true })); await sleep(60);
+    ok(db7.items.find(i => i.id === 'paani').pin === 1 && db7.items.find(i => i.id === 'paani').sort === 1 && db7.items.find(i => i.id === 'chithi').sort === 0,
+      'a pinned item comes right after the starters: ' + db7.items.map(i => i.id + ':' + i.sort + '/' + i.pin).join(' '));
+    c7('[data-act="edititem"][data-arg="chithi"]'); await sleep(10);
+    ok(d7.querySelector('#itemEd [data-f="default_on"]').checked, 'and the editor shows Chithi as a starter'); }
 
   // v41: words compare as they're read (बाटाे is बाटो, फ़ोन is फोन), and Auto-tag all takes estimates off words a spelling
   // now rules out, while a tag timed by hand stays. Invented lines.

@@ -524,7 +524,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 47; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 48; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1706,21 +1706,23 @@ function applySmall() { document.querySelector('.stage').classList.toggle('small
    on every visit and stays on the phone, so All songs and every playlist open straight away and work without signal once
    it has loaded here. If the database has never answered on this phone, the songs built into this page are used instead. */
 const DB = { rest: 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', key: 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T', playlist: 'party-mix' };
-/* The table's order (v45, v47): Sachin's starter items first (items.starter: Phool, Paani, Samaya, Maya, Sapana and Aansu, in that
-   order) wherever a playlist has songs for them, then the rest by how many of its songs have a drop point for each and how easy
-   its prop is to find at home (items.ease, 1–5): the square root of the item's share of the top item's songs, times ease / 5. So a
-   key or a pillow outranks a word in twice the songs whose prop has to be made, and Rakshi, in a handful of songs, comes last.
-   A phone's first table turns on the starters (the top five if there were none). */
-const DEFAULT_ON = 5, TABLE_V = 47; // TABLE_V: the first table a phone that never chose was last given (v47: the starters)
+/* The table's order (v45, v47, v48), wherever a playlist has songs for the item: first the ones a new phone starts with
+   (items.default_on: Paani, Maya, Phool, Bato and Samaya, Sachin's picks "so people can easily start"), then the rest of his
+   pinned ones (items.pin, in its order: Phool, Paani, Samaya, Maya, Sapana, Aansu), then the rest by how many of its songs have a
+   drop point for each and how easy its prop is to find at home (items.ease, 1–5): the square root of the item's share of the top
+   item's songs, times ease / 5. So a key or a pillow outranks a word in twice the songs whose prop has to be made, and Rakshi, in
+   a handful of songs, comes last. A phone's first table turns on as many as start on (the top five if none do). */
+const DEFAULT_ON = 5, TABLE_V = 48; // TABLE_V: the first table a phone that never chose was last given (v48: Paani, Maya, Phool, Bato, Samaya)
 const easeOf = it => { const e = Number(it && it.ease); return e >= 1 && e <= 5 ? e : 3; };
-const starterOf = it => { const k = Number(it && it.starter); return k >= 1 ? k : 0; };
+const pinOf = it => { const k = Number(it && (it.pin != null ? it.pin : it.starter)); return k >= 1 ? k : 0; }; // v47's catalog called it starter
+const startsOn = it => !!(it && it.default_on);
 function rankItems(items, songs) { // [{ it, n }], best spot first; n: the songs with a drop point for the item
   const n = new Map(items.map(it => [it.id, 0]));
   songs.forEach(s => { if (!s.broken) dpOf(s).forEach((c, id) => { if (n.has(id)) n.set(id, n.get(id) + 1); }); });
   const top = Math.max(1, ...n.values());
-  return items.map((it, k) => { const c = n.get(it.id), st = starterOf(it);
-    return { it, k, n: c, st, g: !c ? 2 : st ? 0 : 1, s: c ? Math.sqrt(c / top) * easeOf(it) / 5 : -1 }; }) // g: starters, the rest, none here
-    .sort((a, b) => a.g - b.g || (a.g === 0 ? a.st - b.st : b.s - a.s) || a.k - b.k);
+  return items.map((it, k) => { const c = n.get(it.id), p = pinOf(it);
+    return { it, k, n: c, p, g: !c ? 3 : startsOn(it) ? 0 : p ? 1 : 2, s: c ? Math.sqrt(c / top) * easeOf(it) / 5 : -1 }; }) // g: starts on, pinned, the rest, none here
+    .sort((a, b) => a.g - b.g || (a.g < 2 ? (a.p || 999) - (b.p || 999) : 0) || b.s - a.s || a.k - b.k);
 }
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 function atVideo(song) { // a song moved to its next upload: use that upload's own offset
@@ -1760,16 +1762,16 @@ const listed = id => lists().some(c => c.id === id) || !!(mineOf(id) && songsIn(
 const pidFor = pid => [pid, DB.playlist, ALL].find(id => id && listed(id)) || ALL; // that playlist while it's still there, else the party mix
 /* Open All songs, a playlist, or one made from a YouTube link, its items in their spot for it (rankItems). One opened for the
    first time starts with what's on the table now, plus any item all of its songs have. A phone that never chose a table (no
-   table remembered, given its first table before v47) gets the starters once, and is told if it had played before. */
+   table remembered, given its first table before v48) gets the ones that start on once, and is told if it had played before. */
 function useList(pid, quiet) {
   const p = pid === ALL ? null : CAT.playlists.find(x => x.id === pid) || mineOf(pid);
   const songs = p ? songsIn(p) : [...songMap.values()];
-  const knows = CAT.items.some(i => i && 'starter' in i); // a catalog saved before v47 doesn't know the starters: wait for the new one
+  const knows = CAT.items.some(i => i && 'default_on' in i); // a catalog saved before v48 doesn't know which start on: wait for the new one
   const first = knows && !Object.keys(S.tables || {}).length && (S.tableV || 0) < TABLE_V, wasDb = S.source === 'db';
   const wasOn = first ? new Map() : new Map(S.items.map(i => [i.id, i.on])), mem = (S.tables || {})[pid];
   const inAll = id => songs.length > 0 && songs.every(s => s.tags.some(t => t.item === id));
-  const ranked = rankItems(CAT.items, songs), top = ranked.filter(x => x.n).slice(0, CAT.items.filter(starterOf).length || DEFAULT_ON).map(x => x.it.id);
-  S.items = ranked.map(({ it: i }) => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '', ease: easeOf(i), starter: starterOf(i),
+  const ranked = rankItems(CAT.items, songs), top = ranked.filter(x => x.n).slice(0, CAT.items.filter(startsOn).length || DEFAULT_ON).map(x => x.it.id);
+  S.items = ranked.map(({ it: i }) => ({ id: i.id, name: i.name, dev: i.dev || '', emoji: i.emoji || '', words: '', note: i.note || '', ease: easeOf(i), pin: pinOf(i), default_on: startsOn(i),
     on: mem ? mem.includes(i.id) : inAll(i.id) || (wasOn.has(i.id) ? !!wasOn.get(i.id) : top.includes(i.id)) }));
   if (first) { S.tableV = TABLE_V; if (wasDb) setTimeout(() => toast('Your table now starts with ' + andList(top.map(itemName)) + '. Tap any item to change it.'), 1500); } // a phone that played before without ever choosing
   settled = null; clearTimeout(settleT);
@@ -2380,7 +2382,7 @@ document.addEventListener('keydown', e => { // a TV remote or a keyboard: → ne
 /* The intro (v37): how to play in four lines, and Suju's TikTok, the party round that gave Sachin the idea. It opens on a phone's
    first visit and from How to play. TikTok's player loads only while the intro is open, with its description off. */
 const TIKTOK = 'https://www.tiktok.com/player/v1/7706561958320868638?music_info=1&description=0&rel=0&loop=1&autoplay=1&muted=1';
-/* What to put out for the table this phone starts with (the starters, from the catalog), and the ad tip: a phone in Messenger's
+/* What to put out for the table this phone starts with (the ones that start on, from the catalog), and the ad tip: a phone in Messenger's
    browser or in a browser that blocks ads is told it's set; everyone else is told how (v47). */
 const propShort = n => String(n || '').split(/[,:]| or /)[0].trim();
 function introTable() {

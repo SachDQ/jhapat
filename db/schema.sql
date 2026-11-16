@@ -701,3 +701,46 @@ language sql stable security invoker set search_path = '' as $$
               from public.playlists p where p.owner is null and p.is_public));
 $$;
 grant execute on function public.catalog() to anon, authenticated;
+
+-- ---------- v48 (16 Nov): the first table is five of Sachin's picks; the top of the list stays his six ----------
+-- Sachin: "have paani, maya, phool, bato, samaya be the default selected so people can easily start". A new phone's first table
+-- turns on items.default_on (Paani, Maya, Phool, Bato, Samaya), and those lead every table. items.pin (v47's starter, renamed)
+-- keeps his six at the top of the list in their order (Phool, Paani, Samaya, Maya, Sapana, Aansu), so Sapana and Aansu come right
+-- after the five.
+do $$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'items' and column_name = 'starter')
+     and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'items' and column_name = 'pin') then
+    alter table public.items rename column starter to pin;
+  end if;
+end $$;
+alter table public.items add column if not exists default_on boolean not null default false;
+update public.items set default_on = (id in ('paani', 'maya', 'phool', 'bato', 'samaya'))
+where default_on is distinct from (id in ('paani', 'maya', 'phool', 'bato', 'samaya'));
+-- items.sort (the studio's tiles, the Tips page): the first table (pinned ones by pin, then by the v45 rank), the other pinned, the rest
+with r as (select id, (row_number() over (order by (case when default_on then 0 when pin is not null then 1 else 2 end), coalesce(pin, 999), sort, id) - 1)::int as k
+           from public.items)
+update public.items i set sort = r.k from r where i.id = r.id and i.sort is distinct from r.k;
+
+-- catalog() as in v47, with each item's pin and default_on (in place of starter)
+create or replace function public.catalog() returns jsonb
+language sql stable security invoker set search_path = '' as $$
+  select jsonb_build_object(
+    'stamp', (select m.v from public.meta m where m.k = 'catalog'),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name, 'dev', i.dev, 'note', i.note, 'emoji', i.emoji, 'ease', i.ease, 'pin', i.pin, 'default_on', i.default_on) order by i.sort, i.id), '[]'::jsonb)
+              from public.items i),
+    'songs', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', s.id, 'title', s.title, 'artist', s.artist,
+                'videos', (select coalesce(jsonb_agg(jsonb_build_object('yt', v.yt, 'offset', v.offset_s, 'synced', v.synced) order by v.rank, v.id), '[]'::jsonb)
+                           from public.videos v where v.song_id = s.id and v.embeddable),
+                'tags', (select coalesce(jsonb_agg(jsonb_build_array(t.item_id, t.t, t.rep) order by t.t), '[]'::jsonb) -- [item, lyric time, repeat group]
+                         from public.tags t where t.song_id = s.id)
+              ) order by s.title, s.id), '[]'::jsonb)
+              from public.songs s where s.status <> 'draft'),
+    'playlists', (select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'description', p.description, 'sort', p.sort,
+                'songs', (select coalesce(jsonb_agg(ps.song_id order by ps.position, ps.song_id), '[]'::jsonb)
+                          from public.playlist_songs ps join public.songs s on s.id = ps.song_id and s.status <> 'draft'
+                          where ps.playlist_id = p.id)
+              ) order by p.sort, p.name), '[]'::jsonb)
+              from public.playlists p where p.owner is null and p.is_public));
+$$;
+grant execute on function public.catalog() to anon, authenticated;

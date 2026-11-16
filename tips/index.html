@@ -152,7 +152,7 @@ details.more p{margin:8px 0 0;font-size:15.5px}
 
 <article id="props" role="tabpanel" aria-labelledby="t-props" tabindex="-1" hidden>
   <h2>Something on the table for every word</h2>
-  <p>Each item is a word sung in the songs. Put out its prop, turn the item on in Jhapat, and the game only drops into those words. The <b>starters</b> come first: a new phone’s table begins with them on. After them, the most sung and easiest to find at home.</p>
+  <p>Each item is a word sung in the songs. Put out its prop, turn the item on in Jhapat, and the game only drops into those words. The five marked <b>Starter</b> are on when a phone first opens Jhapat, so start with those. After them come Sachin’s other favourites, then the most sung and easiest to find at home.</p>
   <p class="muted">No two items share a prop, and nothing here breaks, spills or burns when ten hands grab it.</p>
   <label class="switch"><input type="checkbox" id="showWords"> Show the sung words that count</label>
   <div class="props" id="props-list" aria-live="polite"><p class="muted">Loading the items…</p></div>
@@ -230,8 +230,8 @@ document.addEventListener('click', async e => { // Copy the link
 });
 document.getElementById('showWords').addEventListener('change', e => document.getElementById('props-list').classList.toggle('words', e.target.checked));
 
-/* The items and what to put out for each, from the same database the player uses, in its order (items.sort: the starters, then
-   the most sung and easiest to find at home). Another idea for each lives here, by item id; the studio's note on an item (Items ›
+/* The items and what to put out for each, from the same database the player uses, in its order (items.sort: the ones a new phone
+   starts with, Sachin's other pinned ones, then the most sung and easiest to find at home). Another idea for each lives here, by item id; the studio's note on an item (Items ›
    an item › Put out) is the first. No object appears twice across all of them, so the table never has two of the same thing. */
 const REST = 'https://hckzkaprxywohazohmcu.supabase.co/rest/v1/', KEY = 'sb_publishable_BxH35gKGU8uwTsn-jGur9g_a_L-b98T';
 const MORE = {
@@ -251,25 +251,25 @@ function propHTML(it) {
   const counts = (it.words || []).filter(w => !/^\s*[-−]/.test(w)).slice(0, 8);
   return '<div class="prop' + (ABSTRACT.has(it.id) ? ' abstract' : '') + '" id="item-' + esc(it.id) + '">' +
     '<div class="h"><span class="em" aria-hidden="true">' + esc(it.emoji || '•') + '</span><div><div class="nm">' + esc(it.name) +
-    '</div><div class="d"><span lang="ne">' + esc(it.dev || '') + '</span>' + (it.starter ? '<span class="star" title="On a new phone’s first table">Starter</span>' : '') + '</div></div></div>' +
+    '</div><div class="d"><span lang="ne">' + esc(it.dev || '') + '</span>' + (it.default_on ? '<span class="star" title="On when a phone first opens Jhapat">Starter</span>' : '') + '</div></div></div>' +
     (it.note ? '<p class="what">' + esc(cap(it.note)) + '</p>' : '') + (MORE[it.id] ? '<p class="alt">Or ' + esc(MORE[it.id]) + '</p>' : '') +
     (counts.length ? '<p class="counts">Counts: ' + counts.map(esc).join(', ') + '</p>' : '') + '</div>';
 }
 const FALLBACK = [
-  { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸', note: 'a flower, real or plastic', starter: 1 },
-  { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧', note: 'a bottle of water, cap on', starter: 2 },
-  { id: 'samaya', name: 'Samaya', dev: 'समय', emoji: '⌚', note: 'a watch', starter: 3 },
-  { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️', note: 'a heart: a card, a sticker or one drawn on paper', starter: 4 },
-  { id: 'sapana', name: 'Sapana', dev: 'सपना', emoji: '💤', note: 'a pillow', starter: 5 },
-  { id: 'aansu', name: 'Aansu', dev: 'आँसु', emoji: '🤧', note: 'a tissue', starter: 6 },
-  { id: 'aankha', name: 'Aankha', dev: 'आँखा', emoji: '🕶️', note: 'sunglasses or glasses' },
-  { id: 'ghar', name: 'Ghar', dev: 'घर', emoji: '🔑', note: 'a key' }
+  { id: 'phool', name: 'Phool', dev: 'फूल', emoji: '🌸', note: 'a flower, real or plastic', default_on: true },
+  { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧', note: 'a bottle of water, cap on', default_on: true },
+  { id: 'samaya', name: 'Samaya', dev: 'समय', emoji: '⌚', note: 'a watch', default_on: true },
+  { id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️', note: 'a heart: a card, a sticker or one drawn on paper', default_on: true },
+  { id: 'bato', name: 'Bato', dev: 'बाटो', emoji: '👟', note: 'a shoe or a chappal', default_on: true },
+  { id: 'sapana', name: 'Sapana', dev: 'सपना', emoji: '💤', note: 'a pillow' },
+  { id: 'aansu', name: 'Aansu', dev: 'आँसु', emoji: '🤧', note: 'a tissue' },
+  { id: 'aankha', name: 'Aankha', dev: 'आँखा', emoji: '🕶️', note: 'sunglasses or glasses' }
 ];
 async function load() {
   const box = document.getElementById('props-list');
   let items = null;
   try {
-    const r = await fetch(REST + 'items?select=id,name,dev,emoji,note,words,sort,starter&order=sort', { headers: { apikey: KEY } });
+    const r = await fetch(REST + 'items?select=id,name,dev,emoji,note,words,sort,default_on&order=sort', { headers: { apikey: KEY } });
     if (r.ok) items = await r.json();
   } catch (e) {}
   if (!Array.isArray(items) || !items.length) items = FALLBACK;

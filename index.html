@@ -524,7 +524,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 50; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 51; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2137,7 +2137,8 @@ window.addEventListener('appinstalled', () => { installEv = null; const w = $('#
 /* Counts (v39), for Studio › Stats: anonymous and by day. A phone sends its time zone once a day, ?ref= on its first visit, and what
    plays (the playlist, the song, the first and fifth drop of a night). No account, no ID for the phone, nothing typed. Events wait a
    few seconds and go together; they're only sent from jhapat.live, so tests and copies of the page don't count. */
-const COUNT = location.hostname === 'jhapat.live';
+const BOT = (() => { try { return !!navigator.webdriver || /bot\b|bot\/|crawl|spider|slurp|HeadlessChrome|Lighthouse|PageSpeed|Google-InspectionTool|facebookexternalhit|Bytespider|AdsBot|Mediapartners/i.test(navigator.userAgent || ''); } catch (e) { return false; } })();
+const COUNT = location.hostname === 'jhapat.live' && !BOT; // v50: search engines that run the page (Googlebot and the like, often in UTC) don't count
 let tq = new Map(), tTimer = null;
 function tally(ev, k, n) {
   if (!COUNT) return;

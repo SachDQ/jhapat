@@ -869,6 +869,14 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(ev['from:tiktok'] === 1 && ev['dev:iphone-tiktok'] === 1 && ev['ret:2-7d'] === 1 && !ev['new:'] && ev['act:show'] === 1 && ev['act:sound-off'] === 1 && (!off || ev['item:' + off.dataset.arg] === 1),
       'opened inside TikTok on an iPhone, back after 4 days, Show, sounds off and an item turned on: ' + Object.keys(ev).join(' ')); }
 
+  // 30c. v50: a search engine running the page on jhapat.live sends no counts
+  { let n = 0; const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://jhapat.live/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      Object.defineProperty(win.navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' });
+      win.fetch = async url => { if (/rpc\/tally/.test(url)) n++; return { ok: true, json: async () => catOf(B9) }; }; } });
+    await sleep(60); const dd = dm.window.document;
+    Object.defineProperty(dd, 'visibilityState', { configurable: true, get: () => 'hidden' }); dd.dispatchEvent(new dm.window.Event('visibilitychange')); await sleep(10);
+    ok(n === 0, 'Googlebot opening jhapat.live counts nothing'); dm.window.close(); }
+
   // 31. An upload YouTube won't play: the party skips it, and Studio › Reports hears about it once per upload per phone
   { const reps = [];
     const C31 = { stamp: 'x', items: [{ id: 'paani', name: 'Paani', dev: 'पानी' }], playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['d1', 'g1'] }],

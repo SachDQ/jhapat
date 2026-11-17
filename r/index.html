@@ -85,6 +85,18 @@ h1{font:400 30px/1.1 var(--display);margin:18px 0 6px}
 .lists{display:grid;gap:8px;margin-top:10px}
 .lbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:10px 12px;color:var(--ink);font:inherit;cursor:pointer}
 .lbtn[aria-current="true"]{border-color:var(--gold-fill);box-shadow:0 0 0 2px var(--gold-fill) inset}
+/* v52: the TV's playlists as tabs, like the player's list; artist rounds as a grid of covers */
+.lhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.lhead .kicker{margin:0}
+.ltabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;background:var(--raise);border:1px solid var(--line-2);border-radius:999px;padding:4px;margin:0 0 12px}
+.ltabs button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 14px/1 var(--body);padding:10px 4px;border-radius:999px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;white-space:nowrap}
+.ltabs button[aria-selected="true"]{background:var(--gold-fill);color:var(--gold-ink)}
+.agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.atile{display:grid;gap:5px;align-content:start;justify-items:center;text-align:center;background:var(--raise);border:1px solid var(--line);border-radius:18px;padding:10px 6px 12px;color:var(--ink);font:inherit;cursor:pointer}
+.atile img,.atile .ph{width:100%;max-width:110px;aspect-ratio:1/1;object-fit:cover;border-radius:50%;background:var(--surface);border:2px solid var(--line-2);display:grid;place-items:center;font-size:28px}
+.atile .pn{font-weight:800;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.atile .ps{color:var(--muted);font-size:12.5px}
+.atile[aria-current="true"]{border-color:var(--gold-fill);box-shadow:0 0 0 2px var(--gold-fill) inset}
 .drops{color:var(--muted);text-align:center;margin-top:12px}
 .foot{color:var(--muted);text-align:center;font-size:13px;margin-top:22px}
 .foot a{color:var(--muted)}
@@ -220,12 +232,22 @@ function remoteHTML() {
     (more && long ? '<button class="tile more" data-c="more" aria-expanded="true">Fewer</button>' : hidden ? '<button class="tile more" data-c="more" aria-expanded="false">+' + hidden + ' more</button>' : '') + '</div></section>';
   return statusHTML() + nowCard + big + small + table + (st.drops ? '<p class="drops">🔥 ' + st.drops + ' drop' + (st.drops === 1 ? '' : 's') + ' tonight</p>' : '');
 }
-function listsHTML() {
-  const L = lists || [];
-  return '<section class="card"><div class="kicker">Playlists</div><button class="btn small" data-c="back">' + ICON.back + 'Back</button>' +
-    (L.length ? '<div class="lists">' + L.map(x => '<button class="lbtn" data-c="pl" data-arg="' + esc(x.id) + '" aria-current="' + !!(st.pl && st.pl.id === x.id) + '">' + fan(x.th, x.e) +
-      '<span class="pli"><span class="pn">' + esc(x.n) + '</span><span class="ps">' + x.songs + ' song' + (x.songs === 1 ? '' : 's') + '</span></span></button>').join('') + '</div>'
-      : '<p class="hint" style="margin-top:10px">Getting the list from the TV…</p>') + '</section>';
+const LTABS = [['top', '🔥', 'Top'], ['artists', '🎤', 'Artists'], ['special', '✨', 'Special'], ['yours', '💜', 'Yours']];
+let ltab = null;
+function listsHTML() { // v52: the TV's playlists in tabs (a TV before v52 sends no tab, so its list stays one list)
+  const L = lists || [], cur = st && st.pl && st.pl.id, songs = x => x.songs + ' song' + (x.songs === 1 ? '' : 's');
+  const tabs = LTABS.filter(([k]) => L.some(x => x.g === k));
+  if (!ltab || !tabs.some(t => t[0] === ltab)) ltab = ((L.find(x => x.id === cur) || {}).g) || (tabs[0] && tabs[0][0]);
+  const shown = tabs.length ? L.filter(x => x.g === ltab) : L;
+  const row = x => '<button class="lbtn" data-c="pl" data-arg="' + esc(x.id) + '" aria-current="' + (x.id === cur) + '">' + fan(x.th, x.e) +
+    '<span class="pli"><span class="pn">' + esc(x.n) + '</span><span class="ps">' + songs(x) + '</span></span></button>';
+  const tile = x => '<button class="atile" data-c="pl" data-arg="' + esc(x.id) + '" aria-current="' + (x.id === cur) + '">' +
+    ((x.th || [])[0] ? '<img src="https://i.ytimg.com/vi/' + esc(x.th[0]) + '/mqdefault.jpg" alt="" loading="lazy">' : '<span class="ph" aria-hidden="true">🎤</span>') +
+    '<span class="pn">' + esc(x.n) + '</span><span class="ps">' + songs(x) + '</span></button>';
+  return '<section class="card"><div class="lhead"><div class="kicker">Playlists</div><button class="btn small" data-c="back">' + ICON.back + 'Back</button></div>' +
+    (!L.length ? '<p class="hint" style="margin-top:10px">Getting the list from the TV…</p>'
+      : (tabs.length > 1 ? '<div class="ltabs" role="tablist" aria-label="Kinds of playlist">' + tabs.map(([k, e, l]) => '<button type="button" role="tab" aria-selected="' + (k === ltab) + '" data-c="ltab" data-arg="' + k + '"><span aria-hidden="true">' + e + '</span>' + l + '</button>').join('') + '</div>' : '') +
+        (ltab === 'artists' && tabs.length ? '<div class="agrid">' + shown.map(tile).join('') + '</div>' : '<div class="lists">' + shown.map(row).join('') + '</div>')) + '</section>';
 }
 const calm = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
 function render() {
@@ -244,8 +266,9 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-c]'); if (!b || b.disabled) return;
   const c = b.dataset.c, arg = b.dataset.arg;
   if (c === 'leave') return leave();
-  if (c === 'lists') { view = 'lists'; if (!lists) cmd('lists'); render(); return; }
+  if (c === 'lists') { view = 'lists'; ltab = null; if (!lists) cmd('lists'); render(); return; }
   if (c === 'back') { view = 'remote'; render(); return; }
+  if (c === 'ltab') { ltab = arg; render(); window.scrollTo(0, 0); return; }
   if (c === 'pl') { cmd('pl', { arg }); view = 'remote'; render(); return; }
   if (c === 'more') { more = !more; render(); return; }
   if (c === 'item' && st) { touched.add(arg); const it = (st.items || []).find(x => x.id === arg); if (it) { it.on = !it.on; render(); } } // the TV's answer follows

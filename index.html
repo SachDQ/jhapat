@@ -247,9 +247,50 @@ img.broken{visibility:hidden}
 .pickhead h2{margin:0}
 .backbtn{min-width:0;max-width:62%}
 .backbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.plfind{margin-bottom:12px}
-.picker .maker{margin-top:18px}
-.picker .sub{margin:18px 0 8px}
+.picker .backbtn{border-radius:999px;border:1.5px solid var(--gold-fill);background:transparent;color:var(--gold)}
+/* v52: the list as tabs (🔥 Top, 🎤 Artists, ✨ Special, 💜 Yours) under a search box that looks through all of them */
+.plsearch{position:relative;display:flex;align-items:center;margin:0 0 12px}
+.plsearch>.i{position:absolute;left:15px;width:18px;height:18px;color:var(--muted);pointer-events:none}
+.plsearch input{width:100%;margin:0;appearance:none;-webkit-appearance:none;font:16px/1.3 var(--body);color:var(--ink);background:var(--bg);border:1.5px solid var(--line-2);
+  border-radius:999px;padding:12px 46px 12px 43px;transition:border-color .2s,box-shadow .2s}
+.plsearch input::placeholder{color:var(--muted);opacity:.9}
+.plsearch input:focus{outline:none;border-color:var(--gold-fill);box-shadow:0 0 0 3px rgba(255,164,27,.25)}
+.plsearch input::-webkit-search-cancel-button,.plsearch input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+.plclear{position:absolute;right:6px;width:34px;height:34px;border:0;border-radius:50%;background:var(--raise);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.plclear .i{width:15px;height:15px}
+.pltabs{position:sticky;top:6px;z-index:3;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;background:var(--raise);border:1px solid var(--line-2);
+  border-radius:999px;padding:4px;margin:0 0 14px;box-shadow:0 10px 22px rgba(15,11,30,.7)}
+.pltabs button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 14px/1 var(--body);padding:10px 4px;border-radius:999px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;white-space:nowrap;transition:background-color .2s,color .2s}
+.pltabs button>span{font-size:15px}
+.pltabs button b{font:800 11px/1 var(--body);background:var(--line);color:var(--ink);border-radius:999px;padding:3px 6px;font-variant-numeric:tabular-nums}
+.pltabs button[aria-selected="true"]{background:var(--gold-fill);color:var(--gold-ink)}
+.pltabs button[aria-selected="true"] b{background:rgba(26,18,6,.16);color:var(--gold-ink)}
+.pltabs button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.picker.searching .pltabs{display:none}
+.plh{display:none;font:800 12px/1 var(--body);text-transform:uppercase;letter-spacing:.12em;color:var(--gold-fill);margin:16px 2px 8px}
+.picker.searching .plh{display:block}
+.picker.searching .plpanel:first-of-type .plh{margin-top:2px}
+.plnone{margin:4px 2px 0}
+.artgrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.arttile{width:100%;height:100%;display:grid;gap:5px;align-content:start;justify-items:center;text-align:center;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:18px;padding:10px 6px 12px;cursor:pointer;font:inherit}
+.arttile .cov{position:relative;width:100%;max-width:118px;aspect-ratio:1/1;border-radius:50%;background:var(--raise);border:2px solid var(--line-2);box-shadow:0 6px 16px rgba(0,0,0,.45);
+  display:grid;place-items:center;font-size:30px;margin-bottom:3px}
+.arttile .cov img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.arttile .cov .pill{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%)}
+.arttile .t{font:400 16px/1.15 var(--display);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.arttile .n{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.arttile[aria-current="true"]{border-color:var(--gold-fill);box-shadow:inset 0 0 0 1px var(--gold-fill),var(--glow)}
+.arttile[aria-current="true"] .cov{border-color:var(--gold-fill)}
+.arttile:focus-visible{outline:3px solid var(--gold-fill);outline-offset:2px}
+.plempty{margin:0 2px 12px}
+.makewrap{margin-top:12px}
+.makesum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px dashed var(--gold-fill);border-radius:16px;padding:13px;
+  color:var(--gold);font:800 15px/1 var(--body);background:var(--raise)}
+.makesum::-webkit-details-marker{display:none}
+.makewrap[open] .makesum{margin-bottom:10px;border-style:solid}
+@media (max-width:430px){.pltabs button{font-size:13px;padding:10px 2px;gap:3px}.pltabs button b{display:none}.artgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.arttile .t{font-size:15px}}
 .maker{display:grid;gap:8px;background:var(--raise);border:1.5px dashed var(--gold-fill);border-radius:16px;padding:14px}
 .maker h3{margin:0;font:400 21px/1.15 var(--display)}
 .maker h3 label{display:inline-flex;align-items:center;gap:.35em}
@@ -341,10 +382,10 @@ textarea{margin:10px 0 8px;resize:vertical}
 @keyframes bob{50%{transform:translateY(-3px) rotate(-3deg)}}
 .brand .word{background:linear-gradient(100deg,var(--ink) 42%,#FFD25E 50%,var(--ink) 58%) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 6s ease-in-out infinite}
 @keyframes shine{0%,55%{background-position:100% 0}100%{background-position:0 0}}
-.btn,.chip,.listbtn{transition:transform .15s ease,box-shadow .2s,border-color .2s,background-color .2s}
-.btn:active,.chip:active,.listbtn:active{transform:scale(.95)}
+.btn,.chip,.listbtn,.arttile{transition:transform .15s ease,box-shadow .2s,border-color .2s,background-color .2s}
+.btn:active,.chip:active,.listbtn:active,.arttile:active{transform:scale(.95)}
 @media (hover:hover){.btn:hover{transform:translateY(-2px)}.chip:hover{transform:translateY(-2px) rotate(-2deg)}
-  .listbtn:hover{transform:translateY(-3px);border-color:var(--gold-fill);box-shadow:0 12px 30px rgba(242,107,29,.25)}}
+  .listbtn:hover,.arttile:hover{transform:translateY(-3px);border-color:var(--gold-fill);box-shadow:0 12px 30px rgba(242,107,29,.25)}}
 /* bigger video on wider screens; on desktop it takes the big left column and the game sits beside it */
 @media (min-width:760px){.stage .wrap{max-width:960px}.stage:not(.small):not(.off) .screen{height:auto;aspect-ratio:16/9;max-height:calc(100vh - 110px)}}
 @media (min-width:1100px){
@@ -378,7 +419,7 @@ body.tv .reveal{font-size:20px}
   body.tv .stage:not(.small):not(.off) .screen{max-height:calc(100vh - 28px)}
 }
 @media (prefers-reduced-motion: reduce){.floor i::before,.dhaka::before,.brand .mark,.brand .word{animation:none}#stamp,.drift{display:none}
-  .btn:hover,.chip:hover,.listbtn:hover,.btn:active,.chip:active,.listbtn:active{transform:none}}
+  .btn:hover,.chip:hover,.listbtn:hover,.arttile:hover,.btn:active,.chip:active,.listbtn:active,.arttile:active{transform:none}}
 
 /* v35: an icon and a word on every button, Hide mode, item tiles, poppable emoji */
 .i{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -524,7 +565,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 51; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 52; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -655,7 +696,7 @@ const ICON = {
   flag: svgI('<path d="M5 21V4h12l-2.5 4.5L17 13H5"/>'), list: svgI('<path d="M4 6h16M4 12h16M4 18h10"/>'),
   keep: svgI('<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'), share: svgI('<path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/>'),
   plus: svgI('<path d="M12 5v14M5 12h14"/>'), trash: svgI('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
-  back: svgI('<path d="M15 5l-7 7 7 7"/>'),
+  back: svgI('<path d="M15 5l-7 7 7 7"/>'), search: svgI('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>'), x: svgI('<path d="M6 6l12 12M18 6 6 18"/>'),
   sliders: svgI('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>')
 };
 
@@ -1287,20 +1328,61 @@ function jhOrder() { // Jhapat's playlists in the list's order: the main ones, A
   const all = lists().filter(c => c.id !== ALL);
   return all.filter(c => !plGroup(c)).concat(lists().filter(c => c.id === ALL), all.filter(c => plGroup(c) === 1), all.filter(c => plGroup(c) === 2));
 }
+/* v52 (Sachin: "WHAT DID I TELL YOU ABOUT HAVING TO SCROLL A LOT, have tabs"): the list is tabs, one group at a time. 🔥 Top: Jhapat's
+   main playlists and All songs; 🎤 Artists: the artist rounds as a grid of covers; ✨ Special: Nepali Dohori Sachin and Suju's OG Round;
+   💜 Yours: your own and Make your own (folded once you have one). It opens on the tab of the playlist playing, the tab bar stays put
+   while a tab scrolls, and the search box looks through every tab at once, without drawing the list again. */
+const PL_TABS = [['top', '🔥', 'Top'], ['artists', '🎤', 'Artists'], ['special', '✨', 'Special'], ['yours', '💜', 'Yours']];
+const PL_KEYS = ['top', 'artists', 'special'];
+let plTab = null;
+const tabOf = id => { if (mineOf(id)) return 'yours'; const c = lists().find(x => x.id === id); return c ? PL_KEYS[plGroup(c)] : 'top'; };
+function artHTML(c, active) { // an artist round: its most played song's cover, the name and the song count
+  const on = c.id === active, th = (c.thumbs || []).filter(Boolean)[0];
+  return '<button class="arttile" data-act="pickpl" data-arg="' + esc(c.id) + '" data-name="' + esc(sound(c.name)) + '" aria-current="' + on + '">' +
+    '<span class="cov">' + (th ? '<img src="' + thumbUrl(th) + '" alt="" loading="lazy">' : '<span aria-hidden="true">🎤</span>') + (on ? '<span class="pill on">Playing</span>' : '') + '</span>' +
+    '<span class="t">' + esc(c.name) + '</span><span class="n">' + c.songs + ' song' + (c.songs === 1 ? '' : 's') + '</span></button>';
+}
 function renderPicker() {
   const active = S.playlist && S.playlist.id, jh = jhOrder(), mine = S.mine || [];
+  const groups = { top: jh.filter(c => plGroup(c) === 0), artists: jh.filter(c => plGroup(c) === 1), special: jh.filter(c => plGroup(c) === 2) };
+  const tabs = PL_TABS.filter(([k]) => k === 'yours' || groups[k].length), has = k => tabs.some(t => t[0] === k);
+  if (!plTab || !has(plTab)) plTab = tabOf(active);
+  if (!has(plTab)) plTab = tabs[0][0];
+  const count = k => k === 'yours' ? mine.length : groups[k].length;
   const back = S.source === 'db' && S.playlist && !sharedBusy ? '<button class="btn small backbtn" data-act="keeppl" aria-label="Back to ' + esc(S.playlist.name) + '">' + ICON.back + '<span>' + esc(S.playlist.name) + '</span></button>' : '';
-  return '<section class="card picker"><div class="pickhead"><h2>Playlists</h2>' + back + '</div>' +
-    (jh.length + mine.length > 8 ? '<input type="search" id="plFind" class="plfind" placeholder="Find a playlist" aria-label="Find a playlist" autocomplete="off" value="' + esc(plQuery) + '">' : '') +
-    (() => { const ul = cs => '<ul class="lists">' + cs.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>', art = jh.filter(c => plGroup(c) === 1);
-      return !art.length ? '<h3 class="sub">Jhapat playlists</h3>' + ul(jh) : '<h3 class="sub">Jhapat playlists</h3>' + ul(jh.filter(c => !plGroup(c))) +
-        '<h3 class="sub">Artist rounds</h3>' + ul(art) + (jh.some(c => plGroup(c) === 2) ? '<h3 class="sub">More rounds</h3>' + ul(jh.filter(c => plGroup(c) === 2)) : ''); })() +
-    (mine.length ? '<h3 class="sub">Yours</h3><ul class="lists">' + mine.map(m => '<li class="mine" data-id="' + esc(m.id) + '">' + mineHTML(m, active) + '</li>').join('') + '</ul>' : '') +
-    (CAT ? makerHTML() : '') + '</section>';
+  const search = jh.length + mine.length > 8 ? '<label class="plsearch">' + ICON.search + '<input type="search" id="plFind" placeholder="Search playlists and artists" aria-label="Search playlists and artists" autocomplete="off" enterkeyhint="search" value="' + esc(plQuery) + '">' +
+    '<button type="button" class="plclear" data-act="plclear" aria-label="Clear the search"' + (plQuery ? '' : ' hidden') + '>' + ICON.x + '</button></label>' : '';
+  const bar = '<div class="pltabs" role="tablist" aria-label="Kinds of playlist">' + tabs.map(([k, e, l]) => '<button type="button" role="tab" id="pt-' + k + '" aria-controls="pp-' + k + '" aria-selected="' + (k === plTab) + '" tabindex="' + (k === plTab ? 0 : -1) +
+    '" data-act="pltab" data-arg="' + k + '"><span aria-hidden="true">' + e + '</span>' + l + (count(k) ? '<b>' + count(k) + '</b>' : '') + '</button>').join('') + '</div>';
+  const panel = (k, label, inner) => '<div class="plpanel" role="tabpanel" id="pp-' + k + '" aria-labelledby="pt-' + k + '" data-tab="' + k + '"' + (k === plTab ? '' : ' hidden') + '><h3 class="plh">' + label + '</h3>' + inner + '</div>';
+  const rows = cs => '<ul class="lists">' + cs.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>';
+  const yours = (mine.length ? '<ul class="lists">' + mine.map(m => '<li class="mine" data-id="' + esc(m.id) + '">' + mineHTML(m, active) + '</li>').join('') + '</ul>'
+      : '<p class="hint small plempty">Your own playlists live here: from a YouTube or Spotify link, or a list of songs.</p>') +
+    (!CAT ? '' : mine.length ? '<details class="makewrap"' + (mkBusy ? ' open' : '') + '><summary class="makesum">' + ICON.plus + 'Make another playlist</summary>' + makerHTML() + '</details>' : makerHTML());
+  return '<section class="card picker"><div class="pickhead"><h2>Playlists</h2>' + back + '</div>' + search + bar +
+    (groups.top.length ? panel('top', 'Jhapat playlists', rows(groups.top)) : '') +
+    (groups.artists.length ? panel('artists', 'Artist rounds', '<ul class="artgrid">' + groups.artists.map(c => '<li>' + artHTML(c, active) + '</li>').join('') + '</ul>') : '') +
+    (groups.special.length ? panel('special', 'Special rounds', rows(groups.special)) : '') +
+    panel('yours', 'Yours', yours) +
+    '<p class="hint plnone" hidden>No playlist or artist by that name. Make your own under 💜 Yours.</p></section>';
 }
-function filterPicker() { // the search box hides the cards whose names don't have what's typed, without drawing the list again
-  const q = sound(plQuery);
-  document.querySelectorAll('.picker .lists > li').forEach(li => { const b = li.querySelector('[data-name]'); li.hidden = !!q && !!b && !b.dataset.name.includes(q); });
+function filterPicker() { // the search box looks through every tab and hides what doesn't match, without drawing the list again
+  const pk = document.querySelector('.picker'); if (!pk) return;
+  const q = sound(plQuery); let shown = 0;
+  pk.classList.toggle('searching', !!q);
+  pk.querySelectorAll('.plpanel').forEach(p => {
+    let n = 0;
+    p.querySelectorAll('.lists > li, .artgrid > li').forEach(li => { const b = li.querySelector('[data-name]'), hit = !q || !b || b.dataset.name.includes(q); li.hidden = !hit; if (hit) n++; });
+    p.hidden = q ? !n : p.dataset.tab !== plTab; shown += n;
+  });
+  const none = pk.querySelector('.plnone'); if (none) none.hidden = !q || shown > 0;
+  const x = pk.querySelector('.plclear'); if (x) x.hidden = !plQuery;
+}
+function showPlTab(k, focus) { // a tab: its panel shows, the search clears, and the list's top comes back into view
+  plTab = k; plQuery = ''; const f = document.getElementById('plFind'); if (f) f.value = '';
+  document.querySelectorAll('.pltabs [role="tab"]').forEach(b => { const on = b.dataset.arg === k; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus(); });
+  filterPicker();
+  const pk = document.querySelector('.picker'); if (pk && window.scrollY > pk.offsetTop) window.scrollTo(0, pk.offsetTop);
 }
 function makerHTML() {
   return '<form class="maker" id="mkForm"><h3><label for="mkIn">' + ICON.plus + 'Make your own</label></h3>' +
@@ -1574,7 +1656,9 @@ document.addEventListener('click', async e => {
     case 'replay': replayDrop(); break;
     case 'stay': clearTimeout(nextTimer); nextTimer = null; renderNow(); break;
     case 'item': toggleItem(arg); break;
-    case 'lists': picking = true; render(); filterPicker(); window.scrollTo(0, 0); break;
+    case 'lists': picking = true; plTab = tabOf(S.playlist && S.playlist.id); plQuery = ''; render(); filterPicker(); window.scrollTo(0, 0); break;
+    case 'pltab': showPlTab(arg); break;
+    case 'plclear': { plQuery = ''; const f = document.getElementById('plFind'); if (f) { f.value = ''; f.focus(); } filterPicker(); break; }
     case 'keeppl': picking = false; render(); break;
     case 'pickpl': pickPlaylist(arg); break;
     case 'intro': openIntro(); break;
@@ -1660,6 +1744,12 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('input', e => { if (e.target && e.target.id === 'plFind') { plQuery = e.target.value; filterPicker(); } });
+document.addEventListener('keydown', e => { // the arrow keys move between the playlist tabs
+  const t = e.target; if (!t || t.getAttribute('role') !== 'tab' || !t.closest('.pltabs') || !/^Arrow(Left|Right)$|^Home$|^End$/.test(e.key)) return;
+  const all = [...document.querySelectorAll('.pltabs [role="tab"]')], i = all.indexOf(t);
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length;
+  e.preventDefault(); showPlTab(all[j].dataset.arg, true);
+});
 document.addEventListener('change', e => {
   if (e.target.id === 'autoNext') { S.settings.autoNext = e.target.checked; save(); }
   if (e.target.id === 'preload') { S.settings.preload = e.target.checked; save(); if (e.target.checked) schedulePreload(300); else discardPre(); renderNow(); }
@@ -2396,8 +2486,8 @@ function tvState() { // what the phones show: the song (unless it's hidden), the
     items: shown.map(it => ({ id: it.id, n: it.name, d: it.dev || '', e: emo(it.id), on: !!it.on, c: stats.get(it.id).songs })),
     drops: nightCount()
   };
-  if (tv.wantLists && CAT) out.lists = jhOrder().concat((S.mine || []).map(m => mineCard(m))).filter(x => x.songs)
-    .slice(0, 60).map(x => ({ id: x.id, n: x.name, songs: x.songs, th: (x.thumbs || []).slice(0, 3), e: x.icon || '' }));
+  if (tv.wantLists && CAT) out.lists = jhOrder().map(x => [x, PL_KEYS[plGroup(x)]]).concat((S.mine || []).map(m => [mineCard(m), 'yours'])).filter(([x]) => x.songs)
+    .slice(0, 60).map(([x, g]) => ({ id: x.id, n: x.name, songs: x.songs, th: (x.thumbs || []).slice(0, 3), e: x.icon || '', g })); // g: its tab (v52)
   return out;
 }
 function tvPush(ms) {

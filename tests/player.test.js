@@ -338,7 +338,9 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
   ok(cards5[2].getAttribute('aria-current') === 'true' && /Playing/.test(cards5[2].textContent) && !/Playing/.test(cards5[0].textContent), 'the one playing is marked');
   ok(cards5[0].textContent.includes('2 songs') && cards5[0].textContent.includes('💧 2') && cards5[0].textContent.includes('The big one'), 'each playlist shows its song count, its items as emoji with counts, and its description');
   ok(cards5[2].textContent.includes('All songs') && cards5[2].textContent.includes('4 songs') && cards5[2].textContent.includes('❤️ 3'), 'All songs counts every song once: ' + cards5[2].textContent);
-  ok(!!d5.querySelector('#mkForm #mkIn') && d5.querySelector('.picker').lastElementChild.id === 'mkForm' && !d5.querySelector('#plFind'), 'Make your own sits at the bottom, under the playlists; the search box waits until there are more than 8');
+  ok(!!d5.querySelector('#pp-yours #mkForm #mkIn') && d5.querySelector('#pp-yours').hidden && !d5.querySelector('#pp-top').hidden && !d5.querySelector('#plFind') &&
+    [...d5.querySelectorAll('.pltabs [role="tab"]')].map(b => b.dataset.arg).join(',') === 'top,yours',
+    'tabs (v52): Top shows, Make your own waits under Yours; the search box waits until there are more than 8');
   const fan5 = [...cards5[2].querySelectorAll('.fan img')].map(i => i.getAttribute('src'));
   ok(fan5.length === 2 && fan5[0].includes('/p1xxxxxxxxx/') && fan5[1].includes('/l1xxxxxxxxx/'), 'its covers are each playlist’s first song');
   { const its = []; for (let k = 0; k < 11; k++) its.push({ id: 'it' + k, name: 'it' + k, dev: '' }); // a playlist with 11 items lists its 8 most common, then "+3 more"
@@ -1000,7 +1002,7 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     }
     const songs = [0, 1, 2].map(k => ({ id: 'tv' + k, title: 'Party Song ' + k, artist: 'Band ' + k, videos: [{ yt: ('tvsong' + k + 'xxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags: [['maya', 30], ['paani', 60]] }));
     const C = { items: [{ id: 'maya', name: 'Maya', dev: 'माया', emoji: '❤️' }, { id: 'paani', name: 'Paani', dev: 'पानी', emoji: '💧' }],
-      playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['tv0', 'tv1', 'tv2'] }, { id: 'hits', name: 'Nepali Hits', songs: ['tv1', 'tv2'] }], songs };
+      playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['tv0', 'tv1', 'tv2'] }, { id: 'hits', name: 'Nepali Hits', sort: 50, songs: ['tv1', 'tv2'] }], songs }; // hits sorted as an artist round, so the phone's tabs show
     const tvDom = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true,
       beforeParse(win) { win.fetch = async () => ({ ok: true, json: async () => C }); win.scrollTo = () => {}; win.WebSocket = FakeWS; } });
     await sleep(60);
@@ -1040,8 +1042,11 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const was = pOn(); rclick('[data-c="item"][data-arg="paani"]'); await sleep(300);
     ok(pOn() === !was && rd.querySelector('[data-c="item"][data-arg="paani"]').getAttribute('aria-pressed') === String(!was), 'an item tapped on the phone goes on or off on the TV');
     rclick('[data-c="lists"]'); await sleep(300);
-    ok(rd.querySelectorAll('.lbtn').length === 2, 'Switch on the phone lists the TV’s playlists');
-    rclick('.lbtn[data-arg="hits"]'); await sleep(400);
+    ok([...rd.querySelectorAll('.ltabs [role="tab"]')].map(b => b.dataset.arg).join(',') === 'top,artists' && rd.querySelectorAll('.lbtn').length === 1 && !!rd.querySelector('.lbtn[data-arg="party-mix"]'),
+      'Switch on the phone lists the TV’s playlists in tabs (v52), on the tab of the one playing');
+    rclick('[data-c="ltab"][data-arg="artists"]'); await sleep(20);
+    ok(rd.querySelectorAll('.agrid .atile').length === 1 && !rd.querySelector('.lbtn'), 'its Artists tab is a grid of covers');
+    rclick('.atile[data-arg="hits"]'); await sleep(400);
     ok(JSON.parse(tw.localStorage.getItem('jhapat.v1')).playlist.id === 'hits' && rd.querySelector('.plbar .pn').textContent === 'Nepali Hits', 'picking one on the phone switches the TV’s playlist');
     tclick('[data-act="tvoff"]'); await sleep(30);
     ok(!td.body.classList.contains('tv') && !new URL(tw.location.href).searchParams.has('tv') && !td.querySelector('#tvjoin'), 'Exit TV leaves big-screen mode');
@@ -1190,8 +1195,8 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
       'then drops to the head of the ones off: ' + chips());
     click('.plbar'); await sleep(10);
     const cards = [...sdoc.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' ');
-    const heads = [...sdoc.querySelectorAll('.picker h3.sub')].map(h => h.textContent).join(',');
-    ok(cards === 'party-mix nepali-hits all dohori tiktok-og yt-mine' && heads === 'Jhapat playlists,Yours' && sdoc.querySelector('.picker').lastElementChild.id === 'mkForm',
+    const heads = [...sdoc.querySelectorAll('.pltabs [role="tab"]')].map(b => b.dataset.arg).join(',');
+    ok(cards === 'party-mix nepali-hits all dohori tiktok-og yt-mine' && heads === 'top,special,yours' && !!sdoc.querySelector('#pp-yours details.makewrap #mkForm'),
       'Switch: Jhapat’s playlists, All songs, then Nepali Dohori Sachin and Suju’s at the bottom of them; yours and Make your own last: ' + cards + ' / ' + heads);
     sw.close();
     // a phone given an older first table (never chose one; v47 gave it six) moves to the new one once and is told; the next visit leaves it be
@@ -1239,8 +1244,49 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     await sleep(80);
     const dd = dm.window.document; dd.querySelector('[data-act="introgo"]').dispatchEvent(new dm.window.MouseEvent('click', { bubbles: true })); await sleep(5);
     dd.querySelector('.plbar').dispatchEvent(new dm.window.MouseEvent('click', { bubbles: true })); await sleep(10);
-    const cards = [...dd.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' '), heads = [...dd.querySelectorAll('.picker h3.sub')].map(h => h.textContent).join(',');
-    ok(cards === 'party-mix all artist-sajjan artist-bipul dohori' && heads === 'Jhapat playlists,Artist rounds,More rounds', 'artist rounds sit under All songs, Dohori Sachin last: ' + cards + ' / ' + heads);
+    const cards = [...dd.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' '), heads = [...dd.querySelectorAll('.pltabs [role="tab"]')].map(h => h.textContent).join(',');
+    ok(cards === 'party-mix all artist-sajjan artist-bipul dohori' && heads === '🔥Top2,🎤Artists2,✨Special1,💜Yours', 'artist rounds get their own tab between Top and Special: ' + cards + ' / ' + heads);
+    // v52: tabs, not a long scroll. It opens on the tab of the playlist playing; a tab shows only its own; artists are a grid of covers;
+    // the search looks through every tab; Clear, no match, the arrow keys; playing an artist round opens Switch on Artists
+    const W = dm.window, cl = el => el.dispatchEvent(new W.MouseEvent('click', { bubbles: true })), vis = () => [...dd.querySelectorAll('.plpanel')].filter(p => !p.hidden).map(p => p.dataset.tab).join(',');
+    ok(vis() === 'top' && dd.querySelector('#pt-top').getAttribute('aria-selected') === 'true', 'Switch opens on the tab of the playlist playing (All songs: Top): ' + vis());
+    cl(dd.querySelector('#pt-artists')); await sleep(5);
+    ok(vis() === 'artists' && dd.querySelectorAll('#pp-artists .artgrid .arttile').length === 2 && dd.querySelector('#pp-artists .arttile img').getAttribute('src').includes('/bxxxxxxxxxx/') && /Sajjan Raj Vaidya\s*2 songs/.test(dd.querySelector('#pp-artists .arttile').textContent),
+      'Artists shows only the artist rounds, as covers with names and song counts: ' + vis());
+    const f = dd.querySelector('#plFind');
+    ok(!f, 'five playlists: no search box yet');
+    dd.querySelector('#pt-artists').dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); await sleep(5);
+    ok(vis() === 'special' && dd.activeElement === dd.querySelector('#pt-special'), 'the arrow keys move between tabs: ' + vis());
+    cl(dd.querySelector('#pp-special [data-act="pickpl"]')); await sleep(10);
+    dd.querySelector('.plbar').dispatchEvent(new W.MouseEvent('click', { bubbles: true })); await sleep(10);
+    ok(vis() === 'special', 'after picking Nepali Dohori Sachin, Switch opens on Special: ' + vis());
+    dm.window.close(); }
+
+  // 41. v52: a long list's search box is styled, looks through every tab, shows the groups it found, clears, and says when nothing matches
+  { const art = ['Sajjan Raj Vaidya', 'Sushant KC', 'Swoopna Suman', 'Sugam Pokharel', 'Bipul Chettri', 'Narayan Gopal', 'Nepathya', 'Raju Lama'];
+    const C41 = { stamp: 'x', items: [{ id: 'paani', name: 'Paani', dev: 'पानी' }],
+      songs: ['a', 'b', 'c'].map((x, i) => ({ id: x, title: 'Song ' + x, artist: 'Artist ' + x, videos: [{ yt: (x + 'xxxxxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags: [['paani', 30 + i]] })),
+      playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', sort: 0, songs: ['a', 'b'] }, { id: 'nepali-hits', name: 'Nepali Hits', sort: 4, songs: ['c'] }]
+        .concat(art.map((n, i) => ({ id: 'artist-' + i, name: n, sort: 50 + i, songs: ['b', 'c'] }))).concat([{ id: 'dohori', name: 'Nepali Dohori Sachin', sort: 100, songs: ['c'] }]) };
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      win.fetch = async () => ({ ok: true, json: async () => JSON.parse(JSON.stringify(C41)) }); } });
+    await sleep(80);
+    const W = dm.window, dd = W.document, cl = el => el.dispatchEvent(new W.MouseEvent('click', { bubbles: true })), vis = () => [...dd.querySelectorAll('.plpanel')].filter(p => !p.hidden).map(p => p.dataset.tab).join(',');
+    cl(dd.querySelector('[data-act="introgo"]')); await sleep(5); cl(dd.querySelector('.plbar')); await sleep(10);
+    const f = dd.querySelector('#plFind'), x = dd.querySelector('.plclear');
+    ok(!!f && f.closest('.plsearch') && dd.querySelector('.plsearch svg') && f.placeholder === 'Search playlists and artists' && x.hidden, 'past 8 playlists, a search box with its icon (no plain white box)');
+    f.value = 'sajan'; f.dispatchEvent(new W.Event('input', { bubbles: true })); await sleep(5);
+    const shownT = [...dd.querySelectorAll('.plpanel:not([hidden]) li:not([hidden]) .t')].map(t => t.textContent);
+    ok(vis() === 'artists' && shownT.join() === 'Sajjan Raj Vaidya' && dd.querySelector('.picker').classList.contains('searching') && !x.hidden,
+      'typing looks through every tab (Sajjan as it sounds) and shows only what matches, under its group: ' + vis() + ' / ' + shownT.join());
+    f.value = 'nepali'; f.dispatchEvent(new W.Event('input', { bubbles: true })); await sleep(5);
+    ok(vis() === 'top,special' && [...dd.querySelectorAll('.plpanel:not([hidden]) li:not([hidden]) .t')].map(t => t.textContent).join() === 'Nepali Party Mix,Nepali Hits,Nepali Dohori Sachin', 'matches in two tabs show both groups: ' + vis());
+    f.value = 'qwqw'; f.dispatchEvent(new W.Event('input', { bubbles: true })); await sleep(5);
+    ok(vis() === '' && !dd.querySelector('.plnone').hidden, 'nothing matching says so: ' + vis() + ' / ' + dd.querySelector('.plnone').hidden);
+    cl(x); await sleep(5);
+    ok(f.value === '' && vis() === 'top' && !dd.querySelector('.picker').classList.contains('searching') && x.hidden, 'Clear brings the tab back: ' + vis());
+    cl(dd.querySelector('#pt-artists')); await sleep(5);
+    ok(vis() === 'artists' && dd.querySelectorAll('#pp-artists .arttile').length === 8, 'eight artist rounds in one grid');
     dm.window.close(); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

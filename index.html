@@ -524,7 +524,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 49; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 50; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -811,7 +811,7 @@ function onState(e) {
   }
 }
 function onErr(e) {
-  const code = e.data;
+  const code = e.data; tally('err', 'yt-' + code);
   const song = mode === 'game' ? (current && byId(current.songId)) : byId(songId);
   if ((code === 100 || code === 101 || code === 150) && song) {
     autoReport(song, curVid(song), 'video', 'YouTube error ' + code + ' on this upload'); // Studio › Reports hears about it, once per upload per phone
@@ -1018,7 +1018,7 @@ function nextRound() {
   S.played = S.played.filter(x => x !== plan.song.id); S.played.push(plan.song.id); S.lastSong = plan.song.id;
   if (plan.drop && plan.drop.tag) { (S.dropAt = S.dropAt || {})[dropKey(plan.song, plan.drop.tag.item)] = plan.drop.tag.t; markDone(plan.song.id, plan.drop.tag); } // next time: its next line
   save();
-  { const pk = plKey(); tally('drops', pk); if (S.source === 'db') tally('song', plan.song.id); if (night === 1) tally('start', pk); if (night === 5) tally('party', pk); }
+  { const pk = plKey(); tally('drops', pk); if (S.source === 'db') tally('song', plan.song.id); if (night === 1) tally('start', pk); if (night === 5) tally('party', pk); if ([10, 25, 50, 100].includes(night)) tally('night', String(night)); }
   recent = recent.filter(x => x !== plan.song.id).concat(plan.song.id).slice(-RECENT);
   if (tab !== 'play') { tab = 'play'; songId = null; }
   if (plan.swap) swapIn(plan.drop); else playSong(plan.song, current.start, 'game');
@@ -1162,11 +1162,11 @@ document.addEventListener('pointerdown', e => {
 /* Hide mode: whoever holds the phone plays too. The video is covered and the title, reel and artist stay hidden until Show. */
 function applyBlind() { document.body.classList.toggle('blind', !!S.settings.blind); }
 function toggleBlind() { S.settings.blind = !S.settings.blind; save(); applyBlind(); renderNow(); if (S.settings.blind) tally('hide'); }
-function toggleSound() { S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('on'); renderNow(); }
+function toggleSound() { S.settings.sound = !sfxOn(); save(); if (sfxOn()) sfx('on'); renderNow(); tally('act', sfxOn() ? 'sound-on' : 'sound-off'); }
 function revealWord() { revealed = true; revealAt = Date.now(); renderNow(); sfx('show'); if (current) { burst([emo(current.tag.item) || '✨'], document.querySelector('.reveal b'), 14); buzz(25); } }
 function toggleItem(id) {
   const it = itemById(id); if (!it) return;
-  holdTable(); it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true);
+  holdTable(); it.on = !it.on; sfx(it.on ? 'on' : 'off'); touched.add(it.id); rememberTable(); save(); render(); schedulePreload(1200, true); if (it.on) tally('item', it.id);
   const el = document.querySelector('[data-act="item"][data-arg="' + it.id + '"]'); replay(el, it.on ? 'zap' : 'dim'); if (it.on) burst([emo(it.id) || '✨'], el, 8, 0.8); buzz(it.on ? 12 : 6);
 }
 const hideName = () => !!S.settings.blind && !revealed;
@@ -1281,16 +1281,20 @@ function cardHTML(c, active, sub) { // a playlist to pick, as one compact row
 function mineCard(m) { const c = cardOf(m.id, m.name, null, songsIn(m)); c.icon = SRC_ICON[m.src || 'yt']; return c; }
 function curCard() { const id = S.playlist && S.playlist.id, m = mineOf(id); return m ? mineCard(m) : lists().find(c => c.id === id) || null; }
 const TAIL = 100; // an official playlist sorted 100 or more sits under All songs, at the bottom of Jhapat's (v47)
-function jhOrder() { // Jhapat's playlists in the list's order: the main ones, All songs, then the tail
-  const all = lists().filter(c => c.id !== ALL), tail = c => (c.sort || 0) >= TAIL;
-  return all.filter(c => !tail(c)).concat(lists().filter(c => c.id === ALL), all.filter(tail));
+const ARTISTS = 50; // v50: a playlist sorted 50–99 is an artist round, listed under All songs in its own section
+const plGroup = c => c.id === ALL ? 0 : (c.sort || 0) >= TAIL ? 2 : (c.sort || 0) >= ARTISTS ? 1 : 0;
+function jhOrder() { // Jhapat's playlists in the list's order: the main ones, All songs, the artist rounds, then the tail
+  const all = lists().filter(c => c.id !== ALL);
+  return all.filter(c => !plGroup(c)).concat(lists().filter(c => c.id === ALL), all.filter(c => plGroup(c) === 1), all.filter(c => plGroup(c) === 2));
 }
 function renderPicker() {
   const active = S.playlist && S.playlist.id, jh = jhOrder(), mine = S.mine || [];
   const back = S.source === 'db' && S.playlist && !sharedBusy ? '<button class="btn small backbtn" data-act="keeppl" aria-label="Back to ' + esc(S.playlist.name) + '">' + ICON.back + '<span>' + esc(S.playlist.name) + '</span></button>' : '';
   return '<section class="card picker"><div class="pickhead"><h2>Playlists</h2>' + back + '</div>' +
     (jh.length + mine.length > 8 ? '<input type="search" id="plFind" class="plfind" placeholder="Find a playlist" aria-label="Find a playlist" autocomplete="off" value="' + esc(plQuery) + '">' : '') +
-    '<h3 class="sub">Jhapat playlists</h3><ul class="lists">' + jh.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>' +
+    (() => { const ul = cs => '<ul class="lists">' + cs.map(c => '<li>' + cardHTML(c, active) + '</li>').join('') + '</ul>', art = jh.filter(c => plGroup(c) === 1);
+      return !art.length ? '<h3 class="sub">Jhapat playlists</h3>' + ul(jh) : '<h3 class="sub">Jhapat playlists</h3>' + ul(jh.filter(c => !plGroup(c))) +
+        '<h3 class="sub">Artist rounds</h3>' + ul(art) + (jh.some(c => plGroup(c) === 2) ? '<h3 class="sub">More rounds</h3>' + ul(jh.filter(c => plGroup(c) === 2)) : ''); })() +
     (mine.length ? '<h3 class="sub">Yours</h3><ul class="lists">' + mine.map(m => '<li class="mine" data-id="' + esc(m.id) + '">' + mineHTML(m, active) + '</li>').join('') + '</ul>' : '') +
     (CAT ? makerHTML() : '') + '</section>';
 }
@@ -1550,8 +1554,10 @@ function backupText() { return JSON.stringify(S); }
 
 document.addEventListener('click', async e => {
   unlockAudio(); // iPhones only let a page make sound after a tap
+  if (e.target.closest('a[href^="tips/"]')) tally('act', 'tips');
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const act = b.dataset.act, arg = b.dataset.arg, song = byId(songId);
+  if (ACT_COUNT[act]) tally('act', ACT_COUNT[act]);
   switch (act) {
     case 'tab': tab = arg; songId = null; syncing = null; render(); break;
     case 'next': nextRound(); break;
@@ -1811,7 +1817,7 @@ async function loadDb() {
   else if (snapP || stamp) { const snap = await (snapP || getJson(SNAP, 15000)); if (goodCat(snap) && (snap.stamp === stamp || (!stamp && !CAT))) c = snap; }
   if (!c) c = await dbGet('rpc/catalog', null, 30000); // about 140 KB, so it gets longer than other calls
   if (goodCat(c) && (S.outbox || []).length) flushOutbox();
-  if (!goodCat(c)) { save(); render(); if (CAT && sharedIn) openShared(); else mineCheck(); return; }
+  if (!goodCat(c)) { tally('err', CAT ? 'catalog-old' : 'catalog'); save(); render(); if (CAT && sharedIn) openShared(); else mineCheck(); return; }
   if (c === CAT) { if (sharedIn) openShared(); else mineCheck(); return; }
   const txt = JSON.stringify(c);
   if (catSaved && txt === stored(CAT_KEY)) { if (sharedIn) openShared(); else mineCheck(); return; } // nothing changed since the last visit
@@ -1823,7 +1829,7 @@ async function loadDb() {
   if (joined && !sharedIn) setTimeout(() => toast(joined + ' song' + (joined === 1 ? '' : 's') + ' you were waiting for joined your playlists. 🎉'), 1200);
   const ids = new Set(CARDS.map(x => x.id).concat((S.mine || []).map(m => m.id))); // a playlist taken out of the studio leaves the phone too
   Object.keys(S.tables || {}).forEach(id => { if (!ids.has(id)) delete S.tables[id]; });
-  useList(pidFor(keptPl()));
+  useList(pidFor(keptPl())); markSpeed();
   if (sharedIn) openShared(); else mineCheck();
 }
 function pickPlaylist(pid) {
@@ -2142,14 +2148,53 @@ function tally(ev, k, n) {
 function flushTally(leaving) {
   clearTimeout(tTimer); tTimer = null;
   if (!tq.size || typeof fetch !== 'function') return;
-  const all = [...tq], e = all.slice(0, 40).map(([key, n]) => { const [ev, k] = key.split('\u0001'); return [ev, k, n]; });
-  tq = new Map(all.slice(40));
+  const all = [...tq], e = [['tz', tz()]].concat(all.slice(0, 39).map(([key, n]) => { const [ev, k] = key.split('\u0001'); return [ev, k, n]; }));
+  tq = new Map(all.slice(39));
   try { fetch(DB.rest + 'rpc/tally', { method: 'POST', keepalive: !!leaving, headers: { apikey: DB.key, 'Content-Type': 'application/json' }, body: JSON.stringify({ e }) }).catch(() => {}); } catch (x) {}
   if (tq.size) tTimer = setTimeout(() => flushTally(false), 5000);
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushTally(true); });
 const plKey = () => { const p = S.source === 'db' && S.playlist && S.playlist.id; return !p ? 'seed' : p.startsWith('yt-') ? 'yt' : p; }; // YouTube playlists count together, never by name
 const tz = () => { try { return String(Intl.DateTimeFormat().resolvedOptions().timeZone || '').slice(0, 64); } catch (e) { return ''; } };
+/* v50: more anonymous details for Studio › Stats › Live and the Telegram alerts. Where a page open came from (the ?ref=, the app
+   it opened in, or the site that linked it), the kind of phone and browser and its language once a day, how long since a phone was
+   last here, a ping a minute while the page is on screen (phones open now, minutes of music), the features people tap, items turned
+   on, long nights, errors and how fast the songs were ready. Still no ID for a phone and nothing typed. */
+const inApp = ua => /musical_ly|BytedanceWebview|TikTok/i.test(ua) ? 'tiktok' : /Instagram/.test(ua) ? 'instagram'
+  : /FB_IAB\/MESSENGER|FBAN\/Messenger|MessengerForiOS|MessengerLite/i.test(ua) ? 'messenger' : /FBAN|FBAV|FB_IAB/.test(ua) ? 'facebook'
+  : /Snapchat/i.test(ua) ? 'snapchat' : /\bLine\//.test(ua) ? 'line' : null;
+function arrivedFrom(ref) { // null for a reload, back/forward or one of Jhapat's own pages
+  try { const nav = performance.getEntriesByType('navigation')[0]; if (nav && (nav.type === 'reload' || nav.type === 'back_forward')) return null; } catch (e) {}
+  if (ref) return ref;
+  const app = inApp(navigator.userAgent || ''); if (app) return app;
+  let h = ''; try { h = new URL(document.referrer).hostname.replace(/^(www|m|l|lm|mobile)\./, ''); } catch (e) { return 'direct'; }
+  if (!h) return 'direct';
+  if (/(^|\.)jhapat\.live$|\.github\.io$/.test(h)) return null;
+  const map = [[/tiktok/, 'tiktok'], [/instagram/, 'instagram'], [/messenger/, 'messenger'], [/facebook|^fb\.com$/, 'facebook'], [/whatsapp/, 'whatsapp'], [/viber/, 'viber'],
+    [/(^|\.)google\./, 'google'], [/bing|duckduckgo|yahoo|baidu|yandex|ecosia|brave\.com/, 'search'], [/youtube|youtu\.be/, 'youtube'], [/^t\.co$|twitter|^x\.com$/, 'x'],
+    [/reddit/, 'reddit'], [/snapchat/, 'snapchat'], [/linkedin/, 'linkedin'], [/claude\.ai|chatgpt|openai|perplexity|gemini/, 'ai']];
+  for (const [re, k] of map) if (re.test(h)) return k;
+  return 'other';
+}
+function devKey() { // e.g. iphone-safari, android-chrome, iphone-tiktok
+  const ua = navigator.userAgent || '', touchMac = /Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1;
+  const os = /SMART-TV|SmartTV|Tizen|Web0S|webOS|AFT[A-Z]|CrKey|BRAVIA|Android TV|GoogleTV/i.test(ua) ? 'tv' : /iPhone|iPod/.test(ua) ? 'iphone' : /iPad/.test(ua) || touchMac ? 'ipad'
+    : /Android/.test(ua) ? 'android' : /CrOS/.test(ua) ? 'chromebook' : /Macintosh/.test(ua) ? 'mac' : /Windows/.test(ua) ? 'windows' : /Linux/.test(ua) ? 'linux' : 'other';
+  const br = inApp(ua) || (/SamsungBrowser/.test(ua) ? 'samsung' : /EdgA?\/|EdgiOS/.test(ua) ? 'edge' : /OPR\/|OPiOS|Opera/.test(ua) ? 'opera' : /Firefox|FxiOS/.test(ua) ? 'firefox'
+    : navigator.brave ? 'brave' : /DuckDuckGo|Ddg\//.test(ua) ? 'ddg' : /Chrome|CriOS/.test(ua) ? 'chrome' : /Safari/.test(ua) ? 'safari' : 'other');
+  return os + '-' + br;
+}
+const langKey = () => String(navigator.language || '').slice(0, 2).toLowerCase().replace(/[^a-z]/g, '') || 'xx';
+const retKey = (last, today) => { const d = Math.round((Date.parse(today) - Date.parse(last)) / 864e5); return d <= 1 ? '1d' : d <= 7 ? '2-7d' : d <= 30 ? '8-30d' : '31d+'; };
+const ACT_COUNT = { reveal: 'show', replay: 'replay', pause: 'pause', lists: 'switch', pickpl: 'pick', intro: 'howto', introgo: 'letsgo', reportopen: 'report',
+  settings: 'settings', moreitems: 'more', stay: 'stay', reset: 'reset', tvfull: 'fullscreen', share: 'share' };
+let sped = false;
+function markSpeed() { // how long from opening the page until the songs were ready
+  if (sped) return; sped = true;
+  let t = 0; try { t = performance.now(); } catch (e) { return; }
+  tally('speed', t < 1000 ? '0-1s' : t < 2000 ? '1-2s' : t < 4000 ? '2-4s' : t < 8000 ? '4-8s' : '8s+');
+}
+setInterval(() => { if (document.visibilityState === 'visible') { let on = false; try { on = state() === 1; } catch (e) {} tally('ping', on ? 'play' : 'idle'); } }, 60000);
 function readRef() {
   try {
     const u = new URL(location.href); if (!u.searchParams.has('ref')) return '';
@@ -2423,11 +2468,12 @@ window.addEventListener('hashchange', () => { const x = sharedOf(location.hash);
 
 document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.classList.add('broken'); }, true);
 applySmall(); applyBlind();
-if (CAT) { buildCat(); useList(pidFor(keptPl()), true); } // from the phone, before the database answers
+if (CAT) { buildCat(); useList(pidFor(keptPl()), true); markSpeed(); } // from the phone, before the database answers
 $('#ver').textContent = 'v' + VERSION;
 render();
-{ const ref = readRef(); if (!hadSave) tally('new', ref);
-  const today = new Date().toISOString().slice(0, 10); if (S.seenDay !== today) { S.seenDay = today; save(); tally('visit', tz()); } }
+{ const ref = readRef(), from = arrivedFrom(ref); if (!hadSave) tally('new', ref); if (from) tally('from', from);
+  const today = new Date().toISOString().slice(0, 10);
+  if (S.seenDay !== today) { const last = S.seenDay; S.seenDay = today; save(); tally('visit', tz()); tally('dev', devKey()); tally('lang', langKey()); if (hadSave && last) tally('ret', retKey(last, today)); } }
 { let c = null; try { c = new URL(location.href).searchParams.get('tv'); } catch (e) {}
   if (c != null) tvStart(String(c).toUpperCase()); else if (!S.introSeen) openIntro(); }
 loadDb();

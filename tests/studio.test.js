@@ -17,7 +17,7 @@ function makeDb() {
     tags: [{ id: 1, song_id: 'old', item_id: 'paani', t: 30, line: null, word: null, source: 'estimate', checked: false }],
     playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', description: null, sort: 0, is_public: true, owner: null }],
     playlist_songs: [{ playlist_id: 'party-mix', song_id: 'old', position: 0 }],
-    requests: [], reports: [], stats: [], wishes: [],
+    requests: [], reports: [], stats: [], stats_min: [], wishes: [],
     seq: 100, log: [],
   };
 }
@@ -622,8 +622,11 @@ function makeDom(db, opts) {
     await sleep(60);
     ok(!!d.querySelector('#nav [data-arg="stats"]'), 'the studio has a Stats tab');
     w.location.hash = '#stats'; await sleep(40);
+    ok(!!d.querySelector('.livehead') && d.querySelector('[data-act="statdays"][data-arg="live"]').getAttribute('aria-pressed') === 'true', 'Stats opens on Live');
+    c('[data-act="statdays"][data-arg="30"]'); await sleep(40);
     const k = [...d.querySelectorAll('.kpi')].map(x => x.querySelector('.small').textContent + '=' + x.querySelector('b').textContent);
-    ok(k.join(' ') === 'Phones=15 New phones=5 Nights started=3 Parties=3 Drops=80 Shares=2', 'the numbers for the last 30 days: ' + k.join(' '));
+    ok(k.join(' ') === 'Phones=15 New phones=5 Nights started=3 Parties=3 Drops=80 Shares=2 Minutes of music=0', 'the numbers for the last 30 days: ' + k.join(' '));
+    ok(/Days run on UTC, from/.test(d.querySelector('.statnote').textContent), 'it says when a day starts in your time');
     ok(/\+200% on the 30 days before/.test(d.querySelector('.kpi').textContent), 'with the change on the 30 days before: ' + d.querySelector('.kpi').textContent);
     ok(d.querySelectorAll('.bars .bar').length === 30 && d.querySelectorAll('.bars .bar i').length === 2, 'a bar a day, with the parties inside');
     const t = d.querySelector('.statgrid').textContent;
@@ -631,6 +634,32 @@ function makeDom(db, opts) {
       'top lists: playlists, songs, time zones, how new phones arrived, sharing and features (big screen too)');
     c('[data-act="statdays"][data-arg="7"]'); await sleep(20);
     ok(d.querySelectorAll('.bars .bar').length === 7 && [...d.querySelectorAll('.kpi b')][0].textContent === '15', 'the last 7 days, too'); }
+
+  // Live (v50): the last hour minute by minute from stats_min: phones open now (pings in the last minute), page opens with new phones,
+  // the window buttons, and where people came from, which phones, taps, problems
+  { const db = makeDb(), m = k => new Date(Math.floor(Date.now() / 60e3) * 60e3 - k * 60e3).toISOString();
+    db.stats_min = [
+      { at: m(0), ev: 'ping', k: 'play', n: 3 }, { at: m(0), ev: 'ping', k: 'idle', n: 1 }, { at: m(1), ev: 'ping', k: 'play', n: 2 },
+      { at: m(2), ev: 'from', k: 'tiktok', n: 4 }, { at: m(2), ev: 'new', k: '', n: 3 }, { at: m(2), ev: 'visit', k: 'Australia/Melbourne', n: 4 },
+      { at: m(3), ev: 'from', k: 'direct', n: 1 }, { at: m(3), ev: 'dev', k: 'iphone-tiktok', n: 3 }, { at: m(3), ev: 'dev', k: 'android-chrome', n: 1 },
+      { at: m(5), ev: 'start', k: 'all', n: 2 }, { at: m(6), ev: 'party', k: 'all', n: 1 }, { at: m(6), ev: 'drops', k: 'all', n: 9 },
+      { at: m(7), ev: 'act', k: 'show', n: 5 }, { at: m(7), ev: 'item', k: 'paani', n: 2 }, { at: m(8), ev: 'err', k: 'yt-150', n: 1 }, { at: m(8), ev: 'lang', k: 'ne', n: 2 },
+      { at: m(9), ev: 'ret', k: '2-7d', n: 1 }, { at: m(9), ev: 'speed', k: '1-2s', n: 3 }, { at: m(9), ev: 'night', k: '10', n: 1 },
+      { at: m(200), ev: 'from', k: 'qr', n: 6 }, { at: m(200), ev: 'new', k: 'qr', n: 6 }]; // over 3 hours ago
+    const { w, d } = makeDom(db, { signedIn: true, editor: true });
+    const c = sel => d.querySelector(sel).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    await sleep(60); w.location.hash = '#stats'; await sleep(40);
+    const k = () => [...d.querySelectorAll('.kpi')].map(x => x.querySelector('.small').textContent + '=' + x.querySelector('b').textContent).join(' ');
+    ok(k() === 'Open now=4 Page opens=5 New phones=3 Nights started=2 Parties=1 Drops=9 Minutes of music=5', 'the last hour: ' + k());
+    ok(d.querySelectorAll('.bars .bar').length === 60 && d.querySelectorAll('.bars .bar i').length === 1, 'a bar a minute, new phones inside: ' + d.querySelectorAll('.bars .bar').length);
+    const t = d.querySelector('.statgrid').textContent;
+    ok(/TikTok\s*4/.test(t) && /Typed the address\s*1/.test(t) && /iPhone · inside TikTok\s*3/.test(t) && /Android · Chrome\s*1/.test(t) && /Show the word\s*5/.test(t) &&
+      /Paani\s*2/.test(t) && /YouTube error 150 \(embedding off\)\s*1/.test(t) && /Nepali\s*2/.test(t) && /Within a week\s*1/.test(t) && /1–2 s\s*3/.test(t) &&
+      /10\+ drops in a night\s*1/.test(t) && /Australia\/Melbourne\s*4/.test(t) && /All songs\s*9/.test(t) && !/Scanned the QR code/.test(t), 'where they came from, phones, taps, items, problems, languages, coming back, speed, long nights, places, playlists');
+    c('[data-act="livewin"][data-arg="360"]'); await sleep(20);
+    ok(/Page opens=11 New phones=9/.test(k()) && d.querySelectorAll('.bars .bar').length === 72 && /Scanned the QR code\s*6/.test(d.querySelector('.statgrid').textContent), '6 hours, five minutes a bar: ' + k());
+    db.stats_min.push({ at: m(0), ev: 'ping', k: 'play', n: 6 }); c('[data-act="statsreload"]'); await sleep(40);
+    ok(/Open now=10/.test(k()), 'Refresh reads the database again (Live also does every 20 s): ' + k()); }
 
   // Songs people's playlists are waiting for (v40): grouped by what they need, most asked first; Copy for Claude, Add many for the
   // ones with uploads, Added and Skip; one closes by itself once its LRCLIB version is in the studio

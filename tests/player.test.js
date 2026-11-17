@@ -842,7 +842,32 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const pl = JSON.parse(wm.localStorage.getItem('jhapat.v1')).playlist.id;
     ok(posts.length === 1 && ev['new:qr'] === 1 && Object.keys(ev).some(k => /^visit:./.test(k)) && ev['drops:' + pl] === 5 && ev['start:' + pl] === 1 && ev['party:' + pl] === 1 && ev['hide:'] === 1,
       'one call when the page is put away: a first visit from the QR code, the day’s visit, 5 drops, the night’s start and party, Hide: ' + JSON.stringify(ev));
-    ok(Object.keys(ev).filter(k => k.startsWith('song:')).reduce((a, k) => a + ev[k], 0) === 5 && !JSON.stringify(posts).includes('jhapat.v1'), 'and which songs played, nothing else'); }
+    ok(Object.keys(ev).filter(k => k.startsWith('song:')).reduce((a, k) => a + ev[k], 0) === 5 && !JSON.stringify(posts).includes('jhapat.v1'), 'and which songs played, nothing else');
+    // v50: the details for Live and the alerts
+    ok(posts.every(p => p[0][0] === 'tz') && ev['from:qr'] === 1 && Object.keys(ev).some(k => /^dev:[a-z]+-[a-z]+$/.test(k)) && Object.keys(ev).some(k => /^lang:[a-z]+$/.test(k)) &&
+      ev['act:letsgo'] === 1 && ev['act:show'] === undefined && Object.keys(ev).some(k => /^speed:/.test(k)) && !Object.keys(ev).some(k => /^ret:/.test(k)),
+      'each batch carries the time zone for the alerts, plus where the phone came from, its kind and language, the taps and how fast the songs came: ' + Object.keys(ev).filter(k => !/^song:/.test(k)).join(' ')); }
+
+  // 30b. v50: a phone coming back, opened inside TikTok: where it came from, the phone, days since its last visit, items, taps, errors
+  { const posts = [], C30 = { stamp: 'x', items: [{ id: 'paani', name: 'Paani', dev: 'पानी' }, { id: 'phool', name: 'Phool', dev: 'फूल' }], playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', songs: ['a1'] }],
+      songs: [{ id: 'a1', title: 'A One', artist: 'A', videos: [{ yt: 'AAAAAAAAAAA', offset: 0, synced: true }], tags: [['paani', 30], ['phool', 60]] }] };
+    const back = new Date(Date.now() - 4 * 864e5).toISOString().slice(0, 10);
+    const first = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      win.fetch = async () => ({ ok: true, json: async () => JSON.parse(JSON.stringify(C30)) }); } });
+    await sleep(80);
+    const saved = JSON.parse(first.window.localStorage.getItem('jhapat.v1')), cat = first.window.localStorage.getItem('jhapat.cat'); saved.seenDay = back; saved.introSeen = true;
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://jhapat.live/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      Object.defineProperty(win.navigator, 'userAgent', { get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 musical_ly_37.0.0 BytedanceWebview/d8a21c6' });
+      win.localStorage.setItem('jhapat.v1', JSON.stringify(saved)); if (cat) win.localStorage.setItem('jhapat.cat', cat);
+      win.fetch = async (url, o) => { if (/rpc\/tally/.test(url)) { posts.push(JSON.parse(o.body).e); return { ok: true, json: async () => 1 }; } return { ok: true, json: async () => JSON.parse(JSON.stringify(C30)) }; }; } });
+    await sleep(80);
+    const wm = dm.window, dd = wm.document, cl = sel => dd.querySelector(sel).dispatchEvent(new wm.MouseEvent('click', { bubbles: true }));
+    const off = dd.querySelector('[data-act="item"][aria-pressed="false"]'); if (off) { off.dispatchEvent(new wm.MouseEvent('click', { bubbles: true })); await sleep(5); }
+    cl('[data-act="next"]'); await sleep(5); cl('[data-act="reveal"]'); await sleep(5); cl('[data-act="sound"]'); await sleep(5);
+    Object.defineProperty(dd, 'visibilityState', { configurable: true, get: () => 'hidden' }); dd.dispatchEvent(new wm.Event('visibilitychange')); await sleep(10);
+    const ev = {}; posts.flat().forEach(([e, k, n]) => { ev[e + ':' + k] = (ev[e + ':' + k] || 0) + (n || 0); });
+    ok(ev['from:tiktok'] === 1 && ev['dev:iphone-tiktok'] === 1 && ev['ret:2-7d'] === 1 && !ev['new:'] && ev['act:show'] === 1 && ev['act:sound-off'] === 1 && (!off || ev['item:' + off.dataset.arg] === 1),
+      'opened inside TikTok on an iPhone, back after 4 days, Show, sounds off and an item turned on: ' + Object.keys(ev).join(' ')); }
 
   // 31. An upload YouTube won't play: the party skips it, and Studio › Reports hears about it once per upload per phone
   { const reps = [];
@@ -1195,6 +1220,20 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     const dd = mk(null, 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 DuckDuckGo/7 Safari/605.1.15'); await sleep(60);
     ok(/Ad blocker on/.test(dd.window.document.getElementById('introAds').textContent), 'in DuckDuckGo it says the browser blocks the ads');
     dd.window.close(); }
+
+  // 40. v50: artist rounds (playlists sorted 50–99) get their own section under All songs, above the tail (100+)
+  { const C40 = { stamp: 'x', items: [{ id: 'paani', name: 'Paani', dev: 'पानी' }],
+      songs: ['a', 'b', 'c'].map((x, i) => ({ id: x, title: 'Song ' + x, artist: 'Artist ' + x, videos: [{ yt: (x + 'xxxxxxxxxxx').slice(0, 11), offset: 0, synced: true }], tags: [['paani', 30 + i]] })),
+      playlists: [{ id: 'party-mix', name: 'Nepali Party Mix', sort: 0, songs: ['a', 'b'] }, { id: 'artist-sajjan', name: 'Sajjan Raj Vaidya', sort: 50, songs: ['b', 'c'] },
+        { id: 'artist-bipul', name: 'Bipul Chettri', sort: 51, songs: ['a', 'c'] }, { id: 'dohori', name: 'Nepali Dohori Sachin', sort: 100, songs: ['c'] }] };
+    const dm = new JSDOM(html, { runScripts: 'dangerously', url: 'https://sachdq.github.io/jhapat/', pretendToBeVisual: true, beforeParse(win) { win.scrollTo = () => {};
+      win.fetch = async () => ({ ok: true, json: async () => JSON.parse(JSON.stringify(C40)) }); } });
+    await sleep(80);
+    const dd = dm.window.document; dd.querySelector('[data-act="introgo"]').dispatchEvent(new dm.window.MouseEvent('click', { bubbles: true })); await sleep(5);
+    dd.querySelector('.plbar').dispatchEvent(new dm.window.MouseEvent('click', { bubbles: true })); await sleep(10);
+    const cards = [...dd.querySelectorAll('.picker [data-act="pickpl"]')].map(b => b.dataset.arg).join(' '), heads = [...dd.querySelectorAll('.picker h3.sub')].map(h => h.textContent).join(',');
+    ok(cards === 'party-mix all artist-sajjan artist-bipul dohori' && heads === 'Jhapat playlists,Artist rounds,More rounds', 'artist rounds sit under All songs, Dohori Sachin last: ' + cards + ' / ' + heads);
+    dm.window.close(); }
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

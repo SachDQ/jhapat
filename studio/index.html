@@ -170,6 +170,13 @@ aside.side{position:sticky;top:8px;display:grid;gap:12px;max-height:calc(100vh -
 .toplist li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .toplist b{font-variant-numeric:tabular-nums}
 .upcheck{margin-top:14px}
+/* v50: Stats › Live */
+.livehead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+.livedot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 var(--ok);animation:livedot 2s infinite}
+@keyframes livedot{0%{box-shadow:0 0 0 0 rgba(80,220,140,.55)}70%{box-shadow:0 0 0 9px rgba(80,220,140,0)}100%{box-shadow:0 0 0 0 rgba(80,220,140,0)}}
+@media (prefers-reduced-motion:reduce){.livedot{animation:none}}
+.kpi.now b{color:var(--ok)}
+.bars.thin{gap:1px}
 .res.imp{align-items:start}
 .tchips{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
 .tchip{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:2px 8px;font:600 12.5px/1.4 var(--mono);cursor:pointer;color:var(--ink)}
@@ -397,7 +404,7 @@ let showAll = false, armed = null, tapAlong = [], lrc = { q: '', busy: false, li
 let confirmDel = false, confirmVid = null, sent = null; // confirmVid: the upload (videos.id) whose Remove is asking
 let chk = null;                                 // Check tags: { list: [{ tag, members }], i, target, go }
 let timing = null;                              // timing untimed lyrics: { texts, done: [{ i, t, kind: 'line' | 'again' | 'skip' }] }
-const VERSION = 49; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
+const VERSION = 50; // shown next to the logo; `npm run bump` raises it here, in the player and in version.json before each push
 /* What's folded, the song sort and the lyric view are remembered in this browser. Filters last until a reload. */
 const UI_KEY = 'jhapat.studio';
 const ui = (() => { const d = { fold: {}, sort: 'title', onlyLit: false, itemSort: 'sort' };
@@ -1402,8 +1409,9 @@ document.addEventListener('click', async e => {
     case 'upcheck': await checkUploads(); break;
     case 'upoff': await uploadOff([arg]); break;
     case 'upoffall': if (upChk) await uploadOff(upChk.dead.map(x => x.v.id)); break;
-    case 'statdays': statsDays = Number(arg) || 30; render(); break;
-    case 'statsreload': stats = null; render(); break;
+    case 'statdays': statsDays = arg === 'live' ? 'live' : Number(arg) || 30; render(); break;
+    case 'statsreload': stats = null; live = null; render(); break;
+    case 'livewin': liveWin = Number(arg) || 60; render(); break;
     case 'repopen': { const r = reports.find(x => String(x.id) === String(arg)); if (!r) break;
       pendingReport = r; if (location.hash === '#song:' + encodeURIComponent(r.song_id) && cur && cur.s.id === r.song_id) { pendingReport = null; reportCheck(r); } else location.hash = '#song:' + encodeURIComponent(r.song_id); break; }
     case 'reqskip': await reqDone(arg, 'skipped'); break;
@@ -1763,7 +1771,7 @@ function uploadsCardHTML() {
    with ?ref= from a QR code or shared link), start and party (the first and fifth drop of a night, by playlist), drops (by playlist),
    song (by week), share, ytlist (list since v40), hide, install and tv (v42: start, and phone for each phone that joins a TV). Days are UTC.
    Only editors can read them. */
-let stats = null, statsDays = 30, statsBusy = false;
+let stats = null, statsDays = 'live', statsBusy = false;
 async function loadStats() {
   if (statsBusy) return; statsBusy = true;
   const since = isoDay(Date.now() - 64 * 864e5); // two windows of 30 days, for the change
@@ -1774,10 +1782,87 @@ async function loadStats() {
 }
 const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
 const dayLabel = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-const REFS = { '': 'Typed or tapped the address', qr: 'Scanned the QR code', share: 'A shared link' };
+const REFS = { '': 'Typed or tapped the address', qr: 'Scanned the QR code', share: 'A shared link', messenger: 'The Messenger link (Tips)' };
+/* v50: more details (see db/schema.sql) and Live, the last hour minute by minute from stats_min (kept 8 days). Each open phone pings
+   once a minute while Jhapat is on screen, so the pings in the last minute are the phones open now. Live refreshes every 20 s. */
+const FROM = { direct: 'Typed the address', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', messenger: 'Messenger', whatsapp: 'WhatsApp', viber: 'Viber',
+  google: 'Google', search: 'Another search engine', youtube: 'YouTube', x: 'X (Twitter)', reddit: 'Reddit', snapchat: 'Snapchat', line: 'LINE', linkedin: 'LinkedIn',
+  ai: 'An AI chat', qr: 'Scanned the QR code', share: 'A shared link', other: 'Another site' };
+const OSES = { iphone: 'iPhone', ipad: 'iPad', android: 'Android', mac: 'Mac', windows: 'Windows', chromebook: 'Chromebook', linux: 'Linux', tv: 'TV', other: 'Other' };
+const BROWSERS = { safari: 'Safari', chrome: 'Chrome', firefox: 'Firefox', edge: 'Edge', samsung: 'Samsung Internet', opera: 'Opera', brave: 'Brave', ddg: 'DuckDuckGo',
+  tiktok: 'inside TikTok', instagram: 'inside Instagram', facebook: 'inside Facebook', messenger: 'inside Messenger', snapchat: 'inside Snapchat', line: 'inside LINE', other: 'other browser' };
+const devName = k => { const [o, b] = String(k).split('-'); return esc((OSES[o] || o) + ' · ' + (BROWSERS[b] || b || '?')); };
+const ACTS = { show: 'Show the word', replay: 'Replay', pause: 'Pause', switch: 'Opened the playlists', pick: 'Picked a playlist', howto: 'How to play', letsgo: 'Let’s go (intro)',
+  report: 'Opened Report', settings: 'Settings', more: 'More items', stay: 'Stay', reset: 'Reset', fullscreen: 'Full screen (TV)', share: 'Share', 'sound-on': 'Sounds on',
+  'sound-off': 'Sounds off', tips: 'Tips page' };
+const RETS = { '1d': 'The next day', '2-7d': 'Within a week', '8-30d': 'Within a month', '31d+': 'After a month or more' };
+const SPEEDS = { '0-1s': 'Under 1 s', '1-2s': '1–2 s', '2-4s': '2–4 s', '4-8s': '4–8 s', '8s+': 'Over 8 s' };
+const LANGS = { ne: 'Nepali', en: 'English', hi: 'Hindi', ja: 'Japanese', ko: 'Korean', ar: 'Arabic', zh: 'Chinese', ms: 'Malay', fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese', xx: 'Unknown' };
+const YTERR = { 2: 'bad request', 5: 'player error', 100: 'removed', 101: 'embedding off', 150: 'embedding off', 152: 'blocked on this page', 153: 'blocked on this page' };
+const errName = k => k === 'catalog' ? 'Songs didn’t load at all' : k === 'catalog-old' ? 'Songs didn’t update (it played saved ones)'
+  : /^yt-\d+$/.test(k) ? 'YouTube error ' + k.slice(3) + (YTERR[k.slice(3)] ? ' (' + YTERR[k.slice(3)] + ')' : '') : esc(k);
+const keySum = (rows, ev) => { const m = new Map(); rows.forEach(r => { if (r.ev === ev) m.set(r.k, (m.get(r.k) || 0) + Number(r.n)); }); return [...m].sort((a, b) => b[1] - a[1]); };
+const topList = (title, pairs, label, n) => '<div class="card"><h2>' + title + '</h2>' + (pairs.length ? '<ol class="toplist">' + pairs.slice(0, n || 10).map(([k, v]) =>
+  '<li><span class="grow">' + label(k) + '</span><b>' + Number(v).toLocaleString('en') + '</b></li>').join('') + '</ol>' : '<p class="muted small">Nothing yet.</p>') + '</div>';
+const statPlName = id => ({ all: 'All songs', yt: 'From YouTube links', seed: 'Built-in songs (no database)' })[id] || esc((playlists.find(p => p.id === id) || {}).name || id);
+function detailLists(rows) { // the v50 details, for Live and for the days
+  const nights = keySum(rows, 'night').sort((a, b) => Number(a[0]) - Number(b[0]));
+  return topList('Where they came from', keySum(rows, 'from'), k => k in FROM ? FROM[k] : esc(k)) + topList('Phones and browsers', keySum(rows, 'dev'), devName) +
+    topList('Languages', keySum(rows, 'lang'), k => LANGS[k] || esc(k)) + topList('Coming back', keySum(rows, 'ret'), k => RETS[k] || esc(k)) +
+    topList('Items turned on', keySum(rows, 'item'), k => esc(itemLabel(k)), 12) + topList('Taps', keySum(rows, 'act'), k => ACTS[k] || esc(k), 16) +
+    topList('Long nights', nights, k => esc(k) + '+ drops in a night') + topList('Songs ready in', keySum(rows, 'speed'), k => SPEEDS[k] || esc(k)) +
+    topList('Problems on phones', keySum(rows, 'err'), errName);
+}
+let live = null, liveAt = 0, liveBusy = false, liveWin = 60;
+async function loadLive() {
+  if (liveBusy) return; liveBusy = true;
+  const since = new Date(Date.now() - 2 * 864e5 - 120e3).toISOString();
+  const r = await allRows(() => sb.from('stats_min').select('at,ev,k,n').gte('at', since).order('at'));
+  liveBusy = false;
+  if (r.error) { if (!live) fail('Couldn’t load the live counts', r.error); live = live || []; } else { live = r.data; liveAt = Date.now(); }
+  if (route.view === 'stats' && statsDays === 'live' && editor) $('#view').innerHTML = statsHTML();
+}
+setInterval(() => { if (route.view === 'stats' && statsDays === 'live' && editor && document.visibilityState === 'visible') loadLive(); }, 20000);
+const hm = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function liveHTML() {
+  if (!live) { loadLive(); return '<p class="muted">Loading…</p>'; }
+  const W = liveWin, now = Date.now(), m0 = Math.floor(now / 60e3) * 60e3, step = W <= 60 ? 1 : W <= 360 ? 5 : W <= 1440 ? 15 : 60;
+  const n = Math.ceil(W / step), start = m0 - (n - 1) * step * 60e3, rows = live.filter(r => Date.parse(r.at) >= start);
+  const sum = (ev, k) => rows.reduce((a, r) => a + (r.ev === ev && (k == null || r.k === k) ? Number(r.n) : 0), 0);
+  const pingsAt = t => live.reduce((a, r) => a + (r.ev === 'ping' && Date.parse(r.at) === t ? Number(r.n) : 0), 0);
+  const open = Math.max(pingsAt(m0), pingsAt(m0 - 60e3)); // each open phone pings once a minute
+  const B = Array.from({ length: n }, (_, i) => ({ t: start + i * step * 60e3, opens: 0, phones: 0, fresh: 0, drops: 0, parties: 0 }));
+  rows.forEach(r => { const b = B[Math.floor((Date.parse(r.at) - start) / (step * 60e3))]; if (!b) return; const v = Number(r.n);
+    if (r.ev === 'from') b.opens += v; else if (r.ev === 'visit') b.phones += v; else if (r.ev === 'new') b.fresh += v; else if (r.ev === 'drops') b.drops += v; else if (r.ev === 'party') b.parties += v; });
+  B.forEach(b => { b.v = Math.max(b.opens, b.phones, b.fresh); });
+  const top = Math.max(1, ...B.map(b => b.v)), opens = Math.max(sum('from'), sum('visit'));
+  const kpi = (label, v, note, cls) => '<div class="kpi' + (cls ? ' ' + cls : '') + '"><span class="small muted">' + label + '</span><b>' + Number(v).toLocaleString('en') + '</b>' +
+    (note ? '<span class="small muted">' + note + '</span>' : '') + '</div>';
+  const span = { 60: 'the last hour', 360: 'the last 6 hours', 1440: 'the last 24 hours', 2880: 'the last 2 days' }[W] || 'the last ' + W + ' minutes';
+  const bars = '<div class="bars thin" role="img" aria-label="Page opens, ' + esc(span) + '">' + B.map(b =>
+    '<span class="bar" title="' + esc(hm(b.t) + ': ' + plural(b.v, 'open') + ', ' + plural(b.fresh, 'new phone') + ', ' + plural(b.drops, 'drop') + (b.parties ? ', ' + b.parties + ' part' + (b.parties === 1 ? 'y' : 'ies') : '')) +
+    '" style="height:' + (b.v ? Math.max(4, Math.round(b.v / top * 100)) : 1) + '%">' + (b.fresh ? '<i style="height:' + Math.min(100, Math.round(b.fresh / Math.max(1, b.v) * 100)) + '%"></i>' : '') + '</span>').join('') + '</div>' +
+    '<div class="row small muted"><span>' + esc(hm(start)) + '</span><span class="grow"></span><span>now</span></div>';
+  const feats = [['Hide turned on', sum('hide')], ['Big screen turned on', sum('tv', 'start')], ['Phones used as remotes', sum('tv', 'phone')], ['Added to a home screen', sum('install')],
+    ['Own playlists made', sum('list', 'yt') + sum('list', 'sp') + sum('list', 'text')], ['Playlists opened from a link', rows.reduce((a, r) => a + (r.ev === 'list' && r.k.startsWith('link') ? Number(r.n) : 0), 0)]].filter(x => x[1]);
+  return '<div class="livehead"><span class="livedot" aria-hidden="true"></span><span class="small">Live · updated ' + esc(new Date(liveAt).toLocaleTimeString()) + ', every 20 s</span><span class="grow"></span>' +
+    '<div class="segs" role="group" aria-label="How far back">' + [[60, '1 hour'], [360, '6 hours'], [1440, '24 hours'], [2880, '2 days']].map(([v, l]) =>
+      '<button class="seg" data-act="livewin" data-arg="' + v + '" aria-pressed="' + (W === v) + '">' + l + '</button>').join('') + '</div></div>' +
+    '<div class="kpis">' + kpi('Open now', open, 'phones with Jhapat on screen', 'now') + kpi('Page opens', opens, span) + kpi('New phones', sum('new'), 'first visit ever') +
+      kpi('Nights started', sum('start')) + kpi('Parties', sum('party'), '5+ drops in a night') + kpi('Drops', sum('drops')) + kpi('Minutes of music', sum('ping', 'play'), 'while a song played') + '</div>' +
+    '<div class="card"><h2>' + (step === 1 ? 'Minute by minute' : 'Every ' + (step === 60 ? 'hour' : step + ' minutes')) + '</h2>' + bars +
+      '<p class="small muted">Each bar: pages opened. In red: new phones. Hover a bar for its drops and parties.</p></div>' +
+    '<div class="statgrid">' + detailLists(rows) + topList('Time zones', keySum(rows, 'visit'), k => esc(k || 'Unknown')) +
+      topList('Playlists played (drops)', keySum(rows, 'drops'), statPlName) + topList('Sharing', keySum(rows, 'share'), k => SHARES[k] || esc(k)) +
+      topList('Other features', feats, k => esc(k)) + '</div>' +
+    '<p class="small muted">Live keeps 8 days, minute by minute; the days below that are under 7 days and 30 days. Phones open now and minutes of music count phones on v50 or later.</p>';
+}
 const SHARES = { qr: 'Opened the QR code', native: 'Shared from the phone', copy: 'Copied the link', yt: 'Shared a YouTube playlist' };
 function statsHTML() {
-  if (!stats) { loadStats(); return '<div class="pagehead"><h1>Stats</h1></div><p class="muted">Loading…</p>'; }
+  const head = '<div class="pagehead"><h1>Stats</h1><div class="segs" role="group" aria-label="Period">' + [['live', 'Live'], [7, '7 days'], [30, '30 days']].map(([v, l]) =>
+    '<button class="seg" data-act="statdays" data-arg="' + v + '" aria-pressed="' + (statsDays === v) + '">' + l + '</button>').join('') + '<button class="seg" data-act="statsreload">Refresh</button></div></div>';
+  if (statsDays === 'live') return head + liveHTML();
+  if (!stats) { loadStats(); return head + '<p class="muted">Loading…</p>'; }
   const D = statsDays, now = Date.now(), from = isoDay(now - (D - 1) * 864e5), prevFrom = isoDay(now - (2 * D - 1) * 864e5);
   const cur = stats.filter(r => r.day >= from), prev = stats.filter(r => r.day >= prevFrom && r.day < from); // ISO days compare as text
   const sum = (rows, ev, k) => rows.reduce((a, r) => a + (r.ev === ev && (k == null || (typeof k === 'function' ? k(r.k) : r.k === k)) ? Number(r.n) : 0), 0);
@@ -1799,15 +1884,15 @@ function statsHTML() {
   const feats = [['Hide turned on', sum(cur, 'hide')], ['Playlists made from YouTube', sum(cur, 'list', 'yt') + sum(cur, 'ytlist', 'paste')], ['Playlists made from Spotify', sum(cur, 'list', 'sp')],
     ['Playlists made from a typed list', sum(cur, 'list', 'text')], ['Playlists opened from a link', sum(cur, 'list', k => k.startsWith('link')) + sum(cur, 'ytlist', 'link')], ['Added to a home screen', sum(cur, 'install')],
     ['Big screen turned on', sum(cur, 'tv', 'start')], ['Phones used as remotes', sum(cur, 'tv', 'phone')]].filter(x => x[1]);
-  return '<div class="pagehead"><h1>Stats</h1><div class="segs" role="group" aria-label="Days">' + [7, 30].map(n => '<button class="seg" data-act="statdays" data-arg="' + n + '" aria-pressed="' + (D === n) + '">' + n + ' days</button>').join('') +
-    '<button class="seg" data-act="statsreload">Refresh</button></div></div>' +
-    '<p class="muted small statnote">Anonymous counts from the party player since v39 (15 Nov 2026): no accounts, no IDs, nothing typed. A phone counts once a day; a party is a night that reached 5 drops. Days are UTC.</p>' +
+  const utc0 = new Date(Date.UTC(2026, 0, 1)).toLocaleTimeString([], { hour: 'numeric' });
+  return head +
+    '<p class="muted small statnote">Anonymous counts from the party player since v39 (15 Nov 2026): no accounts, no IDs, nothing typed. A phone counts once a day; a party is a night that reached 5 drops. Days run on UTC, from ' + esc(utc0) + ' your time.</p>' +
     '<div class="kpis">' + kpi('Phones', 'visit', null, 'each counts once a day') + kpi('New phones', 'new') + kpi('Nights started', 'start') + kpi('Parties', 'party', null, '5+ drops in a night') +
-      kpi('Drops', 'drops') + kpi('Shares', 'share', k => k !== 'qr') + '</div>' +
+      kpi('Drops', 'drops') + kpi('Shares', 'share', k => k !== 'qr') + kpi('Minutes of music', 'ping', 'play', 'since v50') + '</div>' +
     '<div class="card"><h2>Every day</h2>' + bars + '<p class="small muted">Each bar: phones that opened Jhapat that day. Inside it, in red: parties.</p></div>' +
     '<div class="statgrid">' + list('Parties by playlist', byKey('party'), plName) + list('Songs played, last 4 weeks', byKey('song', stats.filter(r => r.ev === 'song' && r.day >= isoDay(now - 28 * 864e5))), songName, 15) +
       list('Time zones', byKey('visit'), k => esc(k || 'Unknown')) + list('How new phones arrived', byKey('new'), k => k in REFS ? REFS[k] : esc(k)) +
-      list('Sharing', byKey('share'), k => SHARES[k] || esc(k)) + list('Other features', feats, k => esc(k)) + '</div>';
+      list('Sharing', byKey('share'), k => SHARES[k] || esc(k)) + list('Other features', feats, k => esc(k)) + detailLists(cur) + '</div>';
 }
 function repRowHTML(r) {
   const s = songs.find(x => x.id === r.song_id), t = Number(r.t);

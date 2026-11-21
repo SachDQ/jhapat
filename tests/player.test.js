@@ -1289,6 +1289,24 @@ const tableTimes = s => { const on = onSet(); return s.tags.filter(t => on.has(t
     ok(vis() === 'artists' && dd.querySelectorAll('#pp-artists .arttile').length === 8, 'eight artist rounds in one grid');
     dm.window.close(); }
 
+  // 42. v54: the press kit for editors and list writers: the TikTok round that started it, the story and facts, words to copy, pictures,
+  //     linked from the footer and the sitemap
+  { const pressHtml = fs.readFileSync(require('path').join(__dirname, '..', 'press', 'index.html'), 'utf8');
+    const sitemap = fs.readFileSync(require('path').join(__dirname, '..', 'sitemap.xml'), 'utf8');
+    let copied = null;
+    const pd = new JSDOM(pressHtml, { runScripts: 'dangerously', url: 'https://jhapat.live/press/', pretendToBeVisual: true, beforeParse(win) {
+      Object.defineProperty(win.navigator, 'clipboard', { value: { writeText: async t => { copied = t; } } }); } });
+    await sleep(30);
+    const pdoc = pd.window.document;
+    ok(pdoc.querySelector('link[rel="canonical"]').href === 'https://jhapat.live/press/' && /press kit/i.test(pdoc.title) && pdoc.querySelector('.ttbox iframe').src.includes('/player/v1/7706561958320868638') &&
+      pdoc.querySelector('.cap a').href === 'https://www.tiktok.com/@suzupah/video/7706561958320868638', 'the press kit shows the TikTok round that started it, credited to @suzupah');
+    ok(/1,300 Nepali songs/.test(pdoc.body.textContent) && pdoc.querySelectorAll('.blurb').length === 3 && pdoc.querySelector('#b3').getAttribute('lang') === 'ne' && pdoc.querySelectorAll('.pics a[download]').length === 3,
+      'facts, three blurbs (one in Nepali) and pictures to download');
+    pdoc.querySelector('[data-copy="b1"]').dispatchEvent(new pd.window.MouseEvent('click', { bubbles: true })); await sleep(10);
+    ok(/free Nepali party game/.test(copied || '') && /jhapat\.live/.test(copied || ''), 'Copy puts a blurb on the clipboard');
+    ok(new JSDOM(html).window.document.querySelector('.foot a[href="press/"]') && sitemap.includes('https://jhapat.live/press/'), 'the footer and the sitemap link the press kit');
+    pd.window.close(); }
+
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('CRASH', e); process.exit(1); });

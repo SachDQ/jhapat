@@ -558,7 +558,7 @@ body.introopen{overflow:hidden}
     <button class="btn ghost small" data-act="shareclose">Close</button>
   </div>
 </div>
-<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <a href="tips/">Tips</a> · <button class="linkbtn" data-act="share">Share</button><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up. Jhapat counts drops, never who.</p></footer>
+<footer class="wrap foot"><span id="ver"></span> · <button class="linkbtn" data-act="intro">How to play</button> · <a href="tips/">Tips</a> · <button class="linkbtn" data-act="share">Share</button> · <a href="press/">Press</a><span id="installWrap" hidden> · <button class="linkbtn" data-act="install">Install</button></span> · <a href="studio/">Studio</a><p class="foot2">Free, no sign-up. Jhapat counts drops, never who.</p></footer>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -566,7 +566,7 @@ body.introopen{overflow:hidden}
 'use strict';
 
 /* ---------- data ---------- */
-const VERSION = 53; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
+const VERSION = 54; // shown at the bottom; `npm run bump` raises it here, in the studio and in version.json before each push
 const KEY = 'jhapat.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
